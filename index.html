@@ -30,8 +30,30 @@
     border: 1px solid #595959; /* 7:1 against white, clears the 3:1 minimum */
   }
 
-  fieldset { margin-bottom: 1.5rem; }
+  /* Browsers give fieldset `min-inline-size: min-content`, so a fieldset will
+     refuse to shrink below its widest child. That defeats the schedule table's
+     scroll container and pushes the whole page wider than the viewport. */
+  fieldset {
+    margin-bottom: 1.5rem;
+    min-width: 0;
+  }
   legend { font-weight: bold; }
+
+  /* Native buttons render ~21px tall, under the 24px minimum in WCAG 2.2
+     SC 2.5.8 and well under a comfortable touch target. */
+  button {
+    font: inherit;
+    min-height: 44px;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
 
   /* Focus indicator that survives any later restyling. */
   :focus-visible {
@@ -42,7 +64,14 @@
   /* Data tables are exempt from reflow, but they should scroll in their own
      container rather than breaking the page. tabindex makes that scrollable
      region reachable by keyboard. */
-  .table-wrap { overflow-x: auto; }
+  /* position:relative matters here. The visually-hidden text in the last column
+     header is absolutely positioned; without a positioned ancestor it anchors to
+     the initial containing block, escapes this scroll container, and widens the
+     whole document. */
+  .table-wrap {
+    position: relative;
+    overflow-x: auto;
+  }
 
   #scheduleTable {
     border-collapse: collapse;
@@ -61,7 +90,13 @@
   #status { display: inline-block; margin-left: 0.5rem; }
 
   #preview, #source { border: 1px solid #595959; }
+  #preview { width: 100%; max-width: 100%; height: 600px; }
   #source { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
+
+  @media (max-width: 40rem) {
+    body { padding: 0.75rem; }
+    #preview { height: 22rem; }
+  }
 
   .visually-hidden {
     position: absolute;
@@ -177,7 +212,7 @@
     </p>
   </fieldset>
 
-  <p>
+  <p class="actions">
     <button type="button" id="generateBtn">Generate outline</button>
     <button type="button" id="downloadBtn">Download HTML</button>
     <button type="button" id="copyBtn">Copy HTML</button>
@@ -414,51 +449,70 @@ function copySource() {
 }
 
 // Column headers do NOT name the inputs inside a table cell, so every schedule
-// input gets an explicit accessible name. Names include the week, which the
-// instructor can edit, so they are recomputed whenever the table changes.
+// input gets its own <label>. Real label elements rather than aria-label: some
+// checkers only accept a label element, and browser auto-translation routinely
+// skips aria-label attributes while always translating text nodes.
+// Names include the week, which the instructor can edit, so they are recomputed
+// whenever the table changes.
 function relabelScheduleRows() {
   const rows = document.querySelectorAll("#scheduleBody tr");
   rows.forEach((tr, i) => {
     const inputs = tr.querySelectorAll("input");
+    const labels = tr.querySelectorAll("td > label");
     const week = inputs[0].value.trim();
     const ref = week ? "week " + week : "row " + (i + 1);
-    inputs[0].setAttribute("aria-label", "Week number, row " + (i + 1));
-    inputs[1].setAttribute("aria-label", "Topic for " + ref);
-    inputs[2].setAttribute("aria-label", "Reading for " + ref);
-    const btn = tr.querySelector("button");
-    if (btn) btn.setAttribute("aria-label", "Remove " + ref);
+    labels[0].textContent = "Week number, row " + (i + 1);
+    labels[1].textContent = "Topic for " + ref;
+    labels[2].textContent = "Reading for " + ref;
+    const qualifier = tr.querySelector("button > .visually-hidden");
+    if (qualifier) qualifier.textContent = " " + ref;
   });
 }
 
+// Never reused, so ids stay unique even after rows are removed and added.
+let scheduleSeq = 0;
+
 function addScheduleRow(week, topicPlaceholder, readingPlaceholder) {
   const tbody = document.getElementById("scheduleBody");
+  const uid = "sched" + (++scheduleSeq);
   const tr = document.createElement("tr");
 
-  const mk = (value, placeholder) => {
+  const mk = (key, value, placeholder) => {
     const td = document.createElement("td");
+    const id = uid + "-" + key;
+    const label = document.createElement("label");
+    label.className = "visually-hidden";
+    label.htmlFor = id;
     const input = document.createElement("input");
     input.type = "text";
+    input.id = id;
     if (value) input.value = value;
     if (placeholder) input.placeholder = placeholder;
+    td.appendChild(label);
     td.appendChild(input);
     return td;
   };
 
-  tr.appendChild(mk(week || "", ""));
-  tr.appendChild(mk("", topicPlaceholder || ""));
-  tr.appendChild(mk("", readingPlaceholder || ""));
+  tr.appendChild(mk("week", week || "", ""));
+  tr.appendChild(mk("topic", "", topicPlaceholder || ""));
+  tr.appendChild(mk("reading", "", readingPlaceholder || ""));
 
-  // Editing the week number changes the other fields' accessible names.
+  // Editing the week number changes the other fields' labels.
   tr.querySelectorAll("input")[0].addEventListener("input", relabelScheduleRows);
 
   const tdBtn = document.createElement("td");
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.textContent = "Remove";
+  // Visible word plus a hidden qualifier, so the button reads "Remove week 3"
+  // while still matching a voice-control user saying "click Remove".
+  btn.appendChild(document.createTextNode("Remove"));
+  const qualifier = document.createElement("span");
+  qualifier.className = "visually-hidden";
+  btn.appendChild(qualifier);
   btn.addEventListener("click", () => {
     const rows = Array.from(document.querySelectorAll("#scheduleBody tr"));
     const idx = rows.indexOf(tr);
-    const label = btn.getAttribute("aria-label") || "row";
+    const label = btn.textContent.trim();
     tr.remove();
     const remaining = document.querySelectorAll("#scheduleBody tr");
     // Never strand focus on a removed element.
@@ -470,7 +524,7 @@ function addScheduleRow(week, topicPlaceholder, readingPlaceholder) {
       if (nextBtn) nextBtn.focus();
     }
     relabelScheduleRows();
-    setStatus(label.replace(/^Remove /, "Removed ") + ".");
+    setStatus(label.replace(/^Remove/, "Removed") + ".");
   });
   tdBtn.appendChild(btn);
   tr.appendChild(tdBtn);
