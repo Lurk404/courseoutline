@@ -227,6 +227,7 @@
 <iframe id="preview" title="Outline preview" width="100%" height="600"></iframe>
 
 <h2 id="sourceHeading">HTML source</h2>
+<p>Content only &mdash; no <code>&lt;!DOCTYPE&gt;</code>, <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> wrapper. Paste it straight into an existing page.</p>
 <textarea id="source" rows="20" aria-labelledby="sourceHeading" readonly></textarea>
 
 </main>
@@ -287,7 +288,7 @@ function renderList(items, pad) {
 // A labelled one-line value, e.g. <p><strong>Credits:</strong> 3</p>
 function labelled(label, value) {
   if (!value) return null;
-  return "  <p><strong>" + esc(label) + ":</strong> " + esc(value) + "</p>";
+  return "<p><strong>" + esc(label) + ":</strong> " + esc(value) + "</p>";
 }
 
 function scheduleRows() {
@@ -301,22 +302,15 @@ function scheduleRows() {
   return rows;
 }
 
+// The export is a fragment meant to be pasted into an existing page, so it
+// carries no doctype, <html>, <head> or <body> wrapper. The host page supplies
+// those, along with the character encoding and the lang attribute.
 function buildHtml() {
   const title = val("courseTitle");
   const L = [];
 
-  L.push("<!DOCTYPE html>");
-  L.push('<html lang="en">');
-  L.push("<head>");
-  L.push('  <meta charset="utf-8">');
-  L.push('  <meta name="viewport" content="width=device-width, initial-scale=1">');
-  L.push("  <title>Course Outline" + (title ? " &ndash; " + esc(title) : "") + "</title>");
-  L.push("</head>");
-  L.push("<body>");
-
-  L.push("");
-  L.push("  <h1>Course Outline</h1>");
-  L.push("  <h2>Course Code, Number, and Title:" + (title ? " " + esc(title) : "") + "</h2>");
+  L.push("<h1>Course Outline</h1>");
+  L.push("<h2>Course Code, Number, and Title:" + (title ? " " + esc(title) : "") + "</h2>");
 
   [["Year and semester (YYYY#0)", val("yearSemester")],
    ["Course Format", val("courseFormat")],
@@ -325,25 +319,25 @@ function buildHtml() {
     if (line) L.push(line);
   });
 
-  L.push('  <p><strong>Transfer Credit</strong>: For information, visit <a href="https://www.bctransferguide.ca">bctransferguide.ca</a></p>');
+  L.push('<p><strong>Transfer Credit</strong>: For information, visit <a href="https://www.bctransferguide.ca">bctransferguide.ca</a></p>');
 
-  const desc = blocks(val("courseDescription"), "  ");
+  const desc = blocks(val("courseDescription"));
   if (desc.length) {
     L.push("");
-    L.push("  <p><strong>Course Description, Prerequisites, and Corequisites:</strong></p>");
+    L.push("<p><strong>Course Description, Prerequisites, and Corequisites:</strong></p>");
     desc.forEach(b => L.push(b));
   }
 
-  const outcomes = blocks(val("learningOutcomes"), "  ");
+  const outcomes = blocks(val("learningOutcomes"));
   if (outcomes.length) {
     L.push("");
-    L.push("  <p><strong>Learning Outcomes:</strong></p>");
+    L.push("<p><strong>Learning Outcomes:</strong></p>");
     outcomes.forEach(b => L.push(b));
   }
 
   L.push("");
   const inst = val("instructors");
-  L.push("  <h2>Instructor(s):" + (inst ? " " + esc(inst) : "") + "</h2>");
+  L.push("<h2>Instructor(s):" + (inst ? " " + esc(inst) : "") + "</h2>");
   [["Office", val("office")],
    ["Phone", val("phone")],
    ["Email", val("email")],
@@ -353,62 +347,67 @@ function buildHtml() {
   });
 
   L.push("");
-  L.push("  <h2>Textbook and Course Materials:</h2>");
-  blocks(val("textbook"), "  ").forEach(b => L.push(b));
-  L.push("  <p>" + esc(NOTE_TEXT) + "</p>");
+  L.push("<h2>Textbook and Course Materials:</h2>");
+  blocks(val("textbook")).forEach(b => L.push(b));
+  L.push("<p>" + esc(NOTE_TEXT) + "</p>");
 
   L.push("");
-  L.push("  <h2>Assessments and Weighting:</h2>");
-  blocks(val("assessments"), "  ").forEach(b => L.push(b));
+  L.push("<h2>Assessments and Weighting:</h2>");
+  blocks(val("assessments")).forEach(b => L.push(b));
 
   L.push("");
-  L.push("  <h2>Grading:</h2>");
-  blocks(val("grading"), "  ").forEach(b => L.push(b));
-  L.push('  <p><a href="https://langara.ca/student-services/enrolment-services/student-records/grading">Grades, Grade Points and Notations</a></p>');
+  L.push("<h2>Grading:</h2>");
+  blocks(val("grading")).forEach(b => L.push(b));
+  L.push('<p><a href="https://langara.ca/student-services/enrolment-services/student-records/grading">Grades, Grade Points and Notations</a></p>');
 
   L.push("");
-  L.push("  <h2>Detailed Course Schedule:</h2>");
-  L.push("  <table>");
-  L.push("    <thead>");
-  L.push('      <tr><th scope="col">Week</th><th scope="col">Topic</th><th scope="col">Reading</th></tr>');
-  L.push("    </thead>");
-  L.push("    <tbody>");
+  L.push("<h2>Detailed Course Schedule:</h2>");
+  L.push("<table>");
+  L.push("  <thead>");
+  L.push('    <tr><th scope="col">Week</th><th scope="col">Topic</th><th scope="col">Reading</th></tr>');
+  L.push("  </thead>");
+  L.push("  <tbody>");
   const rows = scheduleRows();
   if (rows.length === 0) {
-    L.push("      <tr><td></td><td></td><td></td></tr>");
+    L.push("    <tr><td></td><td></td><td></td></tr>");
   } else {
     rows.forEach(r => {
-      L.push("      <tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td></tr>");
+      L.push("    <tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td></tr>");
     });
   }
-  L.push("    </tbody>");
-  L.push("  </table>");
+  L.push("  </tbody>");
+  L.push("</table>");
 
   L.push("");
-  L.push("  <h2>Policy</h2>");
-  L.push("  <p>As a student at Langara, you are responsible for familiarizing yourself and complying with the following policies:</p>");
-  L.push('  <h3><a href="https://langara.ca/about-langara/college-policies-procedures">College Policies</a>:</h3>');
-  L.push("  <ul>");
+  L.push("<h2>Policy</h2>");
+  L.push("<p>As a student at Langara, you are responsible for familiarizing yourself and complying with the following policies:</p>");
+  L.push('<h3><a href="https://langara.ca/about-langara/college-policies-procedures">College Policies</a>:</h3>');
+  L.push("<ul>");
   POLICY_LINKS.forEach(([text, href]) => {
-    L.push('    <li><a href="' + href + '">' + esc(text) + "</a></li>");
+    L.push('  <li><a href="' + href + '">' + esc(text) + "</a></li>");
   });
-  L.push("  </ul>");
+  L.push("</ul>");
 
   L.push("");
-  L.push("  <h3>Departmental/Course Policies:</h3>");
-  blocks(val("deptPolicies"), "  ").forEach(b => L.push(b));
+  L.push("<h3>Departmental/Course Policies:</h3>");
+  blocks(val("deptPolicies")).forEach(b => L.push(b));
 
-  L.push("");
-  L.push("</body>");
-  L.push("</html>");
+  // Collapse the blank-line separators left by any skipped sections.
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
 
-  return L.join("\n");
+// The preview pane still needs a complete document so the iframe renders with a
+// declared encoding. Only the copied and downloaded output is a bare fragment.
+function previewDocument(fragment) {
+  return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+    '<title>Outline preview</title>\n</head>\n<body>\n' + fragment + '\n</body>\n</html>';
 }
 
 function generate() {
   const html = buildHtml();
   document.getElementById("source").value = html;
-  document.getElementById("preview").srcdoc = html;
+  document.getElementById("preview").srcdoc = previewDocument(html);
   setStatus("Outline generated.");
   return html;
 }
