@@ -4,8 +4,79 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Course Outline Builder</title>
+<style>
+  /* Minimal CSS, added only to satisfy accessibility criteria that cannot be met
+     with markup alone: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus Visible.
+     Nothing here is decorative. Extend or replace freely. */
+
+  body {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 1rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+
+  /* Reflow: fluid controls instead of fixed `size`/`cols` character widths,
+     so nothing overflows at a 320px viewport. */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    padding: 0.35rem;
+    border: 1px solid #595959; /* 7:1 against white, clears the 3:1 minimum */
+  }
+
+  fieldset { margin-bottom: 1.5rem; }
+  legend { font-weight: bold; }
+
+  /* Focus indicator that survives any later restyling. */
+  :focus-visible {
+    outline: 3px solid #0b5fff;
+    outline-offset: 2px;
+  }
+
+  /* Data tables are exempt from reflow, but they should scroll in their own
+     container rather than breaking the page. tabindex makes that scrollable
+     region reachable by keyboard. */
+  .table-wrap { overflow-x: auto; }
+
+  #scheduleTable {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 34rem;
+  }
+  #scheduleTable th,
+  #scheduleTable td {
+    border: 1px solid #595959;
+    padding: 0.35rem;
+    text-align: left;
+  }
+  #scheduleTable td:first-child { width: 5rem; }
+  #scheduleTable td:last-child { width: 6rem; }
+
+  #status { display: inline-block; margin-left: 0.5rem; }
+
+  #preview, #source { border: 1px solid #595959; }
+  #source { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
 </head>
 <body>
+
+<main>
 
 <h1>Course Outline Builder</h1>
 <p>Fill in the fields, then generate the HTML. Blank fields are left out of the export. In the larger boxes, lines starting with <code>-</code> or <code>*</code> become a bulleted list; other lines become paragraphs.</p>
@@ -16,27 +87,27 @@
     <legend>Course</legend>
     <p>
       <label for="courseTitle">Course Code, Number, and Title:</label><br>
-      <input type="text" id="courseTitle" size="60">
+      <input type="text" id="courseTitle">
     </p>
     <p>
       <label for="yearSemester">Year and semester (YYYY#0):</label><br>
-      <input type="text" id="yearSemester" size="30" placeholder="e.g. 202510">
+      <input type="text" id="yearSemester" placeholder="e.g. 202510">
     </p>
     <p>
       <label for="courseFormat">Course Format:</label><br>
-      <input type="text" id="courseFormat" size="60">
+      <input type="text" id="courseFormat">
     </p>
     <p>
       <label for="credits">Credits:</label><br>
-      <input type="text" id="credits" size="10">
+      <input type="text" id="credits" inputmode="numeric">
     </p>
     <p>
       <label for="courseDescription">Course Description, Prerequisites, and Corequisites:</label><br>
-      <textarea id="courseDescription" rows="6" cols="80"></textarea>
+      <textarea id="courseDescription" rows="6"></textarea>
     </p>
     <p>
       <label for="learningOutcomes">Learning Outcomes:</label><br>
-      <textarea id="learningOutcomes" rows="6" cols="80">Upon successful completion of this course, students will be able to</textarea>
+      <textarea id="learningOutcomes" rows="6">Upon successful completion of this course, students will be able to</textarea>
     </p>
   </fieldset>
 
@@ -44,23 +115,23 @@
     <legend>Instructor</legend>
     <p>
       <label for="instructors">Instructor(s):</label><br>
-      <input type="text" id="instructors" size="60">
+      <input type="text" id="instructors" autocomplete="name">
     </p>
     <p>
       <label for="office">Office:</label><br>
-      <input type="text" id="office" size="40">
+      <input type="text" id="office">
     </p>
     <p>
       <label for="phone">Phone:</label><br>
-      <input type="text" id="phone" size="40">
+      <input type="tel" id="phone" autocomplete="tel">
     </p>
     <p>
       <label for="email">Email:</label><br>
-      <input type="text" id="email" size="40">
+      <input type="email" id="email" autocomplete="email">
     </p>
     <p>
       <label for="officeHours">Office Hours:</label><br>
-      <input type="text" id="officeHours" size="60">
+      <input type="text" id="officeHours">
     </p>
   </fieldset>
 
@@ -68,26 +139,33 @@
     <legend>Materials and assessment</legend>
     <p>
       <label for="textbook">Textbook and Course Materials:</label><br>
-      <textarea id="textbook" rows="6" cols="80"></textarea>
+      <textarea id="textbook" rows="6"></textarea>
     </p>
     <p>
       <label for="assessments">Assessments and Weighting:</label><br>
-      <textarea id="assessments" rows="6" cols="80"></textarea>
+      <textarea id="assessments" rows="6"></textarea>
     </p>
     <p>
       <label for="grading">Grading:</label><br>
-      <textarea id="grading" rows="4" cols="80"></textarea>
+      <textarea id="grading" rows="4"></textarea>
     </p>
   </fieldset>
 
   <fieldset>
     <legend>Detailed Course Schedule:</legend>
-    <table border="1" id="scheduleTable">
-      <thead>
-        <tr><th>Week</th><th>Topic</th><th>Reading</th><th></th></tr>
-      </thead>
-      <tbody id="scheduleBody"></tbody>
-    </table>
+    <div class="table-wrap" role="region" aria-label="Course schedule" tabindex="0">
+      <table id="scheduleTable">
+        <thead>
+          <tr>
+            <th scope="col">Week</th>
+            <th scope="col">Topic</th>
+            <th scope="col">Reading</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody id="scheduleBody"></tbody>
+      </table>
+    </div>
     <p><button type="button" id="addRowBtn">Add week</button></p>
   </fieldset>
 
@@ -95,7 +173,7 @@
     <legend>Policy</legend>
     <p>
       <label for="deptPolicies">Departmental/Course Policies:</label><br>
-      <textarea id="deptPolicies" rows="6" cols="80"></textarea>
+      <textarea id="deptPolicies" rows="6"></textarea>
     </p>
   </fieldset>
 
@@ -103,7 +181,7 @@
     <button type="button" id="generateBtn">Generate outline</button>
     <button type="button" id="downloadBtn">Download HTML</button>
     <button type="button" id="copyBtn">Copy HTML</button>
-    <span id="status"></span>
+    <span id="status" role="status"></span>
   </p>
 
 </form>
@@ -113,8 +191,10 @@
 <h2>Preview</h2>
 <iframe id="preview" title="Outline preview" width="100%" height="600"></iframe>
 
-<h2>HTML source</h2>
-<textarea id="source" rows="20" cols="100" readonly></textarea>
+<h2 id="sourceHeading">HTML source</h2>
+<textarea id="source" rows="20" aria-labelledby="sourceHeading" readonly></textarea>
+
+</main>
 
 <script>
 const POLICY_LINKS = [
@@ -210,7 +290,7 @@ function buildHtml() {
     if (line) L.push(line);
   });
 
-  L.push('  <p><strong>Transfer Credit</strong>: For information, visit <a href="http://www.bctransferguide.ca">bctransferguide.ca</a></p>');
+  L.push('  <p><strong>Transfer Credit</strong>: For information, visit <a href="https://www.bctransferguide.ca">bctransferguide.ca</a></p>');
 
   const desc = blocks(val("courseDescription"), "  ");
   if (desc.length) {
@@ -253,9 +333,9 @@ function buildHtml() {
 
   L.push("");
   L.push("  <h2>Detailed Course Schedule:</h2>");
-  L.push('  <table border="1">');
+  L.push("  <table>");
   L.push("    <thead>");
-  L.push("      <tr><th>Week</th><th>Topic</th><th>Reading</th></tr>");
+  L.push('      <tr><th scope="col">Week</th><th scope="col">Topic</th><th scope="col">Reading</th></tr>');
   L.push("    </thead>");
   L.push("    <tbody>");
   const rows = scheduleRows();
@@ -333,42 +413,85 @@ function copySource() {
   }
 }
 
+// Column headers do NOT name the inputs inside a table cell, so every schedule
+// input gets an explicit accessible name. Names include the week, which the
+// instructor can edit, so they are recomputed whenever the table changes.
+function relabelScheduleRows() {
+  const rows = document.querySelectorAll("#scheduleBody tr");
+  rows.forEach((tr, i) => {
+    const inputs = tr.querySelectorAll("input");
+    const week = inputs[0].value.trim();
+    const ref = week ? "week " + week : "row " + (i + 1);
+    inputs[0].setAttribute("aria-label", "Week number, row " + (i + 1));
+    inputs[1].setAttribute("aria-label", "Topic for " + ref);
+    inputs[2].setAttribute("aria-label", "Reading for " + ref);
+    const btn = tr.querySelector("button");
+    if (btn) btn.setAttribute("aria-label", "Remove " + ref);
+  });
+}
+
 function addScheduleRow(week, topicPlaceholder, readingPlaceholder) {
   const tbody = document.getElementById("scheduleBody");
   const tr = document.createElement("tr");
 
-  const mk = (value, placeholder, size) => {
+  const mk = (value, placeholder) => {
     const td = document.createElement("td");
     const input = document.createElement("input");
     input.type = "text";
-    input.size = size;
     if (value) input.value = value;
     if (placeholder) input.placeholder = placeholder;
     td.appendChild(input);
     return td;
   };
 
-  tr.appendChild(mk(week || "", "", 5));
-  tr.appendChild(mk("", topicPlaceholder || "", 40));
-  tr.appendChild(mk("", readingPlaceholder || "", 30));
+  tr.appendChild(mk(week || "", ""));
+  tr.appendChild(mk("", topicPlaceholder || ""));
+  tr.appendChild(mk("", readingPlaceholder || ""));
+
+  // Editing the week number changes the other fields' accessible names.
+  tr.querySelectorAll("input")[0].addEventListener("input", relabelScheduleRows);
 
   const tdBtn = document.createElement("td");
   const btn = document.createElement("button");
   btn.type = "button";
   btn.textContent = "Remove";
-  btn.addEventListener("click", () => tr.remove());
+  btn.addEventListener("click", () => {
+    const rows = Array.from(document.querySelectorAll("#scheduleBody tr"));
+    const idx = rows.indexOf(tr);
+    const label = btn.getAttribute("aria-label") || "row";
+    tr.remove();
+    const remaining = document.querySelectorAll("#scheduleBody tr");
+    // Never strand focus on a removed element.
+    if (remaining.length === 0) {
+      document.getElementById("addRowBtn").focus();
+    } else {
+      const next = remaining[Math.min(idx, remaining.length - 1)];
+      const nextBtn = next.querySelector("button");
+      if (nextBtn) nextBtn.focus();
+    }
+    relabelScheduleRows();
+    setStatus(label.replace(/^Remove /, "Removed ") + ".");
+  });
   tdBtn.appendChild(btn);
   tr.appendChild(tdBtn);
 
   tbody.appendChild(tr);
+  relabelScheduleRows();
+  return tr;
 }
 
 document.getElementById("generateBtn").addEventListener("click", generate);
 document.getElementById("downloadBtn").addEventListener("click", download);
 document.getElementById("copyBtn").addEventListener("click", copySource);
 document.getElementById("addRowBtn").addEventListener("click", () => {
-  const next = document.querySelectorAll("#scheduleBody tr").length + 1;
-  addScheduleRow(String(next));
+  // Use the highest existing week number, not the row count, so removing a
+  // middle row cannot produce a duplicate.
+  const weeks = Array.from(document.querySelectorAll("#scheduleBody tr"))
+    .map(tr => parseInt(tr.querySelector("input").value.trim(), 10))
+    .filter(n => !isNaN(n));
+  const next = weeks.length ? Math.max.apply(null, weeks) + 1 : 1;
+  const row = addScheduleRow(String(next));
+  row.querySelectorAll("input")[1].focus();
 });
 
 addScheduleRow("1", "Example topic", "Chapter 1");
