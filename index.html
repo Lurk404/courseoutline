@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Course Outline Builder</title>
+</head>
+<body>
+
+<h1>Course Outline Builder</h1>
+<p>Fill in the fields, then generate the HTML. Blank fields are left out of the export. In the larger boxes, lines starting with <code>-</code> or <code>*</code> become a bulleted list; other lines become paragraphs.</p>
+
+<form id="outlineForm" onsubmit="return false;">
+
+  <fieldset>
+    <legend>Course</legend>
+    <p>
+      <label for="courseTitle">Course Code, Number, and Title:</label><br>
+      <input type="text" id="courseTitle" size="60">
+    </p>
+    <p>
+      <label for="yearSemester">Year and semester (YYYY#0):</label><br>
+      <input type="text" id="yearSemester" size="30" placeholder="e.g. 202510">
+    </p>
+    <p>
+      <label for="courseFormat">Course Format:</label><br>
+      <input type="text" id="courseFormat" size="60">
+    </p>
+    <p>
+      <label for="credits">Credits:</label><br>
+      <input type="text" id="credits" size="10">
+    </p>
+    <p>
+      <label for="courseDescription">Course Description, Prerequisites, and Corequisites:</label><br>
+      <textarea id="courseDescription" rows="6" cols="80"></textarea>
+    </p>
+    <p>
+      <label for="learningOutcomes">Learning Outcomes:</label><br>
+      <textarea id="learningOutcomes" rows="6" cols="80">Upon successful completion of this course, students will be able to</textarea>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Instructor</legend>
+    <p>
+      <label for="instructors">Instructor(s):</label><br>
+      <input type="text" id="instructors" size="60">
+    </p>
+    <p>
+      <label for="office">Office:</label><br>
+      <input type="text" id="office" size="40">
+    </p>
+    <p>
+      <label for="phone">Phone:</label><br>
+      <input type="text" id="phone" size="40">
+    </p>
+    <p>
+      <label for="email">Email:</label><br>
+      <input type="text" id="email" size="40">
+    </p>
+    <p>
+      <label for="officeHours">Office Hours:</label><br>
+      <input type="text" id="officeHours" size="60">
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Materials and assessment</legend>
+    <p>
+      <label for="textbook">Textbook and Course Materials:</label><br>
+      <textarea id="textbook" rows="6" cols="80"></textarea>
+    </p>
+    <p>
+      <label for="assessments">Assessments and Weighting:</label><br>
+      <textarea id="assessments" rows="6" cols="80"></textarea>
+    </p>
+    <p>
+      <label for="grading">Grading:</label><br>
+      <textarea id="grading" rows="4" cols="80"></textarea>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Detailed Course Schedule:</legend>
+    <table border="1" id="scheduleTable">
+      <thead>
+        <tr><th>Week</th><th>Topic</th><th>Reading</th><th></th></tr>
+      </thead>
+      <tbody id="scheduleBody"></tbody>
+    </table>
+    <p><button type="button" id="addRowBtn">Add week</button></p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Policy</legend>
+    <p>
+      <label for="deptPolicies">Departmental/Course Policies:</label><br>
+      <textarea id="deptPolicies" rows="6" cols="80"></textarea>
+    </p>
+  </fieldset>
+
+  <p>
+    <button type="button" id="generateBtn">Generate outline</button>
+    <button type="button" id="downloadBtn">Download HTML</button>
+    <button type="button" id="copyBtn">Copy HTML</button>
+    <span id="status"></span>
+  </p>
+
+</form>
+
+<hr>
+
+<h2>Preview</h2>
+<iframe id="preview" title="Outline preview" width="100%" height="600"></iframe>
+
+<h2>HTML source</h2>
+<textarea id="source" rows="20" cols="100" readonly></textarea>
+
+<script>
+const POLICY_LINKS = [
+  ["Student Code of Conduct - E1003", "https://langara.ca/about-langara/policies/pdf/E1003.pdf"],
+  ["Academic Integrity - F1004", "https://langara.ca/about-langara/policies/pdf/F1004.pdf"],
+  ["Academic Standing - Academic Probation and Academic Suspension - E2008", "https://langara.ca/about-langara/policies/pdf/E2008.pdf"],
+  ["Appeal of Final Grade - E2006", "https://langara.ca/about-langara/policies/pdf/E2006.pdf"],
+  ["Concerns about Instruction - F1002", "https://langara.ca/about-langara/policies/pdf/F1002.pdf"],
+  ["Withdrawal from Courses and Deferred Standing - E2011", "https://langara.ca/about-langara/policies/pdf/E2011.pdf"]
+];
+
+const NOTE_TEXT = "Note: This course may use an electronic (online) instructional resource that is located outside of Canada for mandatory graded class work. You may be required to enter personal information, such as your name and email address, to log in to this resource. This means that your personal information could be stored on servers located outside of Canada and may be accessed by U.S. authorities, subject to federal laws. Where possible, you may log in with an email pseudonym as long as you provide the pseudonym to me so I can identify you when reviewing your class work.";
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : "";
+}
+
+// Turn a textarea's contents into block-level HTML.
+// Lines starting with -, * or • become a <ul>; everything else becomes <p>.
+function blocks(text, indent) {
+  const pad = indent || "";
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length === 0) return [];
+  const out = [];
+  let list = null;
+  for (const line of lines) {
+    const bullet = /^[-*\u2022]\s*(.*)$/.exec(line);
+    if (bullet) {
+      if (!list) list = [];
+      list.push(bullet[1]);
+    } else {
+      if (list) { out.push(renderList(list, pad)); list = null; }
+      out.push(pad + "<p>" + esc(line) + "</p>");
+    }
+  }
+  if (list) out.push(renderList(list, pad));
+  return out;
+}
+
+function renderList(items, pad) {
+  return pad + "<ul>\n" +
+    items.map(i => pad + "  <li>" + esc(i) + "</li>").join("\n") +
+    "\n" + pad + "</ul>";
+}
+
+// A labelled one-line value, e.g. <p><strong>Credits:</strong> 3</p>
+function labelled(label, value) {
+  if (!value) return null;
+  return "  <p><strong>" + esc(label) + ":</strong> " + esc(value) + "</p>";
+}
+
+function scheduleRows() {
+  const rows = [];
+  document.querySelectorAll("#scheduleBody tr").forEach(tr => {
+    const cells = Array.from(tr.querySelectorAll("input")).map(i => i.value.trim());
+    // The week number is pre-filled, so a row only counts as used
+    // once it has a topic or a reading in it.
+    if (cells[1].length > 0 || cells[2].length > 0) rows.push(cells);
+  });
+  return rows;
+}
+
+function buildHtml() {
+  const title = val("courseTitle");
+  const L = [];
+
+  L.push("<!DOCTYPE html>");
+  L.push('<html lang="en">');
+  L.push("<head>");
+  L.push('  <meta charset="utf-8">');
+  L.push('  <meta name="viewport" content="width=device-width, initial-scale=1">');
+  L.push("  <title>Course Outline" + (title ? " &ndash; " + esc(title) : "") + "</title>");
+  L.push("</head>");
+  L.push("<body>");
+
+  L.push("");
+  L.push("  <h1>Course Outline</h1>");
+  L.push("  <h2>Course Code, Number, and Title:" + (title ? " " + esc(title) : "") + "</h2>");
+
+  [["Year and semester (YYYY#0)", val("yearSemester")],
+   ["Course Format", val("courseFormat")],
+   ["Credits", val("credits")]].forEach(([k, v]) => {
+    const line = labelled(k, v);
+    if (line) L.push(line);
+  });
+
+  L.push('  <p><strong>Transfer Credit</strong>: For information, visit <a href="http://www.bctransferguide.ca">bctransferguide.ca</a></p>');
+
+  const desc = blocks(val("courseDescription"), "  ");
+  if (desc.length) {
+    L.push("");
+    L.push("  <p><strong>Course Description, Prerequisites, and Corequisites:</strong></p>");
+    desc.forEach(b => L.push(b));
+  }
+
+  const outcomes = blocks(val("learningOutcomes"), "  ");
+  if (outcomes.length) {
+    L.push("");
+    L.push("  <p><strong>Learning Outcomes:</strong></p>");
+    outcomes.forEach(b => L.push(b));
+  }
+
+  L.push("");
+  const inst = val("instructors");
+  L.push("  <h2>Instructor(s):" + (inst ? " " + esc(inst) : "") + "</h2>");
+  [["Office", val("office")],
+   ["Phone", val("phone")],
+   ["Email", val("email")],
+   ["Office Hours", val("officeHours")]].forEach(([k, v]) => {
+    const line = labelled(k, v);
+    if (line) L.push(line);
+  });
+
+  L.push("");
+  L.push("  <h2>Textbook and Course Materials:</h2>");
+  blocks(val("textbook"), "  ").forEach(b => L.push(b));
+  L.push("  <p>" + esc(NOTE_TEXT) + "</p>");
+
+  L.push("");
+  L.push("  <h2>Assessments and Weighting:</h2>");
+  blocks(val("assessments"), "  ").forEach(b => L.push(b));
+
+  L.push("");
+  L.push("  <h2>Grading:</h2>");
+  blocks(val("grading"), "  ").forEach(b => L.push(b));
+  L.push('  <p><a href="https://langara.ca/student-services/enrolment-services/student-records/grading">Grades, Grade Points and Notations</a></p>');
+
+  L.push("");
+  L.push("  <h2>Detailed Course Schedule:</h2>");
+  L.push('  <table border="1">');
+  L.push("    <thead>");
+  L.push("      <tr><th>Week</th><th>Topic</th><th>Reading</th></tr>");
+  L.push("    </thead>");
+  L.push("    <tbody>");
+  const rows = scheduleRows();
+  if (rows.length === 0) {
+    L.push("      <tr><td></td><td></td><td></td></tr>");
+  } else {
+    rows.forEach(r => {
+      L.push("      <tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td></tr>");
+    });
+  }
+  L.push("    </tbody>");
+  L.push("  </table>");
+
+  L.push("");
+  L.push("  <h2>Policy</h2>");
+  L.push("  <p>As a student at Langara, you are responsible for familiarizing yourself and complying with the following policies:</p>");
+  L.push('  <h3><a href="https://langara.ca/about-langara/college-policies-procedures">College Policies</a>:</h3>');
+  L.push("  <ul>");
+  POLICY_LINKS.forEach(([text, href]) => {
+    L.push('    <li><a href="' + href + '">' + esc(text) + "</a></li>");
+  });
+  L.push("  </ul>");
+
+  L.push("");
+  L.push("  <h3>Departmental/Course Policies:</h3>");
+  blocks(val("deptPolicies"), "  ").forEach(b => L.push(b));
+
+  L.push("");
+  L.push("</body>");
+  L.push("</html>");
+
+  return L.join("\n");
+}
+
+function generate() {
+  const html = buildHtml();
+  document.getElementById("source").value = html;
+  document.getElementById("preview").srcdoc = html;
+  setStatus("Outline generated.");
+  return html;
+}
+
+function setStatus(msg) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  window.setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 4000);
+}
+
+function download() {
+  const html = generate();
+  const name = (val("courseTitle") || "course-outline")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name + ".html";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus("Downloaded " + name + ".html");
+}
+
+function copySource() {
+  const html = generate();
+  const ta = document.getElementById("source");
+  ta.select();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(html)
+      .then(() => setStatus("HTML copied to clipboard."))
+      .catch(() => setStatus("Copy failed. The HTML is selected below \u2014 press Ctrl/Cmd+C."));
+  } else {
+    setStatus("Copy is unavailable in this browser. The HTML is selected below \u2014 press Ctrl/Cmd+C.");
+  }
+}
+
+function addScheduleRow(week, topicPlaceholder, readingPlaceholder) {
+  const tbody = document.getElementById("scheduleBody");
+  const tr = document.createElement("tr");
+
+  const mk = (value, placeholder, size) => {
+    const td = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.size = size;
+    if (value) input.value = value;
+    if (placeholder) input.placeholder = placeholder;
+    td.appendChild(input);
+    return td;
+  };
+
+  tr.appendChild(mk(week || "", "", 5));
+  tr.appendChild(mk("", topicPlaceholder || "", 40));
+  tr.appendChild(mk("", readingPlaceholder || "", 30));
+
+  const tdBtn = document.createElement("td");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Remove";
+  btn.addEventListener("click", () => tr.remove());
+  tdBtn.appendChild(btn);
+  tr.appendChild(tdBtn);
+
+  tbody.appendChild(tr);
+}
+
+document.getElementById("generateBtn").addEventListener("click", generate);
+document.getElementById("downloadBtn").addEventListener("click", download);
+document.getElementById("copyBtn").addEventListener("click", copySource);
+document.getElementById("addRowBtn").addEventListener("click", () => {
+  const next = document.querySelectorAll("#scheduleBody tr").length + 1;
+  addScheduleRow(String(next));
+});
+
+addScheduleRow("1", "Example topic", "Chapter 1");
+addScheduleRow("2");
+addScheduleRow("3");
+addScheduleRow("4");
+</script>
+
+</body>
+</html>
