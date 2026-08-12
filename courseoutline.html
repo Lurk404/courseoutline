@@ -89,8 +89,12 @@
 
 <p><strong>In any text box:</strong> lines starting with <code>-</code> or <code>*</code> become a
 bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become
-paragraphs. To add a link, write <code>[link text](https://example.com)</code> — or select some
-text and press the <em>Insert link</em> button beside the box.</p>
+paragraphs.</p>
+
+<p><strong>To add a link,</strong> put the wording in square brackets and the address in round
+brackets straight after it, with no space between:</p>
+
+<p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
 
 <form id="outlineForm" onsubmit="return false;">
 
@@ -104,7 +108,14 @@ text and press the <em>Insert link</em> button beside the box.</p>
 
     <p class="field">
       <label for="credits">Credits</label>
-      <input type="number" id="credits" step="0.1" min="0" placeholder="e.g. 3.0">
+      <select id="credits">
+        <option value="">&#8212; Not specified &#8212;</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="6">6</option>
+      </select>
     </p>
 
     <p class="field">
@@ -113,22 +124,41 @@ text and press the <em>Insert link</em> button beside the box.</p>
     </p>
 
     <p class="field">
-      <label for="contactHours">Total contact hours</label>
-      <input type="number" id="contactHours" step="1" min="0" placeholder="e.g. 45">
+      <label for="semesterLength">Semester length (weeks)</label>
+      <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 15">
     </p>
 
     <p class="field">
-      <label for="semesterLength">Semester length (weeks)</label>
-      <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 15">
+      <label for="mode">Method of instruction</label>
+      <select id="mode">
+        <option value="">&#8212; Not specified &#8212;</option>
+        <option value="In-person">In-person</option>
+        <option value="Mixed mode">Mixed mode</option>
+        <option value="Online">Online</option>
+      </select>
     </p>
   </fieldset>
 
   <fieldset>
-    <legend>Method of instruction</legend>
-    <p class="hint" id="modeHint">Select every delivery mode approved for this course.</p>
-    <div class="check-row"><input type="checkbox" id="modeInPerson" value="In-person"> <label for="modeInPerson">In-person</label></div>
-    <div class="check-row"><input type="checkbox" id="modeMixed" value="Mixed mode"> <label for="modeMixed">Mixed mode</label></div>
-    <div class="check-row"><input type="checkbox" id="modeOnline" value="Online"> <label for="modeOnline">Online</label></div>
+    <legend>Contact hours</legend>
+    <p class="hint">Enter all three on the same basis &#8212; either hours per week or hours for
+    the whole term, whichever your department uses. Leave a field blank to omit it; enter
+    <code>0</code> to show it explicitly as zero.</p>
+
+    <p class="field">
+      <label for="lectureHours">Lecture hours</label>
+      <input type="number" id="lectureHours" step="0.5" min="0">
+    </p>
+
+    <p class="field">
+      <label for="labHours">Lab hours</label>
+      <input type="number" id="labHours" step="0.5" min="0">
+    </p>
+
+    <p class="field">
+      <label for="seminarHours">Seminar hours</label>
+      <input type="number" id="seminarHours" step="0.5" min="0">
+    </p>
   </fieldset>
 
   <fieldset>
@@ -163,29 +193,21 @@ text and press the <em>Insert link</em> button beside the box.</p>
     <p class="field">
       <label for="courseDescription">Course description</label>
       <textarea id="courseDescription" rows="7"></textarea>
-      <button type="button" class="linkBtn" data-target="courseDescription">Insert link</button>
     </p>
 
     <p class="field">
       <label for="courseContent">Course content / topic list</label>
       <textarea id="courseContent" rows="6"></textarea>
-      <button type="button" class="linkBtn" data-target="courseContent">Insert link</button>
     </p>
 
     <p class="field">
       <label for="learningOutcomes">Learning outcomes</label>
       <textarea id="learningOutcomes" rows="9">Upon successful completion of this course, students will be able to</textarea>
-      <button type="button" class="linkBtn" data-target="learningOutcomes">Insert link</button>
     </p>
   </fieldset>
 
   <fieldset>
     <legend>Assessment</legend>
-
-    <p class="field">
-      <label for="grading">Grading system</label>
-      <input type="text" id="grading" placeholder="e.g. Letter grade (A&#8211;F). Minimum passing grade C&#8211;.">
-    </p>
 
     <div class="field">
       <p id="assessCaption"><strong>Means of assessment and weighting</strong></p>
@@ -212,7 +234,6 @@ text and press the <em>Insert link</em> button beside the box.</p>
     <p class="field">
       <label for="textbook">Textbooks and materials</label>
       <textarea id="textbook" rows="6"></textarea>
-      <button type="button" class="linkBtn" data-target="textbook">Insert link</button>
     </p>
   </fieldset>
 
@@ -262,6 +283,9 @@ text and press the <em>Insert link</em> button beside the box.</p>
 
 var TRANSFER_URL   = "https://www.bctransferguide.ca";
 var TRANSFER_LABEL = "bctransferguide.ca";
+
+var GRADING_URL   = "https://langara.ca/student-services/enrolment-services/student-records/grading";
+var GRADING_LABEL = "Grades, Grade Points and Notations";
 
 var POLICY_INDEX_URL = "https://langara.ca/about-langara/college-policies-procedures";
 var POLICY_LINKS = [
@@ -386,11 +410,20 @@ function num(id, decimals) {
   return decimals == null ? String(n) : n.toFixed(decimals);
 }
 
-function modes() {
-  return ["modeInPerson", "modeMixed", "modeOnline"]
-    .map(function (id) { return document.getElementById(id); })
-    .filter(function (el) { return el && el.checked; })
-    .map(function (el) { return el.value; });
+/* Sum of whichever hour fields were filled in. Blank fields are ignored, so an
+   outline that lists lecture hours only still gets a coherent total; a field
+   explicitly set to 0 counts as filled. */
+function totalHours() {
+  var any = false, sum = 0;
+  ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
+    var raw = val(id);
+    if (raw === "") return;
+    var n = parseFloat(raw);
+    if (isNaN(n)) return;
+    any = true;
+    sum += n;
+  });
+  return any ? String(sum) : "";
 }
 
 function restrictions() {
@@ -452,9 +485,12 @@ function buildHtml() {
 
   [["Credits", num("credits", 1)],
    ["Department", val("department")],
-   ["Total contact hours", num("contactHours")],
+   ["Lecture hours", num("lectureHours")],
+   ["Lab hours", num("labHours")],
+   ["Seminar hours", num("seminarHours")],
+   ["Total hours", totalHours()],
    ["Semester length", val("semesterLength") ? num("semesterLength") + " weeks" : ""],
-   ["Method of instruction", modes().join(", ")],
+   ["Method of instruction", val("mode")],
    ["Enrolment restrictions", restrictions()],
    ["Prerequisites and corequisites", val("requisites")]
   ].forEach(function (pair) {
@@ -484,7 +520,10 @@ function buildHtml() {
     L.push("</table>");
   }
 
-  L = L.concat(section(2, "Grading system", val("grading") ? ["<p>" + inline(val("grading")) + "</p>"] : []));
+  L.push("");
+  L.push(heading(2, "Grading system"));
+  L.push('<p>See <a href="' + GRADING_URL + '">' + esc(GRADING_LABEL) + "</a>.</p>");
+
   L = L.concat(section(2, "Textbooks and materials", blocks(val("textbook"))));
 
   /* Transfer credit */
@@ -582,21 +621,6 @@ function copySource() {
   }
 }
 
-/* Insert-link buttons: wrap the current selection in link syntax so nobody has
-   to memorise it. */
-function insertLink(targetId) {
-  var ta = document.getElementById(targetId);
-  var start = ta.selectionStart, end = ta.selectionEnd;
-  var selected = ta.value.slice(start, end) || "link text";
-  var snippet = "[" + selected + "](https://)";
-  ta.value = ta.value.slice(0, start) + snippet + ta.value.slice(end);
-  ta.focus();
-  /* Leave the caret sitting after https:// ready for the URL. */
-  var caret = start + snippet.length - 1;
-  ta.setSelectionRange(caret, caret);
-  setStatus("Link syntax inserted \u2014 type the URL.");
-}
-
 /* --- assessment table --- */
 
 var assessUid = 0;
@@ -679,10 +703,6 @@ document.getElementById("generateBtn").addEventListener("click", generate);
 document.getElementById("downloadBtn").addEventListener("click", download);
 document.getElementById("copyBtn").addEventListener("click", copySource);
 document.getElementById("addAssessBtn").addEventListener("click", addAssessRow);
-
-Array.prototype.forEach.call(document.querySelectorAll(".linkBtn"), function (b) {
-  b.addEventListener("click", function () { insertLink(b.getAttribute("data-target")); });
-});
 
 /* Enrolment restriction branch. Hiding the wrapper takes its input out of the
    tab order and the accessibility tree, and restrictions() ignores the value
