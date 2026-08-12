@@ -58,7 +58,7 @@
      rather than widening the page. tabindex makes that region keyboard-reachable. */
   .table-wrap { overflow-x: auto; }
 
-  #assessTable { border-collapse: collapse; width: 100%; min-width: 36rem; }
+  #assessTable { border-collapse: collapse; width: 100%; min-width: 26rem; }
   #assessTable th, #assessTable td {
     border: 1px solid #595959; padding: 0.35rem; text-align: left; vertical-align: top;
   }
@@ -181,10 +181,20 @@ brackets straight after it, with no space between:</p>
 
   <fieldset>
     <legend>Requisites</legend>
-    <p class="field">
-      <label for="requisites">Prerequisites and corequisites</label>
-      <input type="text" id="requisites">
-    </p>
+    <div class="radio-row">
+      <input type="radio" id="reqNo" name="requisites" value="no" checked>
+      <label for="reqNo">No pre- or corequisites</label>
+    </div>
+    <div class="radio-row">
+      <input type="radio" id="reqYes" name="requisites" value="yes">
+      <label for="reqYes">This course has pre- or corequisites</label>
+    </div>
+    <div id="reqDetailWrap" hidden>
+      <p class="field">
+        <label for="reqDetail">Pre- and corequisites</label>
+        <input type="text" id="reqDetail" placeholder="Add links to relevant courses">
+      </p>
+    </div>
   </fieldset>
 
   <fieldset>
@@ -215,9 +225,8 @@ brackets straight after it, with no space between:</p>
         <table id="assessTable">
           <thead>
             <tr>
-              <th scope="col">Type</th>
-              <th scope="col">Weight (%)</th>
               <th scope="col">Assessment activity</th>
+              <th scope="col">Weight (%)</th>
               <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
@@ -244,14 +253,6 @@ brackets straight after it, with no space between:</p>
       <input type="text" id="effectiveDate" placeholder="e.g. September 2026">
       <span class="hint">The date this version of the curriculum took effect &#8212; not today's date.</span>
     </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Output options</legend>
-    <div class="check-row">
-      <input type="checkbox" id="demoteHeadings">
-      <label for="demoteHeadings">Demote all headings one level (use if the host page already has an <code>&lt;h1&gt;</code>)</label>
-    </div>
   </fieldset>
 
   <p>
@@ -431,14 +432,19 @@ function restrictions() {
   return (yes && yes.checked) ? val("restrictDetail") : "";
 }
 
+function requisites() {
+  var yes = document.getElementById("reqYes");
+  return (yes && yes.checked) ? val("reqDetail") : "";
+}
+
 function assessRows() {
   var rows = [];
   Array.prototype.forEach.call(
     document.querySelectorAll("#assessBody tr"),
     function (tr) {
       var i = tr.querySelectorAll("input");
-      var type = i[0].value.trim(), weight = i[1].value.trim(), desc = i[2].value.trim();
-      if (type || weight || desc) rows.push([type, weight, desc]);
+      var activity = i[0].value.trim(), weight = i[1].value.trim();
+      if (activity || weight) rows.push([activity, weight]);
     }
   );
   return rows;
@@ -455,21 +461,15 @@ function weightSum() {
  * Fragment generation
  * ------------------------------------------------------------------ */
 
-function h(level) {
-  var demote = document.getElementById("demoteHeadings").checked ? 1 : 0;
-  return "h" + Math.min(6, level + demote);
-}
-
 function heading(level, text) {
-  var t = h(level);
-  return "<" + t + ">" + esc(text) + "</" + t + ">";
+  return "<h" + level + ">" + esc(text) + "</h" + level + ">";
 }
 
 /* One-line labelled value; returns null when the value is blank so the caller
    can drop it entirely rather than emit an empty label. */
 function labelled(label, value) {
   if (!value) return null;
-  return "<p><strong>" + esc(label) + ":</strong> " + esc(value) + "</p>";
+  return "<p><strong>" + esc(label) + ":</strong> " + inline(value) + "</p>";
 }
 
 function section(level, title, body) {
@@ -492,7 +492,7 @@ function buildHtml() {
    ["Semester length", val("semesterLength") ? num("semesterLength") + " weeks" : ""],
    ["Method of instruction", val("mode")],
    ["Enrolment restrictions", restrictions()],
-   ["Prerequisites and corequisites", val("requisites")]
+   ["Pre- and corequisites", requisites()]
   ].forEach(function (pair) {
     var line = labelled(pair[0], pair[1]);
     if (line) L.push(line);
@@ -509,12 +509,12 @@ function buildHtml() {
     L.push(heading(2, "Means of assessment and weighting"));
     L.push("<table>");
     L.push("  <thead>");
-    L.push('    <tr><th scope="col">Type</th><th scope="col">Weight</th><th scope="col">Assessment activity</th></tr>');
+    L.push('    <tr><th scope="col">Assessment activity</th><th scope="col">Weight</th></tr>');
     L.push("  </thead>");
     L.push("  <tbody>");
     rows.forEach(function (r) {
       var w = r[1] ? esc(r[1]) + "%" : "";
-      L.push("    <tr><td>" + inline(r[0]) + "</td><td>" + w + "</td><td>" + inline(r[2]) + "</td></tr>");
+      L.push("    <tr><td>" + inline(r[0]) + "</td><td>" + w + "</td></tr>");
     });
     L.push("  </tbody>");
     L.push("</table>");
@@ -647,9 +647,8 @@ function addAssessRow() {
     return td;
   }
 
-  tr.appendChild(cell("text", "type", "Assessment type", null));
+  tr.appendChild(cell("text", "activity", "Assessment activity", null));
   tr.appendChild(cell("number", "weight", "Assessment weight, percent", "0.1"));
-  tr.appendChild(cell("text", "desc", "Assessment activity", null));
 
   var tdBtn = document.createElement("td");
   var btn = document.createElement("button");
@@ -680,9 +679,8 @@ function relabelAssessRows() {
     function (tr, idx) {
       var n = idx + 1;
       var labels = tr.querySelectorAll("label");
-      labels[0].textContent = "Row " + n + " assessment type";
+      labels[0].textContent = "Row " + n + " assessment activity";
       labels[1].textContent = "Row " + n + " weight, percent";
-      labels[2].textContent = "Row " + n + " assessment activity";
       var sr = tr.querySelector("button span");
       if (sr) sr.textContent = " row " + n;
     }
@@ -715,6 +713,14 @@ function syncRestrict() {
 document.getElementById("restrictYes").addEventListener("change", syncRestrict);
 document.getElementById("restrictNo").addEventListener("change", syncRestrict);
 syncRestrict();
+
+function syncRequisites() {
+  document.getElementById("reqDetailWrap").hidden =
+    !document.getElementById("reqYes").checked;
+}
+document.getElementById("reqYes").addEventListener("change", syncRequisites);
+document.getElementById("reqNo").addEventListener("change", syncRequisites);
+syncRequisites();
 
 addAssessRow();
 addAssessRow();
