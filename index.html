@@ -320,7 +320,7 @@ brackets straight after it, with no space between:</p>
   </fieldset>
 
   <fieldset id="scheduleFieldset" hidden>
-    <legend>Detailed course schedule (at least one week required)</legend>
+    <legend>Detailed course schedule</legend>
     <p class="hint">The sequence of topics, labs, and deadlines. Required on a syllabus.</p>
 
     <div class="field">
@@ -347,7 +347,7 @@ brackets straight after it, with no space between:</p>
     <legend id="assessLegend">Assessment and grading</legend>
 
     <div class="field">
-      <p id="assessCaption"><strong id="assessCaptionText">Means of assessment and weighting</strong> (at least one required)</p>
+      <p id="assessCaption"><strong id="assessCaptionText">Means of assessment and weighting</strong><span id="assessCaptionNote"> (at least one required)</span></p>
       <div class="table-wrap" tabindex="0" role="group" aria-labelledby="assessCaption">
         <table id="assessTable" class="grid">
           <thead>
@@ -918,93 +918,153 @@ function buildHtml() {
 /* ------------------------------------------------------------------ *
  * Completeness tiers
  *
- * Two separate things get conflated when a form is "required": what Policy
- * F1003 obliges an outline to carry, and what Langara wants on top of that.
- * Keeping them apart means an instructor who challenges a flagged field gets a
- * straight answer about which it is. Neither tier blocks anything - Generate,
- * Copy and Download always work on a part-finished document, because outlines
- * get drafted over days and the preview is how people check progress.
+ * Two things get conflated when a form is "required": what Policy F1003
+ * obliges a document to carry, and what Langara wants on top of that. The
+ * groups below are plainly Required and Recommended, and every item that is
+ * genuinely a policy obligation still cites its clause - so an instructor who
+ * challenges a flagged field gets a straight answer about which it is.
+ *
+ * Neither tier blocks anything. Generate, Copy and Download always work on a
+ * part-finished document, because outlines get drafted over days and the
+ * preview is how people check progress.
+ *
+ * A syllabus is held to a stricter standard than an outline of record: it
+ * describes one real section, so who teaches it, when it runs, how it is
+ * delivered and what it covers are all knowable at the time of writing.
  * ------------------------------------------------------------------ */
 
 var FIELD_MARKERS = {
-  courseTitle: "required",
-  credits: "required",
-  ceus: "required",
-  courseDescription: "required",
-  learningOutcomes: "required",
-  textbook: "required",
-  instructors: "required",
-  department: "recommended",
-  yearSemester: "recommended",
-  semesterLength: "recommended",
-  mode: "recommended",
-  courseContent: "recommended",
-  effectiveDate: "recommended"
+  outline: {
+    courseTitle: "required",
+    credits: "required",
+    ceus: "required",
+    courseDescription: "required",
+    learningOutcomes: "required",
+    textbook: "required",
+    effectiveDate: "required",
+    department: "recommended",
+    semesterLength: "recommended",
+    mode: "recommended",
+    courseContent: "recommended"
+  },
+  syllabus: {
+    courseTitle: "required",
+    credits: "required",
+    ceus: "required",
+    courseDescription: "required",
+    learningOutcomes: "required",
+    textbook: "required",
+    effectiveDate: "required",
+    yearSemester: "required",
+    mode: "required",
+    courseContent: "required",
+    instructors: "required",
+    office: "required",
+    phone: "required",
+    email: "required",
+    officeHours: "required",
+    department: "recommended",
+    semesterLength: "recommended"
+  }
 };
 
+/* Every id named by either mode, so a field dropping from required to
+   recommended - or losing its marker entirely - is cleaned up on the switch
+   rather than keeping a stale marker and a stale aria-required. */
+var MARKED_FIELDS = (function () {
+  var seen = {}, out = [];
+  ["outline", "syllabus"].forEach(function (m) {
+    Object.keys(FIELD_MARKERS[m]).forEach(function (id) {
+      if (!seen[id]) { seen[id] = true; out.push(id); }
+    });
+  });
+  return out;
+})();
+
+function markerMap() {
+  return FIELD_MARKERS[isSyllabus() ? "syllabus" : "outline"];
+}
+
+function tierOf(id) {
+  return markerMap()[id] === "required" ? "required" : "recommended";
+}
+
 /* Marks labels in words rather than an asterisk, which needs a key to decode,
-   and sets aria-required on the policy tier.
+   and sets aria-required on the required tier.
 
    aria-required rather than the native required attribute: three of these
    fields ship seeded with a lead-in sentence, so a browser would consider them
    satisfied while they are substantively blank. Native constraint validation
    would report the wrong answer, and nothing here submits a form anyway. */
 function markFields() {
-  Object.keys(FIELD_MARKERS).forEach(function (id) {
+  var map = markerMap();
+  MARKED_FIELDS.forEach(function (id) {
     var lab = document.querySelector('label[for="' + id + '"]');
     var el = document.getElementById(id);
+    var marker = map[id];
     if (lab) {
       var base = lab.textContent.replace(/\s*\((required|recommended)\)\s*$/, "");
-      lab.textContent = base + " (" + FIELD_MARKERS[id] + ")";
+      lab.textContent = marker ? base + " (" + marker + ")" : base;
     }
-    if (el && FIELD_MARKERS[id] === "required") el.setAttribute("aria-required", "true");
+    if (el) {
+      if (marker === "required") el.setAttribute("aria-required", "true");
+      else el.removeAttribute("aria-required");
+    }
   });
 }
 
 /* ------------------------------------------------------------------ *
- * Policy F1003 checklist
+ * Completeness checklist
  * ------------------------------------------------------------------ */
 
 function checklistItems() {
   var syl = isSyllabus();
   var items = [];
   function add(tier, label, ok, clause, target) {
-    items.push({ tier: tier, label: label, ok: ok, clause: clause, target: target });
+    items.push({ tier: tier, label: label, ok: ok, clause: clause || null, target: target });
   }
 
-  add("policy", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
-  add("policy", creditLabel(), !!creditValue(), "3.2(b)",
+  /* Listed in form order, so the summary reads as a walk through the page. */
+  add("required", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
+  add("required", creditLabel(), !!creditValue(), "3.2(b)",
       creditUnit() === "ceus" ? "ceus" : "credits");
+  add("recommended", "Department / programs offering the course", !!val("department"), null, "department");
+  if (syl) add(tierOf("yearSemester"), "Year and semester", !!val("yearSemester"), null, "yearSemester");
+  add("recommended", "Semester length", !!val("semesterLength"), null, "semesterLength");
+  add(tierOf("mode"), "Method of instruction", !!val("mode"), null, "mode");
+
   /* 3.2(b) requires contact hours, but a course need not have all three kinds,
      so this is a group rule: any one of lecture, lab or seminar satisfies it. */
-  add("policy", "Contact hours (lecture, lab, or seminar)", !!totalHours(), "3.2(b)", "lectureHours");
-  add("policy", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
-  add("policy", "Learning outcomes", hasOutcomes(), "3.2(d)", "learningOutcomes");
-  add("policy",
+  add("required", "Contact hours (lecture, lab, or seminar)", !!totalHours(), "3.2(b)", "lectureHours");
+
+  if (syl) {
+    add("required", "Instructor name(s)", !!val("instructors"), "3.4(a)", "instructors");
+    add("required", "Office", !!val("office"), null, "office");
+    add("required", "Phone", !!val("phone"), null, "phone");
+    add("required", "Email", !!val("email"), "3.4(a)", "email");
+    /* F1003 3.4(a) qualifies office hours with "if applicable"; Langara asks
+       for an explicit answer instead, so a blank is never left ambiguous. */
+    add("required", "Office hours", !!val("officeHours"), null, "officeHours");
+  }
+
+  add("required", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
+  add(tierOf("courseContent"), "Course content / topic list",
+      hasContentBeyond("courseContent", syl ? null : OUTLINE_STEMS.courseContent),
+      null, "courseContent");
+  add("required", "Learning outcomes", hasOutcomes(), "3.2(d)", "learningOutcomes");
+
+  if (syl) {
+    add("required", "Detailed course schedule", scheduleRows().length > 0, "3.4(d)", "addWeekBtn");
+  }
+
+  add("required",
+      syl ? "Specific assessments and weighting" : "Typical assessments and weighting",
+      assessRows().length > 0, syl ? "3.4(c)" : "3.2(f)", "addAssessBtn");
+  add("required",
       syl ? "Specific textbooks and course materials" : "Typical textbooks and course materials",
       hasContentBeyond("textbook", syl ? null : OUTLINE_STEMS.textbook),
       syl ? "3.4(b)" : "3.2(e)", "textbook");
-  add("policy",
-      syl ? "Specific assessments and weighting" : "Typical assessments and weighting",
-      assessRows().length > 0, syl ? "3.4(c)" : "3.2(f)", "addAssessBtn");
-
-  if (syl) {
-    add("policy", "Instructor name(s)", !!val("instructors"), "3.4(a)", "instructors");
-    /* 3.4(a) asks for contact information; office hours are qualified "if
-       applicable", so they stay optional. Any one contact route satisfies it. */
-    add("policy", "Instructor contact information",
-        !!(val("email") || val("phone") || val("office")), "3.4(a)", "email");
-    add("policy", "Detailed course schedule", scheduleRows().length > 0, "3.4(d)", "addWeekBtn");
-  }
-
-  add("practice", "Department / programs offering the course", !!val("department"), null, "department");
-  if (syl) add("practice", "Year and semester", !!val("yearSemester"), null, "yearSemester");
-  add("practice", "Semester length", !!val("semesterLength"), null, "semesterLength");
-  add("practice", "Method of instruction", !!val("mode"), null, "mode");
-  add("practice", "Course content / topic list",
-      hasContentBeyond("courseContent", syl ? null : OUTLINE_STEMS.courseContent),
-      null, "courseContent");
-  add("practice", "Effective date", !!val("effectiveDate"), null, "effectiveDate");
+  add("required", "Effective date", !!val("effectiveDate"), null, "effectiveDate");
 
   return items;
 }
@@ -1021,7 +1081,7 @@ function applyInvalidState() {
   );
   if (!validated) return;
   checklistItems().forEach(function (item) {
-    if (item.tier !== "policy" || item.ok) return;
+    if (item.tier !== "required" || item.ok) return;
     var el = document.getElementById(item.target);
     if (el && el.tagName !== "BUTTON") el.setAttribute("aria-invalid", "true");
   });
@@ -1030,25 +1090,25 @@ function applyInvalidState() {
 function renderChecklist() {
   var host = document.getElementById("checklist");
   var items = checklistItems();
-  var policy = items.filter(function (i) { return i.tier === "policy"; });
-  var practice = items.filter(function (i) { return i.tier === "practice"; });
+  var required = items.filter(function (i) { return i.tier === "required"; });
+  var recommended = items.filter(function (i) { return i.tier === "recommended"; });
   var counts = {
-    policy: policy.filter(function (i) { return !i.ok; }).length,
-    practice: practice.filter(function (i) { return !i.ok; }).length
+    required: required.filter(function (i) { return !i.ok; }).length,
+    recommended: recommended.filter(function (i) { return !i.ok; }).length
   };
 
   while (host.firstChild) host.removeChild(host.firstChild);
 
   var intro = document.createElement("p");
-  if (!counts.policy && !counts.practice) {
+  if (!counts.required && !counts.recommended) {
     intro.textContent = "Everything is filled in.";
   } else {
     var bits = [];
-    if (counts.policy) {
-      bits.push(counts.policy + " required item" + (counts.policy === 1 ? "" : "s"));
+    if (counts.required) {
+      bits.push(counts.required + " required item" + (counts.required === 1 ? "" : "s"));
     }
-    if (counts.practice) {
-      bits.push(counts.practice + " recommended item" + (counts.practice === 1 ? "" : "s"));
+    if (counts.recommended) {
+      bits.push(counts.recommended + " recommended item" + (counts.recommended === 1 ? "" : "s"));
     }
     intro.textContent = bits.join(" and ") + " outstanding. Nothing is blocked \u2014 " +
       "you can still generate, copy and download.";
@@ -1056,6 +1116,7 @@ function renderChecklist() {
   host.appendChild(intro);
 
   function group(title, note, list) {
+    if (!list.length) return;
     var h = document.createElement("h3");
     h.textContent = title;
     host.appendChild(h);
@@ -1095,10 +1156,11 @@ function renderChecklist() {
     host.appendChild(ul);
   }
 
-  group("Required by Policy F1003",
-        "The College obliges every course document to carry these.", policy);
-  group("Recommended by Langara practice",
-        "Not named in F1003, but expected on a Langara course document.", practice);
+  group("Required",
+        "Your document is not complete without these. Items citing a clause are " +
+        "obliged by Policy F1003; the rest are Langara practice.", required);
+  group("Recommended",
+        "Not required, but expected on a Langara course document.", recommended);
 
   var auto = document.createElement("p");
   auto.textContent = "Added automatically: grading guidelines link, College policy list, " +
@@ -1147,17 +1209,17 @@ function generate(focusSummary) {
   if (assessRows().length && Math.abs(sum - 100) > 0.001) {
     parts.push("Assessment weightings total " + sum + "%, not 100%.");
   }
-  if (counts.policy) {
-    parts.push(counts.policy + " item" + (counts.policy === 1 ? "" : "s") +
-               " required by policy still missing.");
+  if (counts.required) {
+    parts.push(counts.required + " required item" +
+               (counts.required === 1 ? "" : "s") + " still missing.");
   }
-  if (counts.practice) {
-    parts.push(counts.practice + " recommended item" +
-               (counts.practice === 1 ? "" : "s") + " missing.");
+  if (counts.recommended) {
+    parts.push(counts.recommended + " recommended item" +
+               (counts.recommended === 1 ? "" : "s") + " missing.");
   }
   setStatus(parts.join(" "));
 
-  if (focusSummary === true && counts.policy > 0) {
+  if (focusSummary === true && counts.required > 0) {
     document.getElementById("checklist").focus();
   }
   return frag;
@@ -1401,6 +1463,7 @@ function syncMode() {
 
   document.getElementById("docTypeHint").textContent = T.hint;
   document.getElementById("assessCaptionText").textContent = T.assessCaption;
+  document.getElementById("assessCaptionNote").hidden = syl;
   document.getElementById("textbookLabel").textContent = T.materialsLabel;
   document.getElementById("courseContentLabel").textContent = T.contentLabel;
   document.getElementById("preview").title = "Generated course " + T.noun + " preview";
