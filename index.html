@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Course Outline and Syllabus Builder</title>
+<style>
+  /* Minimal CSS. Present only to satisfy accessibility criteria that markup
+     alone cannot meet: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus
+     Visible, 2.5.8 Target Size. Nothing here is decorative. */
+
+  body {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 1rem;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+
+  /* A flex or grid display value beats the hidden attribute. Mode switching
+     relies on hidden, so it is forced to win. */
+  [hidden] { display: none !important; }
+
+  /* Reflow: fluid controls, never fixed character widths. */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  textarea,
+  select {
+    width: 100%;
+    box-sizing: border-box;
+    font: inherit;
+    padding: 0.4rem;
+    border: 1px solid #595959;   /* 7:1 on white, clears the 3:1 minimum */
+  }
+
+  /* Browsers default fieldsets to min-inline-size: min-content, which stops
+     them shrinking below their widest child at narrow viewports. */
+  fieldset {
+    min-inline-size: 0;
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem 1rem;
+    border: 1px solid #595959;
+  }
+  legend { font-weight: bold; padding: 0 0.35rem; }
+
+  label { display: inline-block; margin-bottom: 0.15rem; }
+  .field { margin: 0 0 1rem; }
+  .hint { font-size: 0.875rem; color: #4a4a4a; margin: 0.2rem 0 0; }
+
+  button {
+    font: inherit;
+    min-height: 2.75rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid #595959;
+    background: #f2f2f2;
+    cursor: pointer;
+  }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+  :focus-visible { outline: 3px solid #0b5fff; outline-offset: 2px; }
+
+  /* Data tables are exempt from reflow but must scroll in their own container
+     rather than widening the page. tabindex makes that region keyboard-reachable.
+     position:relative matters: visually-hidden text inside is absolutely
+     positioned, and without a positioned ancestor it anchors to the initial
+     containing block, escapes the scroll container and widens the document. */
+  .table-wrap { position: relative; overflow-x: auto; }
+
+  table.grid { border-collapse: collapse; width: 100%; }
+  table.grid th, table.grid td {
+    border: 1px solid #595959; padding: 0.35rem; text-align: left; vertical-align: top;
+  }
+
+  #assessTable { min-width: 26rem; }
+  #assessTable td:nth-child(2) { width: 7rem; }
+  #assessTable td:last-child { width: 7rem; }
+
+  #scheduleTable { min-width: 44rem; }
+  #scheduleTable td:first-child { width: 5rem; }
+  #scheduleTable td:last-child { width: 7rem; }
+
+  .radio-row, .check-row { margin: 0.15rem 0; }
+  .radio-row input, .check-row input { width: auto; min-width: 1.15rem; min-height: 1.15rem; }
+  .radio-row label, .check-row label { margin-bottom: 0; }
+
+  #status { display: inline-block; margin-left: 0.5rem; font-weight: bold; }
+  #preview, #source { border: 1px solid #595959; width: 100%; box-sizing: border-box; }
+  #preview { height: 600px; }
+  #source { font-family: ui-monospace, monospace; }
+
+  /* The checklist marks state with words, never with colour alone (1.4.1). */
+  #checklist ul { list-style: none; padding: 0; margin: 0.5rem 0 0; }
+  #checklist li { margin: 0.2rem 0; }
+  .flag { font-weight: bold; }
+
+  @media (max-width: 40rem) {
+    body { padding: 0.75rem; }
+    #preview { height: 22rem; }
+  }
+
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+
+<main>
+
+<h1>Course Outline and Syllabus Builder</h1>
+
+<p>Fill in the fields, then generate the HTML. Blank fields are left out of the export.
+Sections required by <a href="https://langara.ca/policy/f1003-course-outline-and-syllabus">Policy
+F1003 &#8212; Course Outline and Syllabus</a> that need no input from you, such as the College
+policy list, are added automatically.</p>
+
+<p><strong>In any text box:</strong> lines starting with <code>-</code> or <code>*</code> become a
+bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become
+paragraphs.</p>
+
+<p><strong>To add a link,</strong> put the wording in square brackets and the address in round
+brackets straight after it, with no space between:</p>
+
+<p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
+
+<form id="builderForm" onsubmit="return false;">
+
+  <fieldset>
+    <legend>What are you creating?</legend>
+    <div class="radio-row">
+      <input type="radio" id="typeOutline" name="docType" value="outline" checked>
+      <label for="typeOutline">Course outline</label>
+    </div>
+    <div class="radio-row">
+      <input type="radio" id="typeSyllabus" name="docType" value="syllabus">
+      <label for="typeSyllabus">Course syllabus</label>
+    </div>
+    <p class="hint" id="docTypeHint"></p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Course identification</legend>
+
+    <p class="field">
+      <label for="courseTitle">Course code, number, and title</label>
+      <input type="text" id="courseTitle" placeholder="e.g. ENGL 1123 &#8212; Introduction to Literature">
+    </p>
+
+    <div class="field">
+      <fieldset>
+        <legend>Credits or CEUs</legend>
+        <div class="radio-row">
+          <input type="radio" id="unitCredits" name="creditUnit" value="credits" checked>
+          <label for="unitCredits">Credits</label>
+        </div>
+        <div class="radio-row">
+          <input type="radio" id="unitCeus" name="creditUnit" value="ceus">
+          <label for="unitCeus">CEUs (Continuing Studies)</label>
+        </div>
+
+        <p class="field" id="creditsWrap">
+          <label for="credits">Number of credits</label>
+          <select id="credits">
+            <option value="">&#8212; Not specified &#8212;</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+          </select>
+        </p>
+
+        <p class="field" id="ceusWrap" hidden>
+          <label for="ceus">Number of CEUs</label>
+          <input type="number" id="ceus" step="0.1" min="0" placeholder="e.g. 1.2">
+        </p>
+      </fieldset>
+    </div>
+
+    <p class="field">
+      <label for="department">Department / programs offering the course</label>
+      <input type="text" id="department">
+    </p>
+
+    <p class="field" id="yearSemesterWrap" hidden>
+      <label for="yearSemester">Year and semester</label>
+      <input type="text" id="yearSemester" placeholder="e.g. 202510">
+      <span class="hint">The term this syllabus applies to, in YYYY#0 form.</span>
+    </p>
+
+    <p class="field">
+      <label for="semesterLength">Semester length (weeks)</label>
+      <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 15">
+    </p>
+
+    <p class="field">
+      <label for="mode">Method of instruction</label>
+      <select id="mode">
+        <option value="">&#8212; Not specified &#8212;</option>
+        <option value="In-person">In-person</option>
+        <option value="Mixed mode">Mixed mode</option>
+        <option value="Online">Online</option>
+      </select>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Contact hours</legend>
+    <p class="hint">Enter all three on the same basis &#8212; either hours per week or hours for
+    the whole term, whichever your department uses. Leave a field blank to omit it; enter
+    <code>0</code> to show it explicitly as zero.</p>
+
+    <p class="field">
+      <label for="lectureHours">Lecture hours</label>
+      <input type="number" id="lectureHours" step="0.5" min="0">
+    </p>
+
+    <p class="field">
+      <label for="labHours">Lab hours</label>
+      <input type="number" id="labHours" step="0.5" min="0">
+    </p>
+
+    <p class="field">
+      <label for="seminarHours">Seminar hours</label>
+      <input type="number" id="seminarHours" step="0.5" min="0">
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Enrolment restrictions</legend>
+    <div class="radio-row">
+      <input type="radio" id="restrictNo" name="restrict" value="no" checked>
+      <label for="restrictNo">No restrictions</label>
+    </div>
+    <div class="radio-row">
+      <input type="radio" id="restrictYes" name="restrict" value="yes">
+      <label for="restrictYes">This course has enrolment restrictions</label>
+    </div>
+    <div id="restrictDetailWrap" hidden>
+      <p class="field">
+        <label for="restrictDetail">Describe the restrictions</label>
+        <input type="text" id="restrictDetail" placeholder="e.g. Restricted to students admitted to the ECE certificate">
+      </p>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Pre/corequisites</legend>
+    <div class="radio-row">
+      <input type="radio" id="reqNo" name="requisites" value="no" checked>
+      <label for="reqNo">No pre/corequisites</label>
+    </div>
+    <div class="radio-row">
+      <input type="radio" id="reqYes" name="requisites" value="yes">
+      <label for="reqYes">This course has pre/corequisites</label>
+    </div>
+    <div id="reqDetailWrap" hidden>
+      <p class="field">
+        <label for="reqDetail">Pre/corequisites</label>
+        <input type="text" id="reqDetail" placeholder="Add links to relevant courses">
+      </p>
+    </div>
+  </fieldset>
+
+  <fieldset id="instructorFieldset" hidden>
+    <legend>Instructor</legend>
+    <p class="hint">Required on a syllabus. Office hours only where they apply.</p>
+
+    <p class="field">
+      <label for="instructors">Instructor name(s)</label>
+      <input type="text" id="instructors" autocomplete="name">
+    </p>
+    <p class="field">
+      <label for="office">Office</label>
+      <input type="text" id="office">
+    </p>
+    <p class="field">
+      <label for="phone">Phone</label>
+      <input type="tel" id="phone" autocomplete="tel">
+    </p>
+    <p class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" autocomplete="email">
+    </p>
+    <p class="field">
+      <label for="officeHours">Office hours</label>
+      <input type="text" id="officeHours">
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Academic content</legend>
+
+    <p class="field">
+      <label for="courseDescription">Calendar course description</label>
+      <textarea id="courseDescription" rows="7"></textarea>
+    </p>
+
+    <p class="field">
+      <label for="courseContent" id="courseContentLabel">Course content / topic list</label>
+      <textarea id="courseContent" rows="6"></textarea>
+    </p>
+
+    <p class="field">
+      <label for="learningOutcomes">Learning outcomes</label>
+      <textarea id="learningOutcomes" rows="9">Upon successful completion of this course, students will be able to</textarea>
+    </p>
+  </fieldset>
+
+  <fieldset id="scheduleFieldset" hidden>
+    <legend>Detailed course schedule</legend>
+    <p class="hint">The sequence of topics, labs, and deadlines. Required on a syllabus.</p>
+
+    <div class="field">
+      <div class="table-wrap" tabindex="0" role="group" aria-labelledby="scheduleCaption">
+        <p id="scheduleCaption" class="visually-hidden">Detailed course schedule</p>
+        <table id="scheduleTable" class="grid">
+          <thead>
+            <tr>
+              <th scope="col">Week</th>
+              <th scope="col">Topic</th>
+              <th scope="col">Readings and activities</th>
+              <th scope="col">Due</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+      <p><button type="button" id="addWeekBtn">Add week</button></p>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend id="assessLegend">Assessment and grading</legend>
+
+    <div class="field">
+      <p id="assessCaption"><strong id="assessCaptionText">Means of assessment and weighting</strong></p>
+      <div class="table-wrap" tabindex="0" role="group" aria-labelledby="assessCaption">
+        <table id="assessTable" class="grid">
+          <thead>
+            <tr>
+              <th scope="col">Assessment activity</th>
+              <th scope="col">Weight (%)</th>
+              <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="assessBody"></tbody>
+        </table>
+      </div>
+      <p><button type="button" id="addAssessBtn">Add assessment</button>
+         <span id="weightTotal"></span></p>
+    </div>
+
+    <p class="field">
+      <label for="gradingNotes">Grading guidelines (optional)</label>
+      <textarea id="gradingNotes" rows="4"></textarea>
+      <span class="hint">Anything beyond the College grading scale, such as rounding or late
+      penalties. A link to the College <em>Grades</em> page is added automatically.</span>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Materials</legend>
+    <p class="field">
+      <label for="textbook" id="textbookLabel">Textbooks and course materials</label>
+      <textarea id="textbook" rows="6"></textarea>
+    </p>
+
+    <div class="check-row" id="privacyWrap" hidden>
+      <input type="checkbox" id="privacyNotice">
+      <label for="privacyNotice">This course requires an online tool hosted outside Canada for
+      graded work (adds the FIPPA notice)</label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Departmental and course policies</legend>
+    <p class="field">
+      <label for="deptPolicies">Departmental or course policies (optional)</label>
+      <textarea id="deptPolicies" rows="5"></textarea>
+      <span class="hint">The College policy list is added automatically. Use this for anything
+      specific to your department or course.</span>
+    </p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Version</legend>
+    <p class="field">
+      <label for="effectiveDate">Effective date (curriculum version)</label>
+      <input type="text" id="effectiveDate" placeholder="e.g. September 2026">
+      <span class="hint">The date this version of the curriculum took effect &#8212; not today's date.</span>
+    </p>
+  </fieldset>
+
+  <p class="actions">
+    <button type="button" id="generateBtn">Generate</button>
+    <button type="button" id="downloadBtn">Download HTML</button>
+    <button type="button" id="copyBtn">Copy HTML</button>
+    <span id="status" role="status"></span>
+  </p>
+
+</form>
+
+<hr>
+
+<h2 id="checklistHeading">Policy F1003 checklist</h2>
+<div id="checklist"></div>
+
+<h2>Preview</h2>
+<iframe id="preview" title="Generated document preview"></iframe>
+
+<h2 id="sourceHeading">HTML source</h2>
+<p>Content only &#8212; no <code>&lt;!DOCTYPE&gt;</code>, <code>&lt;head&gt;</code> or
+<code>&lt;body&gt;</code> wrapper. Paste it straight into an existing page.</p>
+<p><label for="source">Generated HTML (read-only)</label></p>
+<textarea id="source" rows="20" readonly></textarea>
+
+</main>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ * Boilerplate. Everything an instructor does not type lives here.
+ *
+ * Langara moved its policy manual onto Drupal, and the old
+ * /about-langara/policies/pdf/XXXX.pdf addresses now redirect to the policy
+ * index instead of the document. These are the current canonical URLs.
+ * ------------------------------------------------------------------ */
+
+var TRANSFER_URL   = "https://www.bctransferguide.ca";
+var TRANSFER_LABEL = "bctransferguide.ca";
+
+/* F1003 3.2(g). Link text is the page name. */
+var GRADES_URL   = "https://langara.ca/student-services/enrolment-services/student-records/grading";
+var GRADES_LABEL = "Grades";
+
+/* F1003 3.2(i). */
+var STUDENT_SERVICES_URL   = "https://langara.ca/student-services/student-support";
+var STUDENT_SERVICES_LABEL = "Student Support";
+
+/* F1003 3.2(j). The policy text cites https://langara.ca/media/11425/download?inline=
+   which is a direct PDF download. The /policy/ address below is the canonical
+   landing page for the same document: it survives re-uploads, and it does not
+   push a file at the reader. Swap the constant if literal compliance is wanted. */
+var ACCOMMODATION_URL   = "https://langara.ca/policy/e1005-academic-accommodation-students-disabilities";
+var ACCOMMODATION_LABEL = "Academic Accommodation for Students with Disabilities \u2013 E1005";
+
+var POLICY_INDEX_URL = "https://langara.ca/administration/college-policies-procedures";
+
+/* The first three are named explicitly in F1003 3.2(h) and must stay. */
+var POLICY_LINKS = [
+  ["Standards of Student Conduct \u2013 E1003", "https://langara.ca/policy/e1003-standards-student-conduct"],
+  ["Academic Integrity \u2013 F1004", "https://langara.ca/policy/f1004-academic-integrity"],
+  ["Student Attendance and Participation \u2013 F1008", "https://langara.ca/policy/f1008-student-attendance-and-participation"],
+  ["Academic Standing \u2013 E2008", "https://langara.ca/policy/e2008-academic-standing"],
+  ["Appeal of Final Grade \u2013 E2006", "https://langara.ca/policy/e2006-appeal-final-grade"],
+  ["Concerns about Instruction and Course Delivery \u2013 F1002", "https://langara.ca/policy/f1002-concerns-about-instruction-and-course-delivery"],
+  ["Withdrawal from Courses and Deferred Standing \u2013 E2011", "https://langara.ca/policy/e2011-withdrawal-courses-and-deferred-standing"]
+];
+
+var FIPPA_NOTE = "Note: This course may use an electronic (online) instructional resource that is " +
+  "located outside of Canada for mandatory graded class work. You may be required to enter personal " +
+  "information, such as your name and email address, to log in to this resource. This means that your " +
+  "personal information could be stored on servers located outside of Canada and may be accessed by " +
+  "U.S. authorities, subject to federal laws. Where possible, you may log in with an email pseudonym " +
+  "as long as you provide the pseudonym to me so I can identify you when reviewing your class work.";
+
+/* PLACEHOLDER \u2014 replace with the wording approved by the College. */
+var DISCLAIMER = {
+  outline: "This course outline is subject to change. Confirm the current version before relying on it.",
+  syllabus: "This syllabus is subject to change. Confirm the current version before relying on it."
+};
+
+/* PLACEHOLDER \u2014 set ARCHIVE_URL to the archive location once one exists.
+   Leave it as an empty string and the whole line is omitted from the output. */
+var ARCHIVE_URL   = "";
+var ARCHIVE_LABEL = "View previous versions of this document";
+
+/* ------------------------------------------------------------------ *
+ * Mode-dependent wording
+ *
+ * F1003 3.2(e)(f) ask an outline for TYPICAL materials and assessments;
+ * 3.4(b)(c) ask a syllabus for the SPECIFIC ones. One set of fields carries
+ * both, relabelled, rather than two near-identical sets of boxes.
+ * ------------------------------------------------------------------ */
+
+var MODE_TEXT = {
+  outline: {
+    noun: "outline",
+    fallbackTitle: "Course outline",
+    hint: "An outline of record describes the course as approved: what is typical of any section, " +
+          "in any term, taught by any instructor.",
+    assessHeading: "Typical means of assessment and weighting",
+    assessCaption: "Typical means of assessment and weighting",
+    materialsHeading: "Typical textbooks and course materials",
+    materialsLabel: "Typical textbooks and course materials",
+    contentLabel: "Course content / topic list",
+    fileStem: "course-outline"
+  },
+  syllabus: {
+    noun: "syllabus",
+    fallbackTitle: "Course syllabus",
+    hint: "A syllabus carries everything an outline does, plus the details of one section: " +
+          "who is teaching it, the specific materials and assessments, and the schedule.",
+    assessHeading: "Means of assessment and weighting",
+    assessCaption: "Means of assessment and weighting",
+    materialsHeading: "Textbooks and course materials",
+    materialsLabel: "Specific textbooks and course materials",
+    contentLabel: "Course content / topic list",
+    fileStem: "course-syllabus"
+  }
+};
+
+var OUTCOME_STEM = "Upon successful completion of this course, students will be able to";
+
+function isSyllabus() {
+  var el = document.getElementById("typeSyllabus");
+  return !!(el && el.checked);
+}
+
+function modeText() {
+  return MODE_TEXT[isSyllabus() ? "syllabus" : "outline"];
+}
+
+/* ------------------------------------------------------------------ *
+ * Escaping and inline links
+ * ------------------------------------------------------------------ */
+
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/* Only http, https and mailto may appear in an href. Anything else carrying an
+   explicit scheme is rejected, which is what keeps `javascript:` and `data:`
+   out of a fragment that gets pasted into a live page. Scheme-relative `//host`
+   is rejected too; plain relative paths are allowed. */
+function safeUrl(u) {
+  var t = String(u).trim();
+  if (t.indexOf("//") === 0) return false;
+  if (/^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(t)) {
+    return /^(https?|mailto):/i.test(t);
+  }
+  return true;
+}
+
+var LINK_RE = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+
+/* Escapes a run of text and converts [label](url) into anchors. A link whose
+   URL fails validation is left as literal text, so it is visible rather than
+   silently dropped. */
+function inline(s) {
+  var out = "", last = 0, m;
+  LINK_RE.lastIndex = 0;
+  while ((m = LINK_RE.exec(s)) !== null) {
+    out += esc(s.slice(last, m.index));
+    if (safeUrl(m[2])) {
+      out += '<a href="' + esc(m[2]) + '">' + esc(m[1]) + "</a>";
+    } else {
+      out += esc(m[0]);
+    }
+    last = m.index + m[0].length;
+  }
+  return out + esc(s.slice(last));
+}
+
+/* ------------------------------------------------------------------ *
+ * Block parsing
+ * ------------------------------------------------------------------ */
+
+function renderList(items, ordered) {
+  var t = ordered ? "ol" : "ul";
+  return "<" + t + ">\n" +
+    items.map(function (i) { return "  <li>" + inline(i) + "</li>"; }).join("\n") +
+    "\n</" + t + ">";
+}
+
+/* Lines beginning - * or bullet become <ul>; lines beginning 1. 2) etc become
+   <ol>; everything else becomes <p>. */
+function blocks(text) {
+  var lines = String(text).split(/\r?\n/)
+    .map(function (l) { return l.trim(); })
+    .filter(function (l) { return l.length > 0; });
+  if (!lines.length) return [];
+
+  var out = [], buf = null, bufOrdered = false;
+
+  function flush() {
+    if (buf) { out.push(renderList(buf, bufOrdered)); buf = null; }
+  }
+
+  lines.forEach(function (line) {
+    var b = /^[-*\u2022]\s+(.*)$/.exec(line);
+    var n = /^\d+[.)]\s+(.*)$/.exec(line);
+    if (b || n) {
+      var ordered = !!n;
+      var content = (b ? b[1] : n[1]).trim();
+      if (buf && bufOrdered !== ordered) flush();
+      if (!buf) { buf = []; bufOrdered = ordered; }
+      buf.push(content);
+    } else {
+      flush();
+      out.push("<p>" + inline(line) + "</p>");
+    }
+  });
+  flush();
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Field access
+ * ------------------------------------------------------------------ */
+
+function val(id) {
+  var el = document.getElementById(id);
+  return el ? el.value.trim() : "";
+}
+
+function checked(id) {
+  var el = document.getElementById(id);
+  return !!(el && el.checked);
+}
+
+function num(id, decimals) {
+  var raw = val(id);
+  if (!raw) return "";
+  var n = parseFloat(raw);
+  if (isNaN(n)) return "";
+  return decimals == null ? String(n) : n.toFixed(decimals);
+}
+
+/* Credits and CEUs are mutually exclusive; only the selected one is exported. */
+function creditUnit() {
+  return checked("unitCeus") ? "ceus" : "credits";
+}
+
+function creditLabel() {
+  return creditUnit() === "ceus" ? "CEUs" : "Credits";
+}
+
+function creditValue() {
+  return creditUnit() === "ceus" ? num("ceus") : val("credits");
+}
+
+/* Sum of whichever hour fields were filled in. Blank fields are ignored, so a
+   document that lists lecture hours only still gets a coherent total; a field
+   explicitly set to 0 counts as filled. */
+function totalHours() {
+  var any = false, sum = 0;
+  ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
+    var raw = val(id);
+    if (raw === "") return;
+    var n = parseFloat(raw);
+    if (isNaN(n)) return;
+    any = true;
+    sum += n;
+  });
+  return any ? String(sum) : "";
+}
+
+function restrictions() {
+  return checked("restrictYes") ? val("restrictDetail") : "";
+}
+
+function requisites() {
+  return checked("reqYes") ? val("reqDetail") : "";
+}
+
+function assessRows() {
+  var rows = [];
+  Array.prototype.forEach.call(
+    document.querySelectorAll("#assessBody tr"),
+    function (tr) {
+      var i = tr.querySelectorAll("input");
+      var activity = i[0].value.trim(), weight = i[1].value.trim();
+      if (activity || weight) rows.push([activity, weight]);
+    }
+  );
+  return rows;
+}
+
+function weightSum() {
+  return assessRows().reduce(function (t, r) {
+    var n = parseFloat(r[1]);
+    return t + (isNaN(n) ? 0 : n);
+  }, 0);
+}
+
+/* The week number is pre-filled, so a row only counts as used once it carries
+   a topic, a reading or a deadline. */
+function scheduleRows() {
+  var rows = [];
+  Array.prototype.forEach.call(
+    document.querySelectorAll("#scheduleBody tr"),
+    function (tr) {
+      var cells = Array.prototype.map.call(
+        tr.querySelectorAll("input"), function (i) { return i.value.trim(); });
+      if (cells[1] || cells[2] || cells[3]) rows.push(cells);
+    }
+  );
+  return rows;
+}
+
+/* Learning outcomes ship with a sentence stem already in the box. That stem on
+   its own is not an outcome, so it does not satisfy F1003 3.2(d). */
+function hasOutcomes() {
+  var v = val("learningOutcomes");
+  if (!v) return false;
+  return v.replace(/\s+/g, " ").toLowerCase() !== OUTCOME_STEM.toLowerCase();
+}
+
+/* ------------------------------------------------------------------ *
+ * Fragment generation
+ * ------------------------------------------------------------------ */
+
+function heading(level, text) {
+  return "<h" + level + ">" + esc(text) + "</h" + level + ">";
+}
+
+/* One-line labelled value; returns null when the value is blank so the caller
+   can drop it entirely rather than emit an empty label. */
+function labelled(label, value) {
+  if (!value) return null;
+  return "<p><strong>" + esc(label) + ":</strong> " + inline(value) + "</p>";
+}
+
+function section(level, title, body) {
+  if (!body || !body.length) return [];
+  return [""].concat([heading(level, title)], body);
+}
+
+function buildHtml() {
+  var syl = isSyllabus();
+  var T = modeText();
+  var L = [];
+
+  L.push(heading(1, val("courseTitle") || T.fallbackTitle));
+
+  /* Identification block */
+  var pairs = [[creditLabel(), creditValue()],
+               ["Department", val("department")]];
+  if (syl) pairs.push(["Year and semester", val("yearSemester")]);
+  pairs = pairs.concat([
+    ["Lecture hours", num("lectureHours")],
+    ["Lab hours", num("labHours")],
+    ["Seminar hours", num("seminarHours")],
+    ["Total contact hours", totalHours()],
+    ["Semester length", val("semesterLength") ? num("semesterLength") + " weeks" : ""],
+    ["Method of instruction", val("mode")],
+    ["Enrolment restrictions", restrictions()],
+    ["Pre/corequisites", requisites()]
+  ]);
+  pairs.forEach(function (pair) {
+    var line = labelled(pair[0], pair[1]);
+    if (line) L.push(line);
+  });
+
+  /* Instructor \u2014 syllabus only, F1003 3.4(a) */
+  if (syl) {
+    var instName = val("instructors");
+    var instRows = [];
+    [["Office", val("office")],
+     ["Phone", val("phone")],
+     ["Email", val("email")],
+     ["Office hours", val("officeHours")]].forEach(function (pair) {
+      var line = labelled(pair[0], pair[1]);
+      if (line) instRows.push(line);
+    });
+    if (instName || instRows.length) {
+      L.push("");
+      L.push(heading(2, "Instructor"));
+      if (instName) L.push("<p>" + inline(instName) + "</p>");
+      L = L.concat(instRows);
+    }
+  }
+
+  L = L.concat(section(2, "Calendar course description", blocks(val("courseDescription"))));
+  L = L.concat(section(2, "Course content", blocks(val("courseContent"))));
+  L = L.concat(section(2, "Learning outcomes", blocks(val("learningOutcomes"))));
+
+  /* Detailed course schedule \u2014 syllabus only, F1003 3.4(d) */
+  if (syl) {
+    var sched = scheduleRows();
+    if (sched.length) {
+      L.push("");
+      L.push(heading(2, "Detailed course schedule"));
+      L.push("<table>");
+      L.push("  <thead>");
+      L.push('    <tr><th scope="col">Week</th><th scope="col">Topic</th>' +
+             '<th scope="col">Readings and activities</th><th scope="col">Due</th></tr>');
+      L.push("  </thead>");
+      L.push("  <tbody>");
+      sched.forEach(function (r) {
+        L.push("    <tr><td>" + inline(r[0]) + "</td><td>" + inline(r[1]) +
+               "</td><td>" + inline(r[2]) + "</td><td>" + inline(r[3]) + "</td></tr>");
+      });
+      L.push("  </tbody>");
+      L.push("</table>");
+    }
+  }
+
+  /* Assessment, grading guidelines and the Grades link all sit under one
+     heading: F1003 3.2(f) and 3.2(g) are read together by instructors. */
+  L.push("");
+  L.push(heading(2, T.assessHeading));
+  var rows = assessRows();
+  if (rows.length) {
+    L.push("<table>");
+    L.push("  <thead>");
+    L.push('    <tr><th scope="col">Assessment activity</th><th scope="col">Weight</th></tr>');
+    L.push("  </thead>");
+    L.push("  <tbody>");
+    rows.forEach(function (r) {
+      var w = r[1] ? esc(r[1]) + "%" : "";
+      L.push("    <tr><td>" + inline(r[0]) + "</td><td>" + w + "</td></tr>");
+    });
+    L.push("  </tbody>");
+    L.push("</table>");
+  }
+  L = L.concat(blocks(val("gradingNotes")));
+  L.push('<p>See <a href="' + GRADES_URL + '">' + esc(GRADES_LABEL) + "</a>.</p>");
+
+  /* Materials. The FIPPA notice belongs with the resource that triggers it. */
+  var materials = blocks(val("textbook"));
+  if (syl && checked("privacyNotice")) materials.push("<p>" + esc(FIPPA_NOTE) + "</p>");
+  L = L.concat(section(2, T.materialsHeading, materials));
+
+  /* Transfer credit */
+  L.push("");
+  L.push(heading(2, "Transfer credit"));
+  L.push('<p>For information, visit <a href="' + TRANSFER_URL + '">' + esc(TRANSFER_LABEL) + "</a>.</p>");
+
+  /* College policies \u2014 F1003 3.2(h) */
+  L.push("");
+  L.push(heading(2, "College policies"));
+  L.push("<p>Students are responsible for familiarizing themselves with, and complying with, the following " +
+         '<a href="' + POLICY_INDEX_URL + '">College policies</a>:</p>');
+  L.push("<ul>");
+  POLICY_LINKS.forEach(function (p) {
+    L.push('  <li><a href="' + p[1] + '">' + esc(p[0]) + "</a></li>");
+  });
+  L.push("</ul>");
+
+  L = L.concat(section(2, "Departmental and course policies", blocks(val("deptPolicies"))));
+
+  /* Student support \u2014 F1003 3.2(i) and 3.2(j) */
+  L.push("");
+  L.push(heading(2, "Student support"));
+  L.push('<p>Services available to students are listed on the <a href="' + STUDENT_SERVICES_URL +
+         '">' + esc(STUDENT_SERVICES_LABEL) + "</a> page.</p>");
+  L.push('<p>Students seeking academic accommodation should refer to <a href="' + ACCOMMODATION_URL +
+         '">' + esc(ACCOMMODATION_LABEL) + "</a>.</p>");
+
+  /* Version block */
+  L.push("");
+  var eff = labelled("Effective date", val("effectiveDate"));
+  if (eff) L.push(eff);
+  L.push("<p>" + esc(syl ? DISCLAIMER.syllabus : DISCLAIMER.outline) + "</p>");
+  if (ARCHIVE_URL) {
+    L.push('<p><a href="' + esc(ARCHIVE_URL) + '">' + esc(ARCHIVE_LABEL) + "</a></p>");
+  }
+
+  /* Collapse runs of blank separators left by skipped sections. */
+  var cleaned = [];
+  L.forEach(function (line) {
+    if (line === "" && (cleaned.length === 0 || cleaned[cleaned.length - 1] === "")) return;
+    cleaned.push(line);
+  });
+  return cleaned.join("\n").replace(/\n+$/, "") + "\n";
+}
+
+/* ------------------------------------------------------------------ *
+ * Policy F1003 checklist
+ *
+ * Only the items an instructor has to supply are listed. The clauses the tool
+ * satisfies on its own \u2014 grading guidelines, the policy list, Student Services,
+ * accommodations \u2014 are reported once as a group so the list stays scannable.
+ * ------------------------------------------------------------------ */
+
+function checklistItems() {
+  var syl = isSyllabus();
+  var items = [
+    ["Course code, number, and title", !!val("courseTitle"), "3.2(a)"],
+    ["Contact hours", !!totalHours(), "3.2(b)"],
+    [creditLabel(), !!creditValue(), "3.2(b)"],
+    ["Calendar course description", !!val("courseDescription"), "3.2(c)"],
+    ["Learning outcomes", hasOutcomes(), "3.2(d)"],
+    [syl ? "Specific textbooks and course materials" : "Typical textbooks and course materials",
+     !!val("textbook"), syl ? "3.4(b)" : "3.2(e)"],
+    [syl ? "Specific assessments and weighting" : "Typical assessments and weighting",
+     assessRows().length > 0, syl ? "3.4(c)" : "3.2(f)"]
+  ];
+  if (syl) {
+    items.push(["Instructor name(s) and contact information", !!val("instructors"), "3.4(a)"]);
+    items.push(["Detailed course schedule", scheduleRows().length > 0, "3.4(d)"]);
+  }
+  return items;
+}
+
+function renderChecklist() {
+  var host = document.getElementById("checklist");
+  var items = checklistItems();
+  var missing = items.filter(function (i) { return !i[1]; });
+
+  while (host.firstChild) host.removeChild(host.firstChild);
+
+  var intro = document.createElement("p");
+  intro.textContent = missing.length === 0
+    ? "All items you need to supply are present."
+    : missing.length + " of " + items.length + " items still need attention.";
+  host.appendChild(intro);
+
+  var ul = document.createElement("ul");
+  items.forEach(function (item) {
+    var li = document.createElement("li");
+    var flag = document.createElement("span");
+    flag.className = "flag";
+    /* Words, not colour or icons alone \u2014 SC 1.4.1. */
+    flag.textContent = item[1] ? "Included" : "Missing";
+    li.appendChild(flag);
+    li.appendChild(document.createTextNode(" \u2014 " + item[0] + " (F1003 " + item[2] + ")"));
+    ul.appendChild(li);
+  });
+  host.appendChild(ul);
+
+  var auto = document.createElement("p");
+  auto.textContent = "Added automatically: grading guidelines link, College policy list, " +
+    "Student Support link, and academic accommodations link.";
+  host.appendChild(auto);
+
+  return missing.length;
+}
+
+/* ------------------------------------------------------------------ *
+ * UI
+ * ------------------------------------------------------------------ */
+
+function setStatus(msg) {
+  var el = document.getElementById("status");
+  el.textContent = msg;
+  window.setTimeout(function () {
+    if (el.textContent === msg) el.textContent = "";
+  }, 6000);
+}
+
+function generate() {
+  var frag = buildHtml();
+  document.getElementById("source").value = frag;
+
+  /* The preview needs a real document: an iframe without a declared charset
+     mangles characters like the em dash in a course title. What the user
+     copies or downloads is the bare fragment. */
+  document.getElementById("preview").srcdoc =
+    '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+    "<title>Preview</title></head><body>\n" + frag + "\n</body></html>";
+
+  var missing = renderChecklist();
+  var T = modeText();
+  var parts = ["Course " + T.noun + " generated."];
+
+  var sum = weightSum();
+  if (assessRows().length && Math.abs(sum - 100) > 0.001) {
+    parts.push("Assessment weightings total " + sum + "%, not 100%.");
+  }
+  if (missing) {
+    parts.push(missing + " required item" + (missing === 1 ? "" : "s") + " still missing \u2014 see the checklist.");
+  }
+  setStatus(parts.join(" "));
+  return frag;
+}
+
+function download() {
+  var frag = generate();
+  var name = (val("courseTitle") || modeText().fileStem)
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  var blob = new Blob([frag], { type: "text/html;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = name + ".html";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus("Downloaded " + name + ".html");
+}
+
+function copySource() {
+  var frag = generate();
+  var ta = document.getElementById("source");
+  ta.select();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(frag)
+      .then(function () { setStatus("HTML copied to clipboard."); })
+      .catch(function () { setStatus("Copy failed. The HTML is selected below \u2014 press Ctrl/Cmd+C."); });
+  } else {
+    setStatus("Copy is unavailable in this browser. The HTML is selected below \u2014 press Ctrl/Cmd+C.");
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Row helpers shared by both tables
+ * ------------------------------------------------------------------ */
+
+/* Column headers do NOT name the inputs inside a table cell, so every cell gets
+   its own <label>. Real label elements rather than aria-label: some checkers
+   only accept a label element, and browser auto-translation routinely skips
+   aria-label attributes while always translating text nodes. */
+function makeCell(id, kind, step) {
+  var td = document.createElement("td");
+  var lab = document.createElement("label");
+  lab.className = "visually-hidden";
+  lab.htmlFor = id;
+  var input = document.createElement("input");
+  input.type = kind;
+  input.id = id;
+  if (step) { input.step = step; input.min = "0"; }
+  td.appendChild(lab);
+  td.appendChild(input);
+  return td;
+}
+
+/* Never strand focus on a removed element. */
+function focusAfterRemoval(tr, bodySelector, fallbackId) {
+  var rows = Array.prototype.slice.call(document.querySelectorAll(bodySelector + " tr"));
+  var idx = rows.indexOf(tr);
+  tr.remove();
+  var remaining = document.querySelectorAll(bodySelector + " tr");
+  if (!remaining.length) {
+    document.getElementById(fallbackId).focus();
+  } else {
+    var next = remaining[Math.min(idx, remaining.length - 1)];
+    var btn = next.querySelector("button");
+    if (btn) btn.focus();
+  }
+}
+
+function makeRemoveButton() {
+  var btn = document.createElement("button");
+  btn.type = "button";
+  /* Visible word plus a hidden qualifier, so the button reads "Remove row 3"
+     while still matching a voice-control user saying "click Remove". */
+  btn.appendChild(document.createTextNode("Remove"));
+  btn.appendChild(document.createElement("span")).className = "visually-hidden";
+  return btn;
+}
+
+/* ------------------------------------------------------------------ *
+ * Assessment table
+ * ------------------------------------------------------------------ */
+
+var assessUid = 0;
+
+function addAssessRow() {
+  var tbody = document.getElementById("assessBody");
+  var tr = document.createElement("tr");
+  var uid = ++assessUid;
+
+  var activity = makeCell("assess-" + uid + "-activity", "text", null);
+  var weight = makeCell("assess-" + uid + "-weight", "number", "0.1");
+  activity.querySelector("input").addEventListener("input", updateWeightTotal);
+  weight.querySelector("input").addEventListener("input", updateWeightTotal);
+  tr.appendChild(activity);
+  tr.appendChild(weight);
+
+  var tdBtn = document.createElement("td");
+  var btn = makeRemoveButton();
+  btn.addEventListener("click", function () {
+    focusAfterRemoval(tr, "#assessBody", "addAssessBtn");
+    relabelAssessRows();
+    updateWeightTotal();
+    setStatus("Assessment row removed.");
+  });
+  tdBtn.appendChild(btn);
+  tr.appendChild(tdBtn);
+
+  tbody.appendChild(tr);
+  relabelAssessRows();
+  updateWeightTotal();
+  return tr;
+}
+
+/* Without this, a screen-reader user pulling up a list of buttons sees several
+   identical "Remove" entries. Row position changes on delete, so the accessible
+   names are recomputed after every mutation. */
+function relabelAssessRows() {
+  Array.prototype.forEach.call(
+    document.querySelectorAll("#assessBody tr"),
+    function (tr, idx) {
+      var n = idx + 1;
+      var labels = tr.querySelectorAll("label");
+      labels[0].textContent = "Row " + n + " assessment activity";
+      labels[1].textContent = "Row " + n + " weight, percent";
+      var sr = tr.querySelector("button span");
+      if (sr) sr.textContent = " assessment row " + n;
+    }
+  );
+}
+
+function updateWeightTotal() {
+  var rows = assessRows();
+  var el = document.getElementById("weightTotal");
+  if (!rows.length) { el.textContent = ""; return; }
+  var sum = weightSum();
+  el.textContent = "Total: " + sum + "%" + (Math.abs(sum - 100) > 0.001 ? " (does not total 100)" : "");
+}
+
+/* ------------------------------------------------------------------ *
+ * Schedule table
+ * ------------------------------------------------------------------ */
+
+var scheduleUid = 0;
+
+function addScheduleRow(week) {
+  var tbody = document.getElementById("scheduleBody");
+  var tr = document.createElement("tr");
+  var uid = ++scheduleUid;
+
+  ["week", "topic", "reading", "due"].forEach(function (key) {
+    tr.appendChild(makeCell("sched-" + uid + "-" + key, "text", null));
+  });
+  if (week) tr.querySelectorAll("input")[0].value = week;
+
+  /* Editing the week number changes the other cells' accessible names. */
+  tr.querySelectorAll("input")[0].addEventListener("input", relabelScheduleRows);
+
+  var tdBtn = document.createElement("td");
+  var btn = makeRemoveButton();
+  btn.addEventListener("click", function () {
+    focusAfterRemoval(tr, "#scheduleBody", "addWeekBtn");
+    relabelScheduleRows();
+    setStatus("Schedule row removed.");
+  });
+  tdBtn.appendChild(btn);
+  tr.appendChild(tdBtn);
+
+  tbody.appendChild(tr);
+  relabelScheduleRows();
+  return tr;
+}
+
+function relabelScheduleRows() {
+  Array.prototype.forEach.call(
+    document.querySelectorAll("#scheduleBody tr"),
+    function (tr, idx) {
+      var inputs = tr.querySelectorAll("input");
+      var labels = tr.querySelectorAll("td > label");
+      var week = inputs[0].value.trim();
+      var ref = week ? "week " + week : "row " + (idx + 1);
+      labels[0].textContent = "Week number, row " + (idx + 1);
+      labels[1].textContent = "Topic for " + ref;
+      labels[2].textContent = "Readings and activities for " + ref;
+      labels[3].textContent = "Due for " + ref;
+      var sr = tr.querySelector("button span");
+      if (sr) sr.textContent = " " + ref;
+    }
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Mode switching
+ *
+ * Hiding a wrapper takes its inputs out of the tab order and the accessibility
+ * tree, and the build functions ignore hidden sections, so switching back to
+ * outline drops syllabus-only content from the export rather than leaving it
+ * lingering. The values stay in the DOM, so switching back restores them.
+ * ------------------------------------------------------------------ */
+
+function syncMode() {
+  var syl = isSyllabus();
+  var T = modeText();
+
+  ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap", "privacyWrap"]
+    .forEach(function (id) { document.getElementById(id).hidden = !syl; });
+
+  document.getElementById("docTypeHint").textContent = T.hint;
+  document.getElementById("assessCaptionText").textContent = T.assessCaption;
+  document.getElementById("textbookLabel").textContent = T.materialsLabel;
+  document.getElementById("courseContentLabel").textContent = T.contentLabel;
+  document.getElementById("preview").title = "Generated course " + T.noun + " preview";
+
+  renderChecklist();
+}
+
+function syncCreditUnit() {
+  var ceus = checked("unitCeus");
+  document.getElementById("creditsWrap").hidden = ceus;
+  document.getElementById("ceusWrap").hidden = !ceus;
+}
+
+function syncRestrict() {
+  document.getElementById("restrictDetailWrap").hidden = !checked("restrictYes");
+}
+
+function syncRequisites() {
+  document.getElementById("reqDetailWrap").hidden = !checked("reqYes");
+}
+
+/* ------------------------------------------------------------------ *
+ * Wiring
+ * ------------------------------------------------------------------ */
+
+document.getElementById("generateBtn").addEventListener("click", generate);
+document.getElementById("downloadBtn").addEventListener("click", download);
+document.getElementById("copyBtn").addEventListener("click", copySource);
+document.getElementById("addAssessBtn").addEventListener("click", function () {
+  var row = addAssessRow();
+  row.querySelector("input").focus();
+});
+document.getElementById("addWeekBtn").addEventListener("click", function () {
+  /* Use the highest existing week number, not the row count, so removing a
+     middle row cannot produce a duplicate. */
+  var weeks = Array.prototype.map.call(
+    document.querySelectorAll("#scheduleBody tr"),
+    function (tr) { return parseInt(tr.querySelector("input").value.trim(), 10); }
+  ).filter(function (n) { return !isNaN(n); });
+  var next = weeks.length ? Math.max.apply(null, weeks) + 1 : 1;
+  var row = addScheduleRow(String(next));
+  row.querySelectorAll("input")[1].focus();
+});
+
+["typeOutline", "typeSyllabus"].forEach(function (id) {
+  document.getElementById(id).addEventListener("change", syncMode);
+});
+["unitCredits", "unitCeus"].forEach(function (id) {
+  document.getElementById(id).addEventListener("change", syncCreditUnit);
+});
+["restrictYes", "restrictNo"].forEach(function (id) {
+  document.getElementById(id).addEventListener("change", syncRestrict);
+});
+["reqYes", "reqNo"].forEach(function (id) {
+  document.getElementById(id).addEventListener("change", syncRequisites);
+});
+
+addAssessRow();
+addAssessRow();
+addAssessRow();
+
+addScheduleRow("1");
+addScheduleRow("2");
+addScheduleRow("3");
+addScheduleRow("4");
+
+syncCreditUnit();
+syncRestrict();
+syncRequisites();
+syncMode();
+</script>
+
+</body>
+</html>
