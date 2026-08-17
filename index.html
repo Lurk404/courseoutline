@@ -75,10 +75,12 @@
   }
 
   #assessTable { min-width: 26rem; }
+  #assessTable.with-due { min-width: 36rem; }
   #assessTable td:nth-child(2) { width: 7rem; }
+  #assessTable.with-due td:nth-child(3) { width: 9rem; }
   #assessTable td:last-child { width: 7rem; }
 
-  #scheduleTable { min-width: 44rem; }
+  #scheduleTable { min-width: 46rem; }
   #scheduleTable td:first-child { width: 5rem; }
   #scheduleTable td:last-child { width: 7rem; }
 
@@ -325,7 +327,7 @@ brackets straight after it, with no space between:</p>
               <th scope="col">Week</th>
               <th scope="col">Topic</th>
               <th scope="col">Readings and activities</th>
-              <th scope="col">Due</th>
+              <th scope="col">Activities Due</th>
               <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
@@ -347,6 +349,7 @@ brackets straight after it, with no space between:</p>
             <tr>
               <th scope="col">Assessment activity</th>
               <th scope="col">Weight (%)</th>
+              <th scope="col" id="assessDueHeader" hidden>Due Date</th>
               <th scope="col"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
@@ -676,14 +679,20 @@ function requisites() {
   return checked("reqYes") ? val("reqDetail") : "";
 }
 
+/* A row counts as used once it carries an activity or a weight. The due date
+   only counts in syllabus mode, since the column is unreachable on an outline
+   and a value left behind by a mode switch must not resurrect an empty row. */
 function assessRows() {
+  var syl = isSyllabus();
   var rows = [];
   Array.prototype.forEach.call(
     document.querySelectorAll("#assessBody tr"),
     function (tr) {
       var i = tr.querySelectorAll("input");
-      var activity = i[0].value.trim(), weight = i[1].value.trim();
-      if (activity || weight) rows.push([activity, weight]);
+      var activity = i[0].value.trim(),
+          weight = i[1].value.trim(),
+          due = i[2] ? i[2].value.trim() : "";
+      if (activity || weight || (syl && due)) rows.push([activity, weight, due]);
     }
   );
   return rows;
@@ -797,7 +806,7 @@ function buildHtml() {
       L.push("<table>");
       L.push("  <thead>");
       L.push('    <tr><th scope="col">Week</th><th scope="col">Topic</th>' +
-             '<th scope="col">Readings and activities</th><th scope="col">Due</th></tr>');
+             '<th scope="col">Readings and activities</th><th scope="col">Activities Due</th></tr>');
       L.push("  </thead>");
       L.push("  <tbody>");
       sched.forEach(function (r) {
@@ -817,12 +826,14 @@ function buildHtml() {
   if (rows.length) {
     L.push("<table>");
     L.push("  <thead>");
-    L.push('    <tr><th scope="col">Assessment activity</th><th scope="col">Weight</th></tr>');
+    L.push('    <tr><th scope="col">Assessment activity</th><th scope="col">Weight</th>' +
+           (syl ? '<th scope="col">Due Date</th>' : "") + "</tr>");
     L.push("  </thead>");
     L.push("  <tbody>");
     rows.forEach(function (r) {
       var w = r[1] ? esc(r[1]) + "%" : "";
-      L.push("    <tr><td>" + inline(r[0]) + "</td><td>" + w + "</td></tr>");
+      L.push("    <tr><td>" + inline(r[0]) + "</td><td>" + w + "</td>" +
+             (syl ? "<td>" + inline(r[2]) + "</td>" : "") + "</tr>");
     });
     L.push("  </tbody>");
     L.push("</table>");
@@ -1073,6 +1084,13 @@ function addAssessRow() {
   tr.appendChild(activity);
   tr.appendChild(weight);
 
+  /* The due date cell is always built so a mode switch never loses typing;
+     hiding it takes the input out of the tab order and the accessibility tree. */
+  var due = makeCell("assess-" + uid + "-due", "text", null);
+  due.className = "assess-due";
+  due.hidden = !isSyllabus();
+  tr.appendChild(due);
+
   var tdBtn = document.createElement("td");
   var btn = makeRemoveButton();
   btn.addEventListener("click", function () {
@@ -1101,6 +1119,7 @@ function relabelAssessRows() {
       var labels = tr.querySelectorAll("label");
       labels[0].textContent = "Row " + n + " assessment activity";
       labels[1].textContent = "Row " + n + " weight, percent";
+      if (labels[2]) labels[2].textContent = "Row " + n + " due date";
       var sr = tr.querySelector("button span");
       if (sr) sr.textContent = " assessment row " + n;
     }
@@ -1160,7 +1179,7 @@ function relabelScheduleRows() {
       labels[0].textContent = "Week number, row " + (idx + 1);
       labels[1].textContent = "Topic for " + ref;
       labels[2].textContent = "Readings and activities for " + ref;
-      labels[3].textContent = "Due for " + ref;
+      labels[3].textContent = "Activities due for " + ref;
       var sr = tr.querySelector("button span");
       if (sr) sr.textContent = " " + ref;
     }
@@ -1182,6 +1201,15 @@ function syncMode() {
 
   ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap", "privacyWrap"]
     .forEach(function (id) { document.getElementById(id).hidden = !syl; });
+
+  /* Due dates belong to a section, not to the course of record, so the column
+     appears on a syllabus only. */
+  document.getElementById("assessDueHeader").hidden = !syl;
+  Array.prototype.forEach.call(
+    document.querySelectorAll("#assessBody .assess-due"),
+    function (td) { td.hidden = !syl; }
+  );
+  document.getElementById("assessTable").className = syl ? "grid with-due" : "grid";
 
   document.getElementById("docTypeHint").textContent = T.hint;
   document.getElementById("assessCaptionText").textContent = T.assessCaption;
