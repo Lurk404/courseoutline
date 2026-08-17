@@ -94,8 +94,13 @@
   #source { font-family: ui-monospace, monospace; }
 
   /* The checklist marks state with words, never with colour alone (1.4.1). */
-  #checklist ul { list-style: none; padding: 0; margin: 0.5rem 0 0; }
+  #checklist ul { list-style: none; padding: 0; margin: 0.35rem 0 0; }
   #checklist li { margin: 0.2rem 0; }
+  #checklist h3 { font-size: 1rem; margin: 1rem 0 0; }
+  /* Focus moves here after a generate that leaves policy items outstanding.
+     Programmatic focus does not always trigger :focus-visible, so :focus is
+     matched too, guaranteeing a visible indicator (SC 2.4.7). */
+  #checklist:focus { outline: 3px solid #0b5fff; outline-offset: 2px; }
   .flag { font-weight: bold; }
 
   @media (max-width: 40rem) {
@@ -212,7 +217,7 @@ brackets straight after it, with no space between:</p>
   </fieldset>
 
   <fieldset>
-    <legend>Contact hours</legend>
+    <legend>Contact hours (at least one required)</legend>
     <p class="hint">Enter all three on the same basis &#8212; either hours per week or hours for
     the whole term, whichever your department uses. Leave a field blank to omit it; enter
     <code>0</code> to show it explicitly as zero.</p>
@@ -271,7 +276,7 @@ brackets straight after it, with no space between:</p>
 
   <fieldset id="instructorFieldset" hidden>
     <legend>Instructor</legend>
-    <p class="hint">Required on a syllabus. Office hours only where they apply.</p>
+    <p class="hint">A syllabus needs the instructor's name and at least one way to reach them. Office hours only where they apply.</p>
 
     <p class="field">
       <label for="instructors">Instructor name(s)</label>
@@ -305,7 +310,7 @@ brackets straight after it, with no space between:</p>
 
     <p class="field">
       <label for="courseContent" id="courseContentLabel">Course content / topic list</label>
-      <textarea id="courseContent" rows="6"></textarea>
+      <textarea id="courseContent" rows="7">Topics covered may vary by instructor. An example of topics covered might be:</textarea>
     </p>
 
     <p class="field">
@@ -315,7 +320,7 @@ brackets straight after it, with no space between:</p>
   </fieldset>
 
   <fieldset id="scheduleFieldset" hidden>
-    <legend>Detailed course schedule</legend>
+    <legend>Detailed course schedule (at least one week required)</legend>
     <p class="hint">The sequence of topics, labs, and deadlines. Required on a syllabus.</p>
 
     <div class="field">
@@ -342,7 +347,7 @@ brackets straight after it, with no space between:</p>
     <legend id="assessLegend">Assessment and grading</legend>
 
     <div class="field">
-      <p id="assessCaption"><strong id="assessCaptionText">Means of assessment and weighting</strong></p>
+      <p id="assessCaption"><strong id="assessCaptionText">Means of assessment and weighting</strong> (at least one required)</p>
       <div class="table-wrap" tabindex="0" role="group" aria-labelledby="assessCaption">
         <table id="assessTable" class="grid">
           <thead>
@@ -372,7 +377,7 @@ brackets straight after it, with no space between:</p>
     <legend>Materials</legend>
     <p class="field">
       <label for="textbook" id="textbookLabel">Textbooks and course materials</label>
-      <textarea id="textbook" rows="6"></textarea>
+      <textarea id="textbook" rows="7">Textbook selection may vary by instructor. An example of texts and course materials for this course might be:</textarea>
     </p>
 
     <div class="check-row" id="privacyWrap" hidden>
@@ -412,8 +417,8 @@ brackets straight after it, with no space between:</p>
 
 <hr>
 
-<h2 id="checklistHeading">Policy F1003 checklist</h2>
-<div id="checklist"></div>
+<h2 id="checklistHeading">Completeness check</h2>
+<div id="checklist" tabindex="-1"></div>
 
 <h2>Preview</h2>
 <iframe id="preview" title="Generated document preview"></iframe>
@@ -522,6 +527,15 @@ var MODE_TEXT = {
 };
 
 var OUTCOME_STEM = "Upon successful completion of this course, students will be able to";
+
+/* Lead-in sentences that belong to an outline of record only. These are seeded
+   values the instructor writes after, not placeholder attributes, so they carry
+   into the export. A syllabus states one section's actual topics and texts, so
+   the hedging is stripped when the mode changes. */
+var OUTLINE_STEMS = {
+  courseContent: "Topics covered may vary by instructor. An example of topics covered might be:",
+  textbook: "Textbook selection may vary by instructor. An example of texts and course materials for this course might be:"
+};
 
 function isSyllabus() {
   var el = document.getElementById("typeSyllabus");
@@ -720,12 +734,23 @@ function scheduleRows() {
   return rows;
 }
 
-/* Learning outcomes ship with a sentence stem already in the box. That stem on
-   its own is not an outcome, so it does not satisfy F1003 3.2(d). */
-function hasOutcomes() {
-  var v = val("learningOutcomes");
+function normalizeText(s) {
+  return String(s).replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/* True when a field holds something beyond the lead-in sentence it ships with.
+   A field seeded with a stem is not blank, so a plain truthiness test would
+   report it as complete before the instructor has written a word. Pass a null
+   stem for fields that ship empty. */
+function hasContentBeyond(id, stem) {
+  var v = val(id);
   if (!v) return false;
-  return v.replace(/\s+/g, " ").toLowerCase() !== OUTCOME_STEM.toLowerCase();
+  if (!stem) return true;
+  return normalizeText(v) !== normalizeText(stem);
+}
+
+function hasOutcomes() {
+  return hasContentBeyond("learningOutcomes", OUTCOME_STEM);
 }
 
 /* ------------------------------------------------------------------ *
@@ -891,65 +916,196 @@ function buildHtml() {
 }
 
 /* ------------------------------------------------------------------ *
- * Policy F1003 checklist
+ * Completeness tiers
  *
- * Only the items an instructor has to supply are listed. The clauses the tool
- * satisfies on its own \u2014 grading guidelines, the policy list, Student Services,
- * accommodations \u2014 are reported once as a group so the list stays scannable.
+ * Two separate things get conflated when a form is "required": what Policy
+ * F1003 obliges an outline to carry, and what Langara wants on top of that.
+ * Keeping them apart means an instructor who challenges a flagged field gets a
+ * straight answer about which it is. Neither tier blocks anything - Generate,
+ * Copy and Download always work on a part-finished document, because outlines
+ * get drafted over days and the preview is how people check progress.
+ * ------------------------------------------------------------------ */
+
+var FIELD_MARKERS = {
+  courseTitle: "required",
+  credits: "required",
+  ceus: "required",
+  courseDescription: "required",
+  learningOutcomes: "required",
+  textbook: "required",
+  instructors: "required",
+  department: "recommended",
+  yearSemester: "recommended",
+  semesterLength: "recommended",
+  mode: "recommended",
+  courseContent: "recommended",
+  effectiveDate: "recommended"
+};
+
+/* Marks labels in words rather than an asterisk, which needs a key to decode,
+   and sets aria-required on the policy tier.
+
+   aria-required rather than the native required attribute: three of these
+   fields ship seeded with a lead-in sentence, so a browser would consider them
+   satisfied while they are substantively blank. Native constraint validation
+   would report the wrong answer, and nothing here submits a form anyway. */
+function markFields() {
+  Object.keys(FIELD_MARKERS).forEach(function (id) {
+    var lab = document.querySelector('label[for="' + id + '"]');
+    var el = document.getElementById(id);
+    if (lab) {
+      var base = lab.textContent.replace(/\s*\((required|recommended)\)\s*$/, "");
+      lab.textContent = base + " (" + FIELD_MARKERS[id] + ")";
+    }
+    if (el && FIELD_MARKERS[id] === "required") el.setAttribute("aria-required", "true");
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Policy F1003 checklist
  * ------------------------------------------------------------------ */
 
 function checklistItems() {
   var syl = isSyllabus();
-  var items = [
-    ["Course code, number, and title", !!val("courseTitle"), "3.2(a)"],
-    ["Contact hours", !!totalHours(), "3.2(b)"],
-    [creditLabel(), !!creditValue(), "3.2(b)"],
-    ["Calendar course description", !!val("courseDescription"), "3.2(c)"],
-    ["Learning outcomes", hasOutcomes(), "3.2(d)"],
-    [syl ? "Specific textbooks and course materials" : "Typical textbooks and course materials",
-     !!val("textbook"), syl ? "3.4(b)" : "3.2(e)"],
-    [syl ? "Specific assessments and weighting" : "Typical assessments and weighting",
-     assessRows().length > 0, syl ? "3.4(c)" : "3.2(f)"]
-  ];
-  if (syl) {
-    items.push(["Instructor name(s) and contact information", !!val("instructors"), "3.4(a)"]);
-    items.push(["Detailed course schedule", scheduleRows().length > 0, "3.4(d)"]);
+  var items = [];
+  function add(tier, label, ok, clause, target) {
+    items.push({ tier: tier, label: label, ok: ok, clause: clause, target: target });
   }
+
+  add("policy", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
+  add("policy", creditLabel(), !!creditValue(), "3.2(b)",
+      creditUnit() === "ceus" ? "ceus" : "credits");
+  /* 3.2(b) requires contact hours, but a course need not have all three kinds,
+     so this is a group rule: any one of lecture, lab or seminar satisfies it. */
+  add("policy", "Contact hours (lecture, lab, or seminar)", !!totalHours(), "3.2(b)", "lectureHours");
+  add("policy", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
+  add("policy", "Learning outcomes", hasOutcomes(), "3.2(d)", "learningOutcomes");
+  add("policy",
+      syl ? "Specific textbooks and course materials" : "Typical textbooks and course materials",
+      hasContentBeyond("textbook", syl ? null : OUTLINE_STEMS.textbook),
+      syl ? "3.4(b)" : "3.2(e)", "textbook");
+  add("policy",
+      syl ? "Specific assessments and weighting" : "Typical assessments and weighting",
+      assessRows().length > 0, syl ? "3.4(c)" : "3.2(f)", "addAssessBtn");
+
+  if (syl) {
+    add("policy", "Instructor name(s)", !!val("instructors"), "3.4(a)", "instructors");
+    /* 3.4(a) asks for contact information; office hours are qualified "if
+       applicable", so they stay optional. Any one contact route satisfies it. */
+    add("policy", "Instructor contact information",
+        !!(val("email") || val("phone") || val("office")), "3.4(a)", "email");
+    add("policy", "Detailed course schedule", scheduleRows().length > 0, "3.4(d)", "addWeekBtn");
+  }
+
+  add("practice", "Department / programs offering the course", !!val("department"), null, "department");
+  if (syl) add("practice", "Year and semester", !!val("yearSemester"), null, "yearSemester");
+  add("practice", "Semester length", !!val("semesterLength"), null, "semesterLength");
+  add("practice", "Method of instruction", !!val("mode"), null, "mode");
+  add("practice", "Course content / topic list",
+      hasContentBeyond("courseContent", syl ? null : OUTLINE_STEMS.courseContent),
+      null, "courseContent");
+  add("practice", "Effective date", !!val("effectiveDate"), null, "effectiveDate");
+
   return items;
+}
+
+/* aria-invalid is held back until the first generate. Flagging a form the
+   moment it loads tells a screen-reader user every field is wrong before they
+   have typed anything. */
+var validated = false;
+
+function applyInvalidState() {
+  Array.prototype.forEach.call(
+    document.querySelectorAll("[aria-invalid]"),
+    function (el) { el.removeAttribute("aria-invalid"); }
+  );
+  if (!validated) return;
+  checklistItems().forEach(function (item) {
+    if (item.tier !== "policy" || item.ok) return;
+    var el = document.getElementById(item.target);
+    if (el && el.tagName !== "BUTTON") el.setAttribute("aria-invalid", "true");
+  });
 }
 
 function renderChecklist() {
   var host = document.getElementById("checklist");
   var items = checklistItems();
-  var missing = items.filter(function (i) { return !i[1]; });
+  var policy = items.filter(function (i) { return i.tier === "policy"; });
+  var practice = items.filter(function (i) { return i.tier === "practice"; });
+  var counts = {
+    policy: policy.filter(function (i) { return !i.ok; }).length,
+    practice: practice.filter(function (i) { return !i.ok; }).length
+  };
 
   while (host.firstChild) host.removeChild(host.firstChild);
 
   var intro = document.createElement("p");
-  intro.textContent = missing.length === 0
-    ? "All items you need to supply are present."
-    : missing.length + " of " + items.length + " items still need attention.";
+  if (!counts.policy && !counts.practice) {
+    intro.textContent = "Everything is filled in.";
+  } else {
+    var bits = [];
+    if (counts.policy) {
+      bits.push(counts.policy + " required item" + (counts.policy === 1 ? "" : "s"));
+    }
+    if (counts.practice) {
+      bits.push(counts.practice + " recommended item" + (counts.practice === 1 ? "" : "s"));
+    }
+    intro.textContent = bits.join(" and ") + " outstanding. Nothing is blocked \u2014 " +
+      "you can still generate, copy and download.";
+  }
   host.appendChild(intro);
 
-  var ul = document.createElement("ul");
-  items.forEach(function (item) {
-    var li = document.createElement("li");
-    var flag = document.createElement("span");
-    flag.className = "flag";
-    /* Words, not colour or icons alone \u2014 SC 1.4.1. */
-    flag.textContent = item[1] ? "Included" : "Missing";
-    li.appendChild(flag);
-    li.appendChild(document.createTextNode(" \u2014 " + item[0] + " (F1003 " + item[2] + ")"));
-    ul.appendChild(li);
-  });
-  host.appendChild(ul);
+  function group(title, note, list) {
+    var h = document.createElement("h3");
+    h.textContent = title;
+    host.appendChild(h);
+    var p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = note;
+    host.appendChild(p);
+
+    var ul = document.createElement("ul");
+    list.forEach(function (item) {
+      var li = document.createElement("li");
+      var flag = document.createElement("span");
+      flag.className = "flag";
+      /* Words, not colour or icons alone \u2014 SC 1.4.1. */
+      flag.textContent = item.ok ? "Included" : "Missing";
+      li.appendChild(flag);
+      li.appendChild(document.createTextNode(" \u2014 "));
+
+      /* An outstanding item links to the control that fixes it, so the summary
+         is a way in rather than a list of complaints (SC 3.3.3). */
+      if (item.ok) {
+        li.appendChild(document.createTextNode(item.label));
+      } else {
+        var a = document.createElement("a");
+        a.href = "#" + item.target;
+        a.textContent = item.label;
+        a.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          var target = document.getElementById(item.target);
+          if (target) target.focus();
+        });
+        li.appendChild(a);
+      }
+      if (item.clause) li.appendChild(document.createTextNode(" (F1003 " + item.clause + ")"));
+      ul.appendChild(li);
+    });
+    host.appendChild(ul);
+  }
+
+  group("Required by Policy F1003",
+        "The College obliges every course document to carry these.", policy);
+  group("Recommended by Langara practice",
+        "Not named in F1003, but expected on a Langara course document.", practice);
 
   var auto = document.createElement("p");
   auto.textContent = "Added automatically: grading guidelines link, College policy list, " +
     "Student Support link, and academic accommodations link.";
   host.appendChild(auto);
 
-  return missing.length;
+  return counts;
 }
 
 /* ------------------------------------------------------------------ *
@@ -964,7 +1120,12 @@ function setStatus(msg) {
   }, 6000);
 }
 
-function generate() {
+/* Nothing here refuses to run. A part-finished outline still previews, copies
+   and downloads; the summary and the status message carry the warning.
+   focusSummary is passed only by the Generate button: Download and Copy must
+   not steal focus, since Copy leaves the source textarea selected as its
+   fallback for browsers without clipboard access. */
+function generate(focusSummary) {
   var frag = buildHtml();
   document.getElementById("source").value = frag;
 
@@ -975,7 +1136,10 @@ function generate() {
     '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
     "<title>Preview</title></head><body>\n" + frag + "\n</body></html>";
 
-  var missing = renderChecklist();
+  validated = true;
+  var counts = renderChecklist();
+  applyInvalidState();
+
   var T = modeText();
   var parts = ["Course " + T.noun + " generated."];
 
@@ -983,10 +1147,19 @@ function generate() {
   if (assessRows().length && Math.abs(sum - 100) > 0.001) {
     parts.push("Assessment weightings total " + sum + "%, not 100%.");
   }
-  if (missing) {
-    parts.push(missing + " required item" + (missing === 1 ? "" : "s") + " still missing \u2014 see the checklist.");
+  if (counts.policy) {
+    parts.push(counts.policy + " item" + (counts.policy === 1 ? "" : "s") +
+               " required by policy still missing.");
+  }
+  if (counts.practice) {
+    parts.push(counts.practice + " recommended item" +
+               (counts.practice === 1 ? "" : "s") + " missing.");
   }
   setStatus(parts.join(" "));
+
+  if (focusSummary === true && counts.policy > 0) {
+    document.getElementById("checklist").focus();
+  }
   return frag;
 }
 
@@ -1195,6 +1368,21 @@ function relabelScheduleRows() {
  * lingering. The values stay in the DOM, so switching back restores them.
  * ------------------------------------------------------------------ */
 
+/* Adds or removes a lead-in sentence, leaving anything the instructor typed
+   after it alone. The stem is only stripped when it is still the opening line,
+   so an edited or deliberately reworded lead-in is never clobbered. */
+function syncStem(id, stem, wanted) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var v = el.value;
+  var leads = v.indexOf(stem) === 0;
+  if (wanted && !leads) {
+    el.value = v ? stem + "\n" + v : stem;
+  } else if (!wanted && leads) {
+    el.value = v.slice(stem.length).replace(/^\r?\n/, "");
+  }
+}
+
 function syncMode() {
   var syl = isSyllabus();
   var T = modeText();
@@ -1217,7 +1405,16 @@ function syncMode() {
   document.getElementById("courseContentLabel").textContent = T.contentLabel;
   document.getElementById("preview").title = "Generated course " + T.noun + " preview";
 
+  /* Outline-only lead-ins. Run before the checklist so it reads current values. */
+  Object.keys(OUTLINE_STEMS).forEach(function (id) {
+    syncStem(id, OUTLINE_STEMS[id], !syl);
+  });
+
+  /* After the mode-dependent labels above, so the markers are not overwritten. */
+  markFields();
+
   renderChecklist();
+  applyInvalidState();
 }
 
 function syncCreditUnit() {
@@ -1238,7 +1435,7 @@ function syncRequisites() {
  * Wiring
  * ------------------------------------------------------------------ */
 
-document.getElementById("generateBtn").addEventListener("click", generate);
+document.getElementById("generateBtn").addEventListener("click", function () { generate(true); });
 document.getElementById("downloadBtn").addEventListener("click", download);
 document.getElementById("copyBtn").addEventListener("click", copySource);
 document.getElementById("addAssessBtn").addEventListener("click", function () {
