@@ -87,7 +87,7 @@
   caption { text-align: left; font-weight: bold; padding-bottom: 0.35rem; }
   th, td {
     border: 1px solid #595959;
-    padding: 0.35rem;
+    padding: 0.5rem 0.6rem;
     text-align: left;
     vertical-align: top;
     /* Keeps absolutely positioned row labels inside their own cell instead of
@@ -815,6 +815,31 @@ function announceWeightTotal() {
   if (el && isSyllabus()) el.textContent = weightTotalText();
 }
 
+/* The one place the export departs from being class-free and style-free.
+
+   Everything else in the fragment leaves presentation to the host page's
+   stylesheet, which is the right default. Table cells are the exception: a host
+   page that styles no cell padding renders these tables tight enough to be hard
+   to read, and there is no class on the fragment for a stylesheet to hook.
+
+   Set CELL_STYLE to an empty string and the attributes disappear entirely,
+   handing the tables back to the host stylesheet. Do that once Langara's theme
+   carries a rule for them. */
+var CELL_STYLE = "padding: 0.5rem 0.75rem;";
+
+function cellStyleAttr() {
+  return CELL_STYLE ? ' style="' + esc(CELL_STYLE) + '"' : "";
+}
+
+function th(text) {
+  return '<th scope="col"' + cellStyleAttr() + ">" + esc(text) + "</th>";
+}
+
+/* The content is already escaped and link-parsed, so it is not escaped again. */
+function td(html) {
+  return "<td" + cellStyleAttr() + ">" + html + "</td>";
+}
+
 function heading(level, text) {
   return "<h" + level + ">" + esc(text) + "</h" + level + ">";
 }
@@ -906,14 +931,13 @@ function buildHtml() {
       schedBody.push("<table>");
       schedBody.push("<caption>Week-by-week schedule</caption>");
       schedBody.push("<thead>");
-      schedBody.push('<tr><th scope="col">Week</th><th scope="col">Topic</th>' +
-                     '<th scope="col">Readings and activities</th>' +
-                     '<th scope="col">Activities due</th></tr>');
+      schedBody.push("<tr>" + th("Week") + th("Topic") + th("Readings and activities") +
+                     th("Activities due") + "</tr>");
       schedBody.push("</thead>");
       schedBody.push("<tbody>");
       weeks.forEach(function (r) {
-        schedBody.push("<tr><td>" + inline(r[0]) + "</td><td>" + inline(r[1]) +
-                       "</td><td>" + inline(r[2]) + "</td><td>" + inline(r[3]) + "</td></tr>");
+        schedBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
+                       td(inline(r[2])) + td(inline(r[3])) + "</tr>");
       });
       schedBody.push("</tbody>");
       schedBody.push("</table>");
@@ -929,13 +953,13 @@ function buildHtml() {
     assessBody.push("<table>");
     assessBody.push("<caption>" + esc(W.assessCaption) + "</caption>");
     assessBody.push("<thead>");
-    assessBody.push('<tr><th scope="col">Assessment activity</th><th scope="col">Weight</th>' +
-                    (syl ? '<th scope="col">Due date</th>' : "") + "</tr>");
+    assessBody.push("<tr>" + th("Assessment activity") + th("Weight") +
+                    (syl ? th("Due date") : "") + "</tr>");
     assessBody.push("</thead>");
     assessBody.push("<tbody>");
     rows.forEach(function (r) {
-      assessBody.push("<tr><td>" + inline(r[0]) + "</td><td>" + inline(r[1]) + "</td>" +
-                      (syl ? "<td>" + inline(r[2]) + "</td>" : "") + "</tr>");
+      assessBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
+                      (syl ? td(inline(r[2])) : "") + "</tr>");
     });
     assessBody.push("</tbody>");
     assessBody.push("</table>");
