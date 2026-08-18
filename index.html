@@ -899,6 +899,13 @@ function buildHtml() {
 
   if (val("oneSentence")) L.push("<p>" + inline(val("oneSentence")) + "</p>");
 
+  /* The authoritative outline this syllabus is based on - syllabus only, since
+     an outline of record does not point at itself. It sits ahead of the course
+     facts because it is the document those facts are drawn from. */
+  if (syl && outlineLinkHtml()) {
+    L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
+  }
+
   /* Course facts, in the order they are asked for on the form. */
   L = L.concat(labelled(creditLabel(), creditValue()));
 
@@ -928,12 +935,6 @@ function buildHtml() {
   }
   if (checked("reqYes")) {
     L = L.concat(labelled("Pre/corequisites", val("reqDetail")));
-  }
-
-  /* The authoritative outline this syllabus is based on - syllabus only, since
-     an outline of record does not point at itself. */
-  if (syl && outlineLinkHtml()) {
-    L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
   }
 
   /* Transfer credit is boilerplate rather than a field, but it is a labelled
