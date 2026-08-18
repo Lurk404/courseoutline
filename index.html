@@ -890,6 +890,54 @@ function outlineLinkHtml() {
   return href ? anchor(href, OUTLINE_LINK_TEXT) : esc(v);
 }
 
+/* The stat band - course outline only.
+
+   Langara's course pages present contact hours and credits as a row of figures
+   rather than a list of sentences. The export carries no classes, so the band
+   is built from inline styles; the constants below are the only place to change
+   it.
+
+   A description list rather than plain divs: these are label and value pairs,
+   so if a CMS strips inline styles on paste the markup still reads as pairs
+   instead of collapsing into loose text. The dd margin is zeroed because
+   browsers indent it by default, which would push every figure off its label. */
+var STAT_BAND = {
+  list: "display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin: 1.5rem 0;",
+  label: "font-family: Arial, Helvetica, sans-serif; font-size: 1rem; color: #000000;",
+  /* 2rem is 24pt, which is large text, and large text needs only 3:1. #f15a22
+     on white is 3.37:1 - it passes here and would fail at a smaller size, so do
+     not shrink these figures without changing the colour. */
+  value: "font-family: Georgia, 'Times New Roman', serif; font-size: 2rem; color: #f15a22; margin: 0;"
+};
+
+function statBand() {
+  var stats = [];
+
+  if (creditValue()) stats.push([creditLabel(), creditValue()]);
+
+  [["Lecture hours", "lectureHours"],
+   ["Lab hours", "labHours"],
+   ["Seminar hours", "seminarHours"]].forEach(function (pair) {
+    var n = hourValue(pair[1]);
+    if (n !== null) stats.push([pair[0], String(n)]);
+  });
+
+  var total = totalHours();
+  if (total !== null) stats.push(["Total hours", String(total)]);
+
+  if (!stats.length) return [];
+
+  var out = ['<dl style="' + esc(STAT_BAND.list) + '">'];
+  stats.forEach(function (s) {
+    out.push("<div>" +
+      '<dt style="' + esc(STAT_BAND.label) + '">' + esc(s[0]) + "</dt>" +
+      '<dd style="' + esc(STAT_BAND.value) + '">' + esc(s[1]) + "</dd>" +
+      "</div>");
+  });
+  out.push("</dl>");
+  return out;
+}
+
 function buildHtml() {
   var L = [];
   var syl = isSyllabus();
@@ -906,17 +954,23 @@ function buildHtml() {
     L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
   }
 
-  /* Course facts, in the order they are asked for on the form. */
-  L = L.concat(labelled(creditLabel(), creditValue()));
-
+  /* Course facts, in the order they are asked for on the form. An outline shows
+     credits and hours as a band of figures; a syllabus keeps them as sentences,
+     since it carries year and semester alongside them. */
   var lecture = hourValue("lectureHours");
   var lab = hourValue("labHours");
   var seminar = hourValue("seminarHours");
   var total = totalHours();
-  if (lecture !== null) L = L.concat(labelled("Lecture hours", String(lecture)));
-  if (lab !== null) L = L.concat(labelled("Lab hours", String(lab)));
-  if (seminar !== null) L = L.concat(labelled("Seminar hours", String(seminar)));
-  if (total !== null) L = L.concat(labelled("Total hours", String(total)));
+
+  if (syl) {
+    L = L.concat(labelled(creditLabel(), creditValue()));
+    if (lecture !== null) L = L.concat(labelled("Lecture hours", String(lecture)));
+    if (lab !== null) L = L.concat(labelled("Lab hours", String(lab)));
+    if (seminar !== null) L = L.concat(labelled("Seminar hours", String(seminar)));
+    if (total !== null) L = L.concat(labelled("Total hours", String(total)));
+  } else {
+    L = L.concat(statBand());
+  }
 
   /* Which offering this is - syllabus only, and next to semester length since
      the two answer the same question at different scales. */
