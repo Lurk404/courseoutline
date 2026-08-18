@@ -169,6 +169,15 @@ brackets straight after it, with no space between:</p>
       <span class="hint">A single sentence that sits directly under the course title. Keep it
       shorter and plainer than the calendar description below.</span>
     </p>
+
+    <p class="field" id="outlineLinkWrap" hidden>
+      <label for="outlineLink">Course outline link</label>
+      <input type="text" id="outlineLink" inputmode="url"
+             placeholder="https://langara.ca/programs-and-courses/courses/...">
+      <span class="hint">The web address of the EDCO-approved course outline published on
+      langara.ca. Paste the address on its own, or use
+      <code>[wording](address)</code> if you want to choose the link wording.</span>
+    </p>
   </fieldset>
 
   <fieldset>
@@ -205,8 +214,9 @@ brackets straight after it, with no space between:</p>
     <legend>Contact hours (at least one required)</legend>
 
     <p class="hint">Enter lecture, lab, and seminar on the same basis &#8212; either hours per week
-    or hours for the whole term, whichever your department uses. A blank field is left out of the
-    outline; a field set to <code>0</code> is shown as zero.</p>
+    or hours for the whole term, whichever your department uses. A field left blank or set to
+    <code>0</code> is left out of the document, and a total appears only once two kinds of hour
+    are entered.</p>
 
     <p class="field">
       <label for="lectureHours">Lecture hours</label>
@@ -725,23 +735,30 @@ function creditLabel() {
   return creditUnit() === "ceus" ? "CEUs" : "Credits";
 }
 
-/* Blank means "not applicable to this course" and is left out. Zero is a real
-   answer and is shown, which is how a (3,0,0) style notation is written. */
+/* Blank and zero mean the same thing: a course with no seminar does not list
+   seminar hours at all, rather than listing them as zero. */
 function hourValue(id) {
   var raw = val(id);
   if (raw === "") return null;
   var n = Number(raw);
-  return isFinite(n) ? n : null;
+  if (!isFinite(n) || n === 0) return null;
+  return n;
 }
 
+function enteredHours() {
+  return ["lectureHours", "labHours", "seminarHours"]
+    .map(function (id) { return hourValue(id); })
+    .filter(function (n) { return n !== null; });
+}
+
+/* A total that repeats a single figure says nothing, so it appears only once
+   there is more than one kind of hour to add up. */
 function totalHours() {
-  var sum = 0;
-  var any = false;
-  ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
-    var n = hourValue(id);
-    if (n !== null) { sum += n; any = true; }
-  });
-  return any ? sum : null;
+  var hours = enteredHours();
+  if (hours.length < 2) return null;
+  var sum = hours.reduce(function (a, n) { return a + n; }, 0);
+  /* Half-hour contact times must not surface as 4.499999999999999. */
+  return Math.round(sum * 100) / 100;
 }
 
 function assessRows() {
@@ -859,6 +876,20 @@ function link(url, label) {
   return href ? anchor(href, label) : esc(label);
 }
 
+var OUTLINE_LINK_TEXT = "Approved course outline";
+
+/* The field takes a bare web address, because that is what someone pastes. A
+   bare address is not link syntax, so inline() would leave it as dead text -
+   it is wrapped here instead. Markdown is still honoured for anyone who wants
+   to choose the wording. */
+function outlineLinkHtml() {
+  var v = val("outlineLink");
+  if (!v) return "";
+  if (/\[[^\]]+\]\([^)\s]+\)/.test(v)) return inline(v);
+  var href = safeUrl(v);
+  return href ? anchor(href, OUTLINE_LINK_TEXT) : esc(v);
+}
+
 function buildHtml() {
   var L = [];
   var syl = isSyllabus();
@@ -897,6 +928,12 @@ function buildHtml() {
   }
   if (checked("reqYes")) {
     L = L.concat(labelled("Pre/corequisites", val("reqDetail")));
+  }
+
+  /* The authoritative outline this syllabus is based on - syllabus only, since
+     an outline of record does not point at itself. */
+  if (syl && outlineLinkHtml()) {
+    L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
   }
 
   /* Transfer credit is boilerplate rather than a field, but it is a labelled
@@ -1052,7 +1089,8 @@ var MODE_MARKERS = {
     email: "required",
     /* F1003 3.4(a) qualifies office hours with "if applicable"; Langara asks for
        an explicit answer instead, so a blank is never left ambiguous. */
-    officeHours: "required"
+    officeHours: "required",
+    outlineLink: "recommended"
   }
 };
 
@@ -1060,7 +1098,8 @@ var MODE_MARKERS = {
    when the mode changes. */
 var MARKED_FIELDS = ["courseTitle", "credits", "ceus", "courseDescription", "learningOutcomes",
   "textbook", "effectiveDate", "oneSentence", "semesterLength", "department", "mode",
-  "courseContent", "yearSemester", "instructors", "office", "phone", "email", "officeHours"];
+  "courseContent", "yearSemester", "instructors", "office", "phone", "email", "officeHours",
+  "outlineLink"];
 
 function markerMap() {
   var map = {};
@@ -1133,11 +1172,12 @@ function checklistItems() {
   /* Listed in form order, so the summary reads as a walk through the page. */
   add("required", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
   add("recommended", "One-sentence description", !!val("oneSentence"), null, "oneSentence");
+  if (syl) add(tierOf("outlineLink"), "Course outline link", !!val("outlineLink"), null, "outlineLink");
   add("required", creditLabel(), !!creditValue(), "3.2(b)",
       creditUnit() === "ceus" ? "ceus" : "credits");
   /* 3.2(b) requires contact hours, but a course need not have all three kinds,
      so this is a group rule: any one of the three satisfies it. */
-  add("required", "Contact hours (lecture, lab, or seminar)", totalHours() !== null, "3.2(b)", "lectureHours");
+  add("required", "Contact hours (lecture, lab, or seminar)", enteredHours().length > 0, "3.2(b)", "lectureHours");
   if (syl) add(tierOf("yearSemester"), "Year and semester", !!val("yearSemester"), null, "yearSemester");
   add("recommended", "Semester length", !!val("semesterLength"), null, "semesterLength");
   add(tierOf("mode"), "Method of delivery", !!val("mode"), null, "mode");
@@ -1483,7 +1523,7 @@ function syncMode() {
   var W = words();
 
   ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap", "privacyWrap",
-   "gradingWrap", "weightTotal"]
+   "gradingWrap", "weightTotal", "outlineLinkWrap"]
     .forEach(function (id) { document.getElementById(id).hidden = !syl; });
 
   /* A stale announcement must not survive a switch back to an outline. */
@@ -1514,8 +1554,10 @@ function syncBranches() {
 }
 
 function hoursTotalText() {
-  var total = totalHours();
-  return total === null ? "Total hours: not yet entered" : "Total hours: " + total;
+  var hours = enteredHours();
+  if (!hours.length) return "Total hours: not yet entered";
+  if (hours.length === 1) return "Total hours: omitted while only one kind of hour is entered";
+  return "Total hours: " + totalHours();
 }
 
 function syncHoursTotal() {
