@@ -155,6 +155,21 @@ brackets straight after it, with no space between:</p>
     </div>
   </fieldset>
 
+  <fieldset id="exportFormatFieldset" hidden>
+    <legend>Export format</legend>
+    <p class="hint" id="exportHint">A syllabus can go out as plain HTML or as a Brightspace (D2L)
+    page. An outline always goes to the College website as plain HTML, so this choice does not
+    apply to one and is not shown.</p>
+    <div class="radio-row">
+      <input type="radio" name="exportFormat" id="exportPaste" value="paste" checked>
+      <label for="exportPaste">Paste into page</label>
+    </div>
+    <div class="radio-row">
+      <input type="radio" name="exportFormat" id="exportBrightspace" value="brightspace">
+      <label for="exportBrightspace">Brightspace (D2L)</label>
+    </div>
+  </fieldset>
+
   <fieldset>
     <legend>Course identification</legend>
 
@@ -614,6 +629,136 @@ function words() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Export format
+ *
+ * Syllabus-only: an outline always goes to the College website as plain
+ * HTML, never to Brightspace, so the choice does not exist for one and the
+ * fieldset is hidden whenever the document type is not syllabus.
+ *
+ * isBrightspace() enforces that at the logic level too, not just by hiding
+ * the fieldset: it is gated on isSyllabus() directly, so even if the
+ * Brightspace radio were left checked underneath a hidden fieldset - stale
+ * state from a prior syllabus session, or direct DOM manipulation - an
+ * outline can never actually generate as a Brightspace document. syncMode()
+ * additionally resets the radio to Paste on switching to outline, so the
+ * form's visible state does not silently disagree with this. */
+function isBrightspace() {
+  var el = document.getElementById("exportBrightspace");
+  return !!(el && el.checked && isSyllabus());
+}
+
+/* Reproduced exactly as supplied from Langara's own asset library (the
+   trailing HTML comment names the source template file). __TITLE__ is the
+   only substitution point; every path, comment, and the unusual "pages/../"
+   segment are left untouched, since this is real, working production markup
+   and not something to "clean up" on the assumption the redundancy is a
+   mistake. */
+var BRIGHTSPACE_HEAD = [
+  '<!DOCTYPE html>',
+  '<html lang="en"><head>',
+  '   <!-- Required meta tags -->',
+  '   <meta charset="utf-8">',
+  '   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">',
+  '   <!-- Bootstrap CSS -->',
+  '   <link rel="stylesheet" href="/shared/2021_HTML_Templates-v3/pages/../_assets/thirdpartylib/bootstrap-4.3.1/css/bootstrap.min.css">',
+  '   <!-- Font Awesome CSS -->',
+  '   <link rel="stylesheet" href="/shared/2021_HTML_Templates-v3/pages/../_assets/thirdpartylib/fontawesome-free-5.9.0-web/css/all.min.css">',
+  '   <!-- Template CSS -->',
+  '   <link rel="stylesheet" href="/shared/2021_HTML_Templates-v3/pages/../_assets/css/styles.min.css">',
+  '   <link rel="stylesheet" href="/shared/2021_HTML_Templates-v3/pages/../_assets/css/custom.css">',
+  '   <!-- 2021_HTML_Templates-v3 / pages FILE 000_blank_v3 -->',
+  '   <title>__TITLE__</title>',
+  '</head>'
+].join("\n");
+
+/* The rest of the page template, reproduced the same way and for the same
+   reason as the head: real markup from Langara's asset library, left exactly
+   as supplied rather than reformatted to this file's own conventions.
+
+   Opens body, then a Bootstrap container-fluid > row > col-sm-10.offset-sm-1
+   column that holds the generated content - this is the one place real
+   Bootstrap grid classes are used rather than the inline auto-fit grids
+   above, because this part is being reproduced verbatim rather than authored
+   fresh. Unlike a self-built inline style, this column's actual width at any
+   given viewport depends on bootstrap.min.css loading correctly, which is not
+   something this tool can verify from here. */
+var BRIGHTSPACE_BODY_OPEN =
+  '<body><div class="container-fluid">\n' +
+  '<div class="row">\n' +
+  '<div class="col-sm-10 offset-sm-1">';
+
+/* Closes the content column, then a full-width footer holding the College
+   logo, then the closing grid tags and the template's script tags - jQuery,
+   Popper, and Bootstrap's own JS, then the template's own scripts.min.js.
+   The <script> tags wrapped in <p> tags is unusual but, like the redundant
+   "pages/../" path segment in the head, real production markup rather than
+   an error to silently correct.
+
+   Each script's closing tag below carries a backslash before its slash. This
+   whole constant sits inside the builder's own script element, and an HTML
+   parser ends a script element at the first closing script sequence it
+   scans - as plain text, not JavaScript, so it does not matter whether that
+   sequence sits in a string, a comment, or anywhere else in the element's
+   text. (This comment avoids spelling that sequence out literally for the
+   same reason.) The backslash breaks the exact character run the parser is
+   scanning for; the string still evaluates to the correct closing tag once
+   JavaScript reads the escape, so the generated output is unaffected. */
+var BRIGHTSPACE_BODY_CLOSE =
+  '</div>\n' +
+  '<div class="col-12"><footer>\n' +
+  '<p><img src="/shared/2021_HTML_Templates-v3/pages/../_assets/img/logo.png" alt="logo"></p>\n' +
+  '</footer></div>\n' +
+  '</div>\n' +
+  '</div>\n' +
+  '<p>\n' +
+  '<script src="/shared/2021_HTML_Templates-v3/pages/../_assets/thirdpartylib/jquery/jquery-3.3.1.slim.min.js"><\/script>\n' +
+  '<script src="/shared/2021_HTML_Templates-v3/pages/../_assets/thirdpartylib/popper-js/popper.min.js"><\/script>\n' +
+  '<script src="/shared/2021_HTML_Templates-v3/pages/../_assets/thirdpartylib/bootstrap-4.3.1/js/bootstrap.min.js"><\/script>\n' +
+  '</p>\n' +
+  '<!-- Template JavaScript -->\n' +
+  '<p>\n' +
+  '<script src="/shared/2021_HTML_Templates-v3/pages/../_assets/js/scripts.min.js"><\/script>\n' +
+  '</p></body></html>';
+
+/* Two reflowing grids, built with CSS Grid's auto-fit/minmax rather than
+   Bootstrap's own .row/.col-* classes, even though this page loads Bootstrap.
+   Reasoning: auto-fit + minmax reflows on its own, with no media query and no
+   dependency on whether bootstrap.min.css actually resolves in a given D2L
+   deployment - the grid keeps working even if that link 404s. It is also the
+   one technique that can express "reflow by width" in a plain style
+   attribute at all, since @media rules cannot appear there.
+
+   The stat grid uses div/p rather than dl/dt/dd. Confirmed directly: with
+   identical grid CSS on both, the Brightspace editor stripped the <dl>'s
+   style on save while leaving the instructor grid's <div> alone - not a CSS
+   specificity problem (no amount of !important survives a style attribute
+   that gets removed outright), but the editor's own content filter treating
+   dl/dt/dd more restrictively than div/p. A prior version of this comment
+   attributed the same symptom to a possible CSS override and added
+   !important as a defensive measure; that diagnosis is superseded by this
+   more direct evidence, though !important is kept regardless; it costs
+   nothing and covers a genuine cascade conflict if one also exists. */
+var BRIGHTSPACE_GRID = {
+  /* One div carries both the width cap/centering and the grid itself, same
+     shape as instructorWrap below. Caps at four ~150px columns before
+     wrapping to a second row: with a 1.5rem gap, 4 columns of 150px is 700px
+     including gaps, so a fifth stat (credits/CEUs plus all three hour types
+     plus their total) spills over rather than squeezing a fifth narrow
+     column into the same row. */
+  statWrap: "max-width: 700px; margin: 1.5rem auto; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; gap: 1.5rem;",
+  /* Replaces STAT_BAND.label/.value for this context only: margin: 0 on both
+     (not just the value, as dd needed) keeps the label and its figure
+     stacked tight, since <p> carries its own default vertical margin that
+     <dt>/<dd> did not. */
+  statLabel: "margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 1rem; color: #000000;",
+  statValue: "margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 3rem; color: #f15a22;",
+  /* Wider minimum than the stat grid: office hours in particular can run to a
+     full sentence, and 150px would wrap that awkwardly. Caps at three
+     ~200px columns (680px including gaps) before a fourth field wraps down. */
+  instructorWrap: "max-width: 680px; margin: 1rem 0; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 1rem 1.5rem;"
+};
+
+/* ------------------------------------------------------------------ *
  * Escaping and inline links
  * ------------------------------------------------------------------ */
 
@@ -866,6 +1011,13 @@ function labelled(label, value) {
   return ["<p><strong>" + esc(label) + ":</strong> " + inline(value) + "</p>"];
 }
 
+/* Same as labelled(), but as a grid cell: margin: 0 stops the paragraph's own
+   default vertical spacing from adding to the grid's own gap between cells. */
+function labelledGridCell(label, value) {
+  if (value === null || value === undefined || value === "") return [];
+  return ['<p style="margin: 0;"><strong>' + esc(label) + ":</strong> " + inline(value) + "</p>"];
+}
+
 function section(level, title, body) {
   if (!body || !body.length) return [];
   return [""].concat(heading(level, title), body);
@@ -890,12 +1042,15 @@ function outlineLinkHtml() {
   return href ? anchor(href, OUTLINE_LINK_TEXT) : esc(v);
 }
 
-/* The stat band - course outline only.
+/* The stat band for credits and hours.
 
-   Langara's course pages present contact hours and credits as a row of figures
-   rather than a list of sentences. The export carries no classes, so the band
-   is built from inline styles; the constants below are the only place to change
-   it.
+   Standard export: an outline shows this as a flexbox row of figures, a
+   syllabus keeps sentences (see buildHtml). Brightspace export: both document
+   types use this same grid-based band, since the LMS page benefits from the
+   same structured layout regardless of which document it is.
+
+   The export carries no classes, so the band is built from inline styles; the
+   constants below are the only place to change it.
 
    A description list rather than plain divs: these are label and value pairs,
    so if a CMS strips inline styles on paste the markup still reads as pairs
@@ -913,7 +1068,9 @@ var STAT_BAND = {
   /* 3rem is 36pt, well past the 18pt/24px threshold for large text, which
      needs only 3:1 contrast. #f15a22 on white is 3.37:1 - it passes at this
      size and would fail at body size, so do not shrink these figures without
-     changing the colour. */
+     changing the colour. This holds regardless of export format: the figure
+     styling itself does not change for Brightspace, only the container's
+     layout mechanism does. */
   value: "font-family: Georgia, 'Times New Roman', serif; font-size: 3rem; color: #f15a22; margin: 0;"
 };
 
@@ -934,22 +1091,42 @@ function statBand() {
 
   if (!stats.length) return [];
 
-  var out = ['<div style="' + esc(STAT_BAND.wrap) + '">',
-             '<dl style="' + esc(STAT_BAND.list) + '">'];
-  stats.forEach(function (s) {
-    out.push('<div style="' + esc(STAT_BAND.column) + '">' +
-      '<dt style="' + esc(STAT_BAND.label) + '">' + esc(s[0]) + "</dt>" +
-      '<dd style="' + esc(STAT_BAND.value) + '"><strong>' + esc(s[1]) + "</strong></dd>" +
-      "</div>");
-  });
-  out.push("</dl>");
-  out.push("</div>");
+  var bs = isBrightspace();
+  var out = [];
+
+  if (bs) {
+    /* div/p, not dl/dt/dd - see the comment on BRIGHTSPACE_GRID. One div
+       carries both the width cap and the grid; each stat is a centered div
+       holding a label paragraph and a value paragraph, matching the same
+       element choices already confirmed to survive the Brightspace editor
+       in the instructor grid below. */
+    out.push('<div style="' + esc(BRIGHTSPACE_GRID.statWrap) + '">');
+    stats.forEach(function (s) {
+      out.push('<div style="' + esc(STAT_BAND.column) + '">');
+      out.push('<p style="' + esc(BRIGHTSPACE_GRID.statLabel) + '">' + esc(s[0]) + "</p>");
+      out.push('<p style="' + esc(BRIGHTSPACE_GRID.statValue) + '"><strong>' + esc(s[1]) + "</strong></p>");
+      out.push("</div>");
+    });
+    out.push("</div>");
+  } else {
+    out.push('<div style="' + esc(STAT_BAND.wrap) + '">');
+    out.push('<dl style="' + esc(STAT_BAND.list) + '">');
+    stats.forEach(function (s) {
+      out.push('<div style="' + esc(STAT_BAND.column) + '">' +
+        '<dt style="' + esc(STAT_BAND.label) + '">' + esc(s[0]) + "</dt>" +
+        '<dd style="' + esc(STAT_BAND.value) + '"><strong>' + esc(s[1]) + "</strong></dd>" +
+        "</div>");
+    });
+    out.push("</dl>");
+    out.push("</div>");
+  }
   return out;
 }
 
 function buildHtml() {
   var L = [];
   var syl = isSyllabus();
+  var bs = isBrightspace();
   var W = words();
 
   L.push(heading(1, val("courseTitle") || W.fallbackTitle));
@@ -963,15 +1140,18 @@ function buildHtml() {
     L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
   }
 
-  /* Course facts, in the order they are asked for on the form. An outline shows
-     credits and hours as a band of figures; a syllabus keeps them as sentences,
-     since it carries year and semester alongside them. */
+  /* Course facts, in the order they are asked for on the form. An outline
+     always shows credits and hours as a band of figures; a syllabus keeps
+     them as sentences on a standard export, since it carries year and
+     semester alongside them - but takes the same band on a Brightspace
+     export, where the LMS page benefits from the same structured layout
+     regardless of document type. */
   var lecture = hourValue("lectureHours");
   var lab = hourValue("labHours");
   var seminar = hourValue("seminarHours");
   var total = totalHours();
 
-  if (syl) {
+  if (syl && !bs) {
     L = L.concat(labelled(creditLabel(), creditValue()));
     if (lecture !== null) L = L.concat(labelled("Lecture hours", String(lecture)));
     if (lab !== null) L = L.concat(labelled("Lab hours", String(lab)));
@@ -1007,16 +1187,31 @@ function buildHtml() {
   L.push("<p><strong>Transfer credit:</strong> Check current transfer agreements for this " +
          "course at " + link(TRANSFER_URL, TRANSFER_LABEL) + ".</p>");
 
-  /* Instructor - syllabus only, F1003 3.4(a) */
+  /* Instructor - syllabus only, F1003 3.4(a). Name stays a full-width intro
+     line even on Brightspace: it is the one field with no fixed length, and a
+     long name wrapping awkwardly inside a narrow grid cell is a worse outcome
+     than leaving it outside the grid. The other four - all short, bounded
+     fields - go into the grid together. */
   if (syl) {
     var instructorBody = [];
     if (val("instructors")) instructorBody.push("<p>" + inline(val("instructors")) + "</p>");
+
+    var details = [];
     [["Office", val("office")],
      ["Phone", val("phone")],
      ["Email", val("email")],
      ["Office hours", val("officeHours")]].forEach(function (pair) {
-      instructorBody = instructorBody.concat(labelled(pair[0], pair[1]));
+      details = details.concat(bs ? labelledGridCell(pair[0], pair[1]) : labelled(pair[0], pair[1]));
     });
+
+    if (bs && details.length) {
+      instructorBody.push('<div style="' + esc(BRIGHTSPACE_GRID.instructorWrap) + '">');
+      instructorBody = instructorBody.concat(details);
+      instructorBody.push("</div>");
+    } else {
+      instructorBody = instructorBody.concat(details);
+    }
+
     L = L.concat(section(2, "Instructor", instructorBody));
   }
 
@@ -1108,7 +1303,12 @@ function buildHtml() {
   }
   L = L.concat(section(2, "Versioning", versionBody));
 
-  return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  var fragment = L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (!bs) return fragment;
+
+  var title = esc(val("courseTitle") || W.fallbackTitle);
+  return BRIGHTSPACE_HEAD.replace("__TITLE__", title) +
+    BRIGHTSPACE_BODY_OPEN + "\n" + fragment + "\n" + BRIGHTSPACE_BODY_CLOSE;
 }
 
 /* ------------------------------------------------------------------ *
@@ -1587,8 +1787,15 @@ function syncMode() {
   var W = words();
 
   ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap", "privacyWrap",
-   "gradingWrap", "weightTotal", "outlineLinkWrap"]
+   "gradingWrap", "weightTotal", "outlineLinkWrap", "exportFormatFieldset"]
     .forEach(function (id) { document.getElementById(id).hidden = !syl; });
+
+  /* An outline can only ever be plain HTML for the College website, never
+     Brightspace, so switching to outline resets the (now hidden) choice
+     rather than leaving a stale "Brightspace" selection underneath it. This
+     also means a syllabus that had Brightspace selected returns to Paste by
+     default if the user leaves and comes back to it via an outline. */
+  if (!syl) document.getElementById("exportPaste").checked = true;
 
   /* A stale announcement must not survive a switch back to an outline. */
   if (!syl) document.getElementById("weightAnnounce").textContent = "";
@@ -1636,11 +1843,17 @@ function generate(announce) {
   var html = buildHtml();
   document.getElementById("source").value = html;
 
-  /* The export is a fragment, but the preview needs a whole document so the
-     iframe has a declared charset and does not mis-render em dashes. */
-  document.getElementById("preview").setAttribute("srcdoc",
-    '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
-    '<title>Course outline preview</title></head><body>' + html + "</body></html>");
+  /* A standard export is a fragment and needs a document wrapped around it for
+     the preview iframe, so it has a declared charset and does not mis-render
+     em dashes. A Brightspace export is already a full document - complete
+     with its own charset meta tag - so wrapping it again would nest a second
+     <html>/<head>/<body> inside the first, which browsers recover from
+     unpredictably rather than correctly. */
+  var previewDoc = /^\s*<!DOCTYPE/i.test(html)
+    ? html
+    : '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+      '<title>Course outline preview</title></head><body>' + html + "</body></html>";
+  document.getElementById("preview").setAttribute("srcdoc", previewDoc);
 
   var counts = renderChecklist();
 
@@ -1658,7 +1871,9 @@ function generate(announce) {
 
 function fileName() {
   var base = val("courseTitle").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
-  return (base || words().fileStem) + ".html";
+  var stem = base || words().fileStem;
+  if (isBrightspace()) stem += "-brightspace";
+  return stem + ".html";
 }
 
 function download() {
@@ -1706,6 +1921,11 @@ function init() {
       syncMode();
       setStatus(isSyllabus() ? "Switched to course syllabus." : "Switched to course outline.");
       renderChecklist();
+    });
+  });
+  ["exportPaste", "exportBrightspace"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", function () {
+      setStatus(isBrightspace() ? "Export format set to Brightspace (D2L)." : "Export format set to Paste into page.");
     });
   });
   ["unitCredits", "unitCeus"].forEach(function (id) {
