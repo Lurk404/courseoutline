@@ -155,21 +155,6 @@ brackets straight after it, with no space between:</p>
     </div>
   </fieldset>
 
-  <fieldset id="exportFormatFieldset" hidden>
-    <legend>Export format</legend>
-    <p class="hint" id="exportHint">A syllabus can go out as plain HTML or as a Brightspace (D2L)
-    page. An outline always goes to the College website as plain HTML, so this choice does not
-    apply to one and is not shown.</p>
-    <div class="radio-row">
-      <input type="radio" name="exportFormat" id="exportPaste" value="paste" checked>
-      <label for="exportPaste">Paste into page</label>
-    </div>
-    <div class="radio-row">
-      <input type="radio" name="exportFormat" id="exportBrightspace" value="brightspace">
-      <label for="exportBrightspace">Brightspace (D2L)</label>
-    </div>
-  </fieldset>
-
   <fieldset>
     <legend>Course identification</legend>
 
@@ -483,6 +468,21 @@ brackets straight after it, with no space between:</p>
     is added once an archive address is set in the file.</p>
   </fieldset>
 
+  <fieldset id="exportFormatFieldset" hidden>
+    <legend>Export format</legend>
+    <p class="hint" id="exportHint">A syllabus can go out as plain HTML or as a Brightspace (D2L)
+    page. An outline always goes to the College website as plain HTML, so this choice does not
+    apply to one and is not shown.</p>
+    <div class="radio-row">
+      <input type="radio" name="exportFormat" id="exportPaste" value="paste" checked>
+      <label for="exportPaste">Paste into page</label>
+    </div>
+    <div class="radio-row">
+      <input type="radio" name="exportFormat" id="exportBrightspace" value="brightspace">
+      <label for="exportBrightspace">Brightspace (D2L)</label>
+    </div>
+  </fieldset>
+
   <p class="actions">
     <button type="button" id="generateBtn">Generate outline</button>
     <button type="button" id="downloadBtn">Download HTML</button>
@@ -720,42 +720,51 @@ var BRIGHTSPACE_BODY_CLOSE =
   '<script src="/shared/2021_HTML_Templates-v3/pages/../_assets/js/scripts.min.js"><\/script>\n' +
   '</p></body></html>';
 
-/* Two reflowing grids, built with CSS Grid's auto-fit/minmax rather than
-   Bootstrap's own .row/.col-* classes, even though this page loads Bootstrap.
-   Reasoning: auto-fit + minmax reflows on its own, with no media query and no
-   dependency on whether bootstrap.min.css actually resolves in a given D2L
-   deployment - the grid keeps working even if that link 404s. It is also the
-   one technique that can express "reflow by width" in a plain style
+/* The instructor grid, built with CSS Grid's auto-fit/minmax rather than
+   Bootstrap's own .row/.col-* classes, even though the Brightspace page loads
+   Bootstrap. Reasoning: auto-fit + minmax reflows on its own, with no media
+   query and no dependency on whether bootstrap.min.css actually resolves in a
+   given D2L deployment - the grid keeps working even if that link 404s. It is
+   also the one technique that can express "reflow by width" in a plain style
    attribute at all, since @media rules cannot appear there.
 
-   The stat grid uses div/p rather than dl/dt/dd. Confirmed directly: with
-   identical grid CSS on both, the Brightspace editor stripped the <dl>'s
-   style on save while leaving the instructor grid's <div> alone - not a CSS
-   specificity problem (no amount of !important survives a style attribute
-   that gets removed outright), but the editor's own content filter treating
-   dl/dt/dd more restrictively than div/p. A prior version of this comment
-   attributed the same symptom to a possible CSS override and added
-   !important as a defensive measure; that diagnosis is superseded by this
-   more direct evidence, though !important is kept regardless; it costs
+   Used in both export formats, like the syllabus stat band, so the same
+   syllabus does not look different depending on where it is going. It uses
+   div/p rather than dl/dt/dd, and so does the stat band when the export
+   format is Brightspace. Confirmed directly: with identical grid CSS on both,
+   the Brightspace editor stripped a <dl>'s style on save while leaving this
+   <div> alone - not a CSS specificity problem (no amount of !important
+   survives a style attribute that gets removed outright), but the editor's
+   own content filter treating dl/dt/dd more restrictively than div/p. An
+   earlier version attributed the same symptom to a possible CSS override and
+   added !important as a defensive measure; that diagnosis is superseded by
+   this more direct evidence, though !important is kept regardless - it costs
    nothing and covers a genuine cascade conflict if one also exists. */
-var BRIGHTSPACE_GRID = {
-  /* One div carries both the width cap/centering and the grid itself, same
-     shape as instructorWrap below. Caps at four ~150px columns before
-     wrapping to a second row: with a 1.5rem gap, 4 columns of 150px is 700px
-     including gaps, so a fifth stat (credits/CEUs plus all three hour types
-     plus their total) spills over rather than squeezing a fifth narrow
-     column into the same row. */
-  statWrap: "max-width: 700px; margin: 1.5rem auto; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important; gap: 1.5rem;",
-  /* Replaces STAT_BAND.label/.value for this context only: margin: 0 on both
-     (not just the value, as dd needed) keeps the label and its figure
-     stacked tight, since <p> carries its own default vertical margin that
-     <dt>/<dd> did not. */
-  statLabel: "margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 1rem; color: #000000;",
-  statValue: "margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 3rem; color: #f15a22;",
-  /* Wider minimum than the stat grid: office hours in particular can run to a
-     full sentence, and 150px would wrap that awkwardly. Caps at three
-     ~200px columns (680px including gaps) before a fourth field wraps down. */
-  instructorWrap: "max-width: 680px; margin: 1rem 0; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 1rem 1.5rem;"
+var INSTRUCTOR_GRID = {
+  /* Two columns, deliberately, so the four fields pair up as Office / Office
+     hours above Phone / Email.
+
+     "auto 1fr" rather than two equal tracks, because equal tracks were the
+     reason office hours wrapped: they gave Office a share it did not need
+     while starving the field that did. "Office: A322b" wants about 110px and
+     "Phone: 604 323 5511" about 150px, so the auto track settles near 150px
+     and hands everything else to the second - roughly 600px inside a
+     Brightspace content column, against the ~420px an office hours line
+     typically needs. auto also shrinks toward min-content under pressure
+     rather than forcing overflow, so a long office string wraps instead of
+     pushing a horizontal scrollbar onto the page.
+
+     No max-width, so the second track runs to the edge of whatever column
+     the document sits in, and office hours breaks only if it genuinely
+     reaches that edge. The trade-off is that this no longer collapses to a
+     single column on a phone the way an auto-fit/minmax grid did - at narrow
+     widths it stays two uneven columns and the text wraps inside them. That
+     wraps rather than overflows, so there is still no horizontal scrolling,
+     but it is tighter than a stacked layout would be. Cap this back to a
+     fixed width if mobile stacking ever matters more than the one-line
+     office hours. */
+  wrap: "margin: 1rem 0; display: grid !important; " +
+        "grid-template-columns: auto 1fr !important; gap: 0.75rem 1.5rem;"
 };
 
 /* ------------------------------------------------------------------ *
@@ -1042,20 +1051,21 @@ function outlineLinkHtml() {
   return href ? anchor(href, OUTLINE_LINK_TEXT) : esc(v);
 }
 
-/* The stat band for credits and hours.
+/* The stat band for credits and hours. Two variants, chosen by document type
+   rather than by export format:
 
-   Standard export: an outline shows this as a flexbox row of figures, a
-   syllabus keeps sentences (see buildHtml). Brightspace export: both document
-   types use this same grid-based band, since the LMS page benefits from the
-   same structured layout regardless of which document it is.
+   Outline (STAT_BAND) - display-sized brand figures, matching how Langara's
+   own course pages present these. An outline is a public-facing record on the
+   College website, so it takes the marketing treatment.
 
-   The export carries no classes, so the band is built from inline styles; the
-   constants below are the only place to change it.
+   Syllabus (SYLLABUS_STAT_BAND) - the same information dialled back to
+   ordinary body text. A syllabus is read by enrolled students inside an LMS
+   or a plain page, where 3rem orange figures are louder than the content
+   warrants. Used in BOTH export formats, so the same document does not look
+   different depending on where it is going.
 
-   A description list rather than plain divs: these are label and value pairs,
-   so if a CMS strips inline styles on paste the markup still reads as pairs
-   instead of collapsing into loose text. The dd margin is zeroed because
-   browsers indent it by default, which would push every figure off its label. */
+   The export carries no classes, so both are built from inline styles; the
+   constants below are the only place to change them. */
 var STAT_BAND = {
   wrap: "width: fit-content; margin: 0 auto;",
   list: "display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin: 1.5rem 0;",
@@ -1068,10 +1078,42 @@ var STAT_BAND = {
   /* 3rem is 36pt, well past the 18pt/24px threshold for large text, which
      needs only 3:1 contrast. #f15a22 on white is 3.37:1 - it passes at this
      size and would fail at body size, so do not shrink these figures without
-     changing the colour. This holds regardless of export format: the figure
-     styling itself does not change for Brightspace, only the container's
-     layout mechanism does. */
+     changing the colour. */
   value: "font-family: Georgia, 'Times New Roman', serif; font-size: 3rem; color: #f15a22; margin: 0;"
+};
+
+var SYLLABUS_STAT_BAND = {
+  /* Sized so five stats - credits/CEUs plus all three kinds of hour plus
+     their total, the maximum this band can ever hold - fit one row at full
+     width. auto-fit packs floor((800 + 16) / (120 + 16)) = 6 tracks, so the
+     widest case has room to spare rather than wrapping 4 + 1.
+
+     800px is a tuned value, arrived at by eye against real content rather
+     than derived - do not "simplify" it back to a rounder number without
+     looking at the result. Because the tracks are 1fr, the cap also governs
+     how far apart the stats sit: a wider cap stretches each column past its
+     content and centres the label in the leftover space, so the visible
+     distance between stats is the gap plus that slack. */
+  wrap: "max-width: 800px; margin: 1.5rem auto; display: grid !important; " +
+        "grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important; gap: 0.75rem 1rem;",
+  column: "text-align: center;",
+  /* Lato is Langara's own face, loaded by the College's stylesheets; the rest
+     of the stack covers a plain page that does not load it. No font-size, so
+     the label sits at whatever the host page's body text is. */
+  label: "margin: 0; font-family: Lato, 'Helvetica Neue', Arial, sans-serif; font-weight: bold;",
+  /* Same sans-serif stack as the label, so the band reads as one typographic
+     unit. Note that this leaves label and figure identical in face, weight
+     and size - they are told apart by position alone, the label sitting
+     above its figure.
+
+     No colour declared, so both inherit the host page's own text colour. That
+     is deliberate rather than an omission: the brand orange cannot come along
+     at this size. #f15a22 on white is 3.37:1, which clears the 3:1 large-text
+     threshold the outline's 3rem figures rely on but fails the 4.5:1 that
+     applies at 1rem - bold or not, since 16px bold is still below the
+     18.66px large-text cutoff. Inheriting also means the figures stay
+     legible on a host page that is not white. */
+  value: "margin: 0; font-family: Lato, 'Helvetica Neue', Arial, sans-serif; font-size: 1rem;"
 };
 
 function statBand() {
@@ -1092,23 +1134,33 @@ function statBand() {
   if (!stats.length) return [];
 
   var bs = isBrightspace();
+  var syl = isSyllabus();
   var out = [];
 
-  if (bs) {
-    /* div/p, not dl/dt/dd - see the comment on BRIGHTSPACE_GRID. One div
-       carries both the width cap and the grid; each stat is a centered div
-       holding a label paragraph and a value paragraph, matching the same
-       element choices already confirmed to survive the Brightspace editor
-       in the instructor grid below. */
-    out.push('<div style="' + esc(BRIGHTSPACE_GRID.statWrap) + '">');
+  if (syl) {
+    /* Element choice tracks the export format, styling tracks the document
+       type. Brightspace gets div/p because that editor strips styling from
+       dl/dt/dd (confirmed by direct comparison - see INSTRUCTOR_GRID); a
+       plain-HTML export keeps dl/dt/dd, which pairs each label with its
+       figure programmatically rather than just visually. Same grid, same
+       styling, either way. */
+    var S = SYLLABUS_STAT_BAND;
+    out.push(bs ? '<div style="' + esc(S.wrap) + '">' : '<dl style="' + esc(S.wrap) + '">');
     stats.forEach(function (s) {
-      out.push('<div style="' + esc(STAT_BAND.column) + '">');
-      out.push('<p style="' + esc(BRIGHTSPACE_GRID.statLabel) + '">' + esc(s[0]) + "</p>");
-      out.push('<p style="' + esc(BRIGHTSPACE_GRID.statValue) + '"><strong>' + esc(s[1]) + "</strong></p>");
+      out.push('<div style="' + esc(S.column) + '">');
+      if (bs) {
+        out.push('<p style="' + esc(S.label) + '">' + esc(s[0]) + "</p>");
+        out.push('<p style="' + esc(S.value) + '"><strong>' + esc(s[1]) + "</strong></p>");
+      } else {
+        out.push('<dt style="' + esc(S.label) + '">' + esc(s[0]) + "</dt>");
+        out.push('<dd style="' + esc(S.value) + '"><strong>' + esc(s[1]) + "</strong></dd>");
+      }
       out.push("</div>");
     });
-    out.push("</div>");
+    out.push(bs ? "</div>" : "</dl>");
   } else {
+    /* Outline: the display-sized brand band, unchanged. An outline can never
+       be a Brightspace export, so dl/dt/dd is always safe here. */
     out.push('<div style="' + esc(STAT_BAND.wrap) + '">');
     out.push('<dl style="' + esc(STAT_BAND.list) + '">');
     stats.forEach(function (s) {
@@ -1140,26 +1192,12 @@ function buildHtml() {
     L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
   }
 
-  /* Course facts, in the order they are asked for on the form. An outline
-     always shows credits and hours as a band of figures; a syllabus keeps
-     them as sentences on a standard export, since it carries year and
-     semester alongside them - but takes the same band on a Brightspace
-     export, where the LMS page benefits from the same structured layout
-     regardless of document type. */
-  var lecture = hourValue("lectureHours");
-  var lab = hourValue("labHours");
-  var seminar = hourValue("seminarHours");
-  var total = totalHours();
-
-  if (syl && !bs) {
-    L = L.concat(labelled(creditLabel(), creditValue()));
-    if (lecture !== null) L = L.concat(labelled("Lecture hours", String(lecture)));
-    if (lab !== null) L = L.concat(labelled("Lab hours", String(lab)));
-    if (seminar !== null) L = L.concat(labelled("Seminar hours", String(seminar)));
-    if (total !== null) L = L.concat(labelled("Total hours", String(total)));
-  } else {
-    L = L.concat(statBand());
-  }
+  /* Course facts, in the order they are asked for on the form. Both document
+     types show credits and hours as a band of figures, in both export
+     formats - a syllabus previously kept them as sentences on a standard
+     export, which left the same document looking different depending on
+     where it was going. */
+  L = L.concat(statBand());
 
   /* Which offering this is - syllabus only, and next to semester length since
      the two answer the same question at different scales. */
@@ -1188,28 +1226,30 @@ function buildHtml() {
          "course at " + link(TRANSFER_URL, TRANSFER_LABEL) + ".</p>");
 
   /* Instructor - syllabus only, F1003 3.4(a). Name stays a full-width intro
-     line even on Brightspace: it is the one field with no fixed length, and a
-     long name wrapping awkwardly inside a narrow grid cell is a worse outcome
-     than leaving it outside the grid. The other four - all short, bounded
-     fields - go into the grid together. */
+     line above the grid: it is the one field with no fixed length, and a long
+     name wrapping awkwardly inside a narrow grid cell is a worse outcome than
+     leaving it outside. The other four go into a two-column grid, in an order
+     chosen for how they pair on a line rather than alphabetically or by
+     importance: Office beside Office hours (both about where and when to find
+     the instructor), Phone beside Email below them (both about how to reach
+     them). The grid flows in source order, so this ordering IS the layout -
+     changing the array below changes which fields share a row. */
   if (syl) {
     var instructorBody = [];
     if (val("instructors")) instructorBody.push("<p>" + inline(val("instructors")) + "</p>");
 
     var details = [];
     [["Office", val("office")],
+     ["Office hours", val("officeHours")],
      ["Phone", val("phone")],
-     ["Email", val("email")],
-     ["Office hours", val("officeHours")]].forEach(function (pair) {
-      details = details.concat(bs ? labelledGridCell(pair[0], pair[1]) : labelled(pair[0], pair[1]));
+     ["Email", val("email")]].forEach(function (pair) {
+      details = details.concat(labelledGridCell(pair[0], pair[1]));
     });
 
-    if (bs && details.length) {
-      instructorBody.push('<div style="' + esc(BRIGHTSPACE_GRID.instructorWrap) + '">');
+    if (details.length) {
+      instructorBody.push('<div style="' + esc(INSTRUCTOR_GRID.wrap) + '">');
       instructorBody = instructorBody.concat(details);
       instructorBody.push("</div>");
-    } else {
-      instructorBody = instructorBody.concat(details);
     }
 
     L = L.concat(section(2, "Instructor", instructorBody));
