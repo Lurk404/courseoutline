@@ -902,12 +902,19 @@ function outlineLinkHtml() {
    instead of collapsing into loose text. The dd margin is zeroed because
    browsers indent it by default, which would push every figure off its label. */
 var STAT_BAND = {
+  wrap: "width: fit-content; margin: 0 auto;",
   list: "display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; margin: 1.5rem 0;",
+  /* Centers the label and its figure on a shared vertical axis regardless of
+     which one is wider - "Seminar hours" over "0", or "Total hours" over a
+     two-digit sum. text-align is inherited, so setting it once here reaches
+     both the <dt> and the <dd> without repeating it on each. */
+  column: "text-align: center;",
   label: "font-family: Arial, Helvetica, sans-serif; font-size: 1rem; color: #000000;",
-  /* 2rem is 24pt, which is large text, and large text needs only 3:1. #f15a22
-     on white is 3.37:1 - it passes here and would fail at a smaller size, so do
-     not shrink these figures without changing the colour. */
-  value: "font-family: Georgia, 'Times New Roman', serif; font-size: 2rem; color: #f15a22; margin: 0;"
+  /* 3rem is 36pt, well past the 18pt/24px threshold for large text, which
+     needs only 3:1 contrast. #f15a22 on white is 3.37:1 - it passes at this
+     size and would fail at body size, so do not shrink these figures without
+     changing the colour. */
+  value: "font-family: Georgia, 'Times New Roman', serif; font-size: 3rem; color: #f15a22; margin: 0;"
 };
 
 function statBand() {
@@ -927,14 +934,16 @@ function statBand() {
 
   if (!stats.length) return [];
 
-  var out = ['<dl style="' + esc(STAT_BAND.list) + '">'];
+  var out = ['<div style="' + esc(STAT_BAND.wrap) + '">',
+             '<dl style="' + esc(STAT_BAND.list) + '">'];
   stats.forEach(function (s) {
-    out.push("<div>" +
+    out.push('<div style="' + esc(STAT_BAND.column) + '">' +
       '<dt style="' + esc(STAT_BAND.label) + '">' + esc(s[0]) + "</dt>" +
-      '<dd style="' + esc(STAT_BAND.value) + '">' + esc(s[1]) + "</dd>" +
+      '<dd style="' + esc(STAT_BAND.value) + '"><strong>' + esc(s[1]) + "</strong></dd>" +
       "</div>");
   });
   out.push("</dl>");
+  out.push("</div>");
   return out;
 }
 
