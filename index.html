@@ -22,8 +22,19 @@
   [hidden] { display: none !important; }
 
   /* Reflow: fluid controls, never fixed character widths. */
+  /* Every text-entry type is listed. tel and email look like plain text
+     fields but are separate input types, so leaving them out of this
+     selector left them at browser-default width and height while every
+     other field was full-width - the reason they looked wrong. url, search
+     and date are here pre-emptively, so adding one later does not
+     reintroduce the same mismatch. */
   input[type="text"],
   input[type="number"],
+  input[type="tel"],
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
   textarea,
   select {
     width: 100%;
@@ -163,7 +174,7 @@ brackets straight after it, with no space between:</p>
       <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition">
     </p>
 
-    <p class="field">
+    <p class="field" id="oneSentenceWrap">
       <label for="oneSentence">One-sentence description (recommended)</label>
       <input type="text" id="oneSentence" placeholder="e.g. An introduction to reading and writing about poetry, fiction, and drama.">
       <span class="hint">A single sentence that sits directly under the course title. Keep it
@@ -213,23 +224,25 @@ brackets straight after it, with no space between:</p>
   <fieldset>
     <legend>Contact hours (at least one required)</legend>
 
-    <p class="hint">Enter lecture, lab, and seminar on the same basis &#8212; either hours per week
-    or hours for the whole term, whichever your department uses. A field left blank or set to
+    <p class="hint">Enter these as <strong>hours per week</strong>. A field left blank or set to
     <code>0</code> is left out of the document, and a total appears only once two kinds of hour
     are entered.</p>
+    <p class="hint">Continuing Studies courses may instead enter each field as a
+    <strong>total for the whole course</strong> rather than per week. Whichever basis you use, use
+    the same one for all three fields.</p>
 
     <p class="field">
-      <label for="lectureHours">Lecture hours</label>
+      <label for="lectureHours">Lecture hours per week</label>
       <input type="number" id="lectureHours" step="0.5" min="0" placeholder="e.g. 3">
     </p>
 
     <p class="field">
-      <label for="labHours">Lab hours</label>
+      <label for="labHours">Lab hours per week</label>
       <input type="number" id="labHours" step="0.5" min="0" placeholder="e.g. 2">
     </p>
 
     <p class="field">
-      <label for="seminarHours">Seminar hours</label>
+      <label for="seminarHours">Seminar hours per week</label>
       <input type="number" id="seminarHours" step="0.5" min="0" placeholder="e.g. 0">
     </p>
 
@@ -252,7 +265,7 @@ brackets straight after it, with no space between:</p>
 
     <p class="field">
       <label for="semesterLength">Semester length in weeks (recommended)</label>
-      <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 14">
+      <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 15">
     </p>
 
     <p class="field">
@@ -346,7 +359,7 @@ brackets straight after it, with no space between:</p>
     </p>
   </fieldset>
 
-  <fieldset>
+  <fieldset id="topicListFieldset">
     <legend>General topic list</legend>
     <p class="field">
       <label for="courseContent">General topic list (recommended)</label>
@@ -447,9 +460,9 @@ brackets straight after it, with no space between:</p>
   </fieldset>
 
   <fieldset>
-    <legend>Departmental and course policies</legend>
+    <legend>Departmental and course guidelines</legend>
     <p class="field">
-      <label for="deptPolicies">Departmental and course policies</label>
+      <label for="deptPolicies">Departmental and course guidelines</label>
       <textarea id="deptPolicies" rows="6"></textarea>
       <span class="hint">Optional. Anything the department requires beyond the College policies,
       which are added automatically. Leave blank and the section is left out.</span>
@@ -475,11 +488,11 @@ brackets straight after it, with no space between:</p>
     apply to one and is not shown.</p>
     <div class="radio-row">
       <input type="radio" name="exportFormat" id="exportPaste" value="paste" checked>
-      <label for="exportPaste">Paste into page</label>
+      <label for="exportPaste">I want to paste into a document or webpage</label>
     </div>
     <div class="radio-row">
       <input type="radio" name="exportFormat" id="exportBrightspace" value="brightspace">
-      <label for="exportBrightspace">Brightspace (D2L)</label>
+      <label for="exportBrightspace">I want to paste into Brightspace</label>
     </div>
   </fieldset>
 
@@ -571,16 +584,22 @@ var ARCHIVE_LABEL = "View previous versions of this document";
    writes after, not placeholder attributes, so they carry into the export. */
 var OUTCOME_STEM = "Upon successful completion of this course, students will be able to";
 
-/* Two of the three belong to an outline of record only. A syllabus states one
-   section's actual topics and texts, so the hedging is stripped on the switch
-   and restored on the way back. The outcomes stem survives both. */
+/* The textbook lead-in hedges, and that hedging belongs to an outline of
+   record only - a syllabus states one section's actual texts - so it is
+   stripped on the switch and restored on the way back.
+
+   The topic list is not in here despite hedging the same way, because the
+   whole field is now outline-only: hidden on a syllabus rather than
+   reworded, so there is nothing to strip. Its stem is defined separately
+   below and simply stays put. */
 var OUTLINE_STEMS = {
-  courseContent: "Topics covered may vary by instructor. An example of topics covered might be:",
   textbook: "Textbook selection may vary by instructor. An example of texts and course materials for this course might be:"
 };
 
+var CONTENT_STEM = "Topics covered may vary by instructor. An example of topics covered might be:";
+
 var STEMS = {
-  courseContent: OUTLINE_STEMS.courseContent,
+  courseContent: CONTENT_STEM,
   textbook: OUTLINE_STEMS.textbook,
   learningOutcomes: OUTCOME_STEM
 };
@@ -1183,7 +1202,7 @@ function buildHtml() {
 
   L.push(heading(1, val("courseTitle") || W.fallbackTitle));
 
-  if (val("oneSentence")) L.push("<p>" + inline(val("oneSentence")) + "</p>");
+  if (!syl && val("oneSentence")) L.push("<p>" + inline(val("oneSentence")) + "</p>");
 
   /* The authoritative outline this syllabus is based on - syllabus only, since
      an outline of record does not point at itself. It sits ahead of the course
@@ -1256,7 +1275,7 @@ function buildHtml() {
   }
 
   L = L.concat(section(2, "Course description", blocks(val("courseDescription"))));
-  L = L.concat(section(2, "General topic list", blocks(val("courseContent"))));
+  if (!syl) L = L.concat(section(2, "General topic list", blocks(val("courseContent"))));
   L = L.concat(section(2, "Learning outcomes", blocks(val("learningOutcomes"))));
 
   /* Detailed course schedule - syllabus only, F1003 3.4(d) */
@@ -1324,7 +1343,7 @@ function buildHtml() {
   policyBody.push("<p>The full list is at " + link(POLICY_INDEX_URL, POLICY_INDEX_LABEL) + ".</p>");
   L = L.concat(section(2, "College policies", policyBody));
 
-  L = L.concat(section(2, "Departmental and course policies", blocks(val("deptPolicies"))));
+  L = L.concat(section(2, "Departmental and course guidelines", blocks(val("deptPolicies"))));
 
   L = L.concat(section(2, "Student support", [
     "<p>Langara offers academic and personal supports to students. See " +
@@ -1373,7 +1392,6 @@ var BASE_MARKERS = {
   learningOutcomes: "required",
   textbook: "required",
   effectiveDate: "required",
-  oneSentence: "recommended",
   semesterLength: "recommended",
   department: "recommended"
 };
@@ -1381,11 +1399,12 @@ var BASE_MARKERS = {
 var MODE_MARKERS = {
   outline: {
     mode: "recommended",
+    /* Both are outline-only fields, hidden on a syllabus - see syncMode. */
+    oneSentence: "recommended",
     courseContent: "recommended"
   },
   syllabus: {
     mode: "required",
-    courseContent: "required",
     yearSemester: "required",
     instructors: "required",
     office: "required",
@@ -1442,10 +1461,13 @@ function normalizeText(s) {
   return String(s).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-/* On a syllabus the two outline lead-ins are gone from the boxes entirely, so
-   only the outcomes stem still needs discounting. */
+/* Which lead-in, if any, a field is still carrying - so a box holding only
+   its lead-in can be told from one the instructor has written in. The topic
+   list keeps its stem in every mode, being outline-only; the textbook stem is
+   stripped on a syllabus, so there is nothing to discount there. */
 function stemFor(id) {
   if (id === "learningOutcomes") return OUTCOME_STEM;
+  if (id === "courseContent") return CONTENT_STEM;
   return isSyllabus() ? null : OUTLINE_STEMS[id] || null;
 }
 
@@ -1475,7 +1497,7 @@ function checklistItems() {
 
   /* Listed in form order, so the summary reads as a walk through the page. */
   add("required", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
-  add("recommended", "One-sentence description", !!val("oneSentence"), null, "oneSentence");
+  if (!syl) add("recommended", "One-sentence description", !!val("oneSentence"), null, "oneSentence");
   if (syl) add(tierOf("outlineLink"), "Course outline link", !!val("outlineLink"), null, "outlineLink");
   add("required", creditLabel(), !!creditValue(), "3.2(b)",
       creditUnit() === "ceus" ? "ceus" : "credits");
@@ -1496,7 +1518,7 @@ function checklistItems() {
   }
 
   add("required", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
-  add(tierOf("courseContent"), "General topic list", hasContentBeyond("courseContent"), null, "courseContent");
+  if (!syl) add("recommended", "General topic list", hasContentBeyond("courseContent"), null, "courseContent");
   add("required", "Learning outcomes", hasContentBeyond("learningOutcomes"), "3.2(d)", "learningOutcomes");
 
   if (syl) {
@@ -1829,6 +1851,13 @@ function syncMode() {
   ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap", "privacyWrap",
    "gradingWrap", "weightTotal", "outlineLinkWrap", "exportFormatFieldset"]
     .forEach(function (id) { document.getElementById(id).hidden = !syl; });
+
+  /* Outline-only, so these hide on the opposite condition. The one-sentence
+     description is a course-page lede that a syllabus has no use for, and the
+     general topic list is superseded by the syllabus's own week-by-week
+     schedule, which covers the same ground in more detail. */
+  ["oneSentenceWrap", "topicListFieldset"]
+    .forEach(function (id) { document.getElementById(id).hidden = syl; });
 
   /* An outline can only ever be plain HTML for the College website, never
      Brightspace, so switching to outline resets the (now hidden) choice
