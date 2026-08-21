@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Course Outline Builder</title>
+<title>Course Outline and Syllabus Builder</title>
 <style>
   /* Minimal CSS. Present only to satisfy accessibility criteria that markup
      alone cannot meet: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus
      Visible, 2.5.8 Target Size. Nothing here is decorative. */
 
   body {
-    max-width: 62rem;
+    max-width: 90%;
     margin: 0 auto;
     padding: 1rem;
     font-family: system-ui, -apple-system, sans-serif;
@@ -134,9 +134,9 @@
 <body>
 <main>
 
-<h1>Course Outline Builder</h1>
+<h1>Course Outline and Syllabus Builder</h1>
 
-<p>Fill in the fields, then choose <strong>Generate outline</strong>. The result is a
+<p>Fill in the fields, then choose <strong id="introGenerateLabel">Generate outline</strong>. The result is a
 paste-ready HTML fragment: it starts at the course title and carries no
 <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> wrapper, so it drops straight into an
 existing page.</p>
@@ -621,6 +621,8 @@ var WORDING = {
   outline: {
     fallbackTitle: "Course outline",
     fileStem: "course-outline",
+    generateLabel: "Generate outline",
+    generatedStatus: "Outline generated.",
     assessCaption: "Typical means of assessment and weighting",
     materialsHeading: "Typical textbooks and course materials",
     materialsItem: "Typical textbooks and course materials",
@@ -631,6 +633,8 @@ var WORDING = {
   syllabus: {
     fallbackTitle: "Course syllabus",
     fileStem: "course-syllabus",
+    generateLabel: "Generate syllabus",
+    generatedStatus: "Syllabus generated.",
     assessCaption: "Means of assessment and weighting",
     materialsHeading: "Textbooks and course materials",
     materialsItem: "Specific textbooks and course materials",
@@ -1877,6 +1881,12 @@ function syncMode() {
     function (td) { td.hidden = !syl; });
   document.getElementById("assessTable").className = syl ? "with-due" : "";
 
+  /* The button and the sentence that names it are kept in step here rather
+     than baked into the markup, so a reader of a syllabus form is never told
+     to press a button called "Generate outline". */
+  document.getElementById("generateBtn").textContent = W.generateLabel;
+  document.getElementById("introGenerateLabel").textContent = W.generateLabel;
+
   document.getElementById("assessCaptionText").textContent = W.assessCaption;
   /* "(at least one required)" is an outline note only. */
   document.getElementById("assessCaptionNote").hidden = syl;
@@ -1928,11 +1938,11 @@ function generate(announce) {
 
   if (announce !== false) {
     if (counts.required) {
-      setStatus("Outline generated. " + counts.required +
+      setStatus(words().generatedStatus + " " + counts.required +
                 " required item" + (counts.required === 1 ? "" : "s") + " still outstanding.");
       document.getElementById("checklist").focus();
     } else {
-      setStatus("Outline generated.");
+      setStatus(words().generatedStatus);
     }
   }
   return html;
