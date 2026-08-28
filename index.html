@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Course Outline and Syllabus Builder</title>
@@ -56,7 +55,9 @@
 
   label { display: inline-block; margin-bottom: 0.15rem; }
   .field { margin: 0 0 1rem; }
-  .hint { font-size: 0.875rem; color: #4a4a4a; margin: 0.2rem 0 0; }
+  /* display: block so that a field carrying more than one hint stacks them
+     and the top margin actually applies - on an inline span it is ignored. */
+  .hint { display: block; font-size: 0.875rem; color: #4a4a4a; margin: 0.2rem 0 0; }
 
   button {
     font: inherit;
@@ -130,396 +131,180 @@
 
   code { background: #f2f2f2; padding: 0 0.2rem; }
 </style>
-</head>
-<body>
-<main>
-
+</head><body><main>
 <h1>Course Outline and Syllabus Builder</h1>
-
-<p>Fill in the fields, then choose <strong id="introGenerateLabel">Generate outline</strong>. The result is a
-paste-ready HTML fragment: it starts at the course title and carries no
-<code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> wrapper, so it drops straight into an
-existing page.</p>
-
-<p><strong>In any text box:</strong> lines starting with <code>-</code> or <code>*</code> become a
-bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become
-paragraphs.</p>
-
-<p><strong>To add a link,</strong> put the wording in square brackets and the address in round
-brackets straight after it, with no space between:</p>
-
+<p>Fill in the fields, then choose <strong id="introGenerateLabel">Generate outline</strong>. The result is a paste-ready HTML fragment: it starts at the course title and carries no <code>&lt;html&gt;</code> or <code>&lt;body&gt;</code> wrapper, so it drops straight into an existing page.</p>
+<p><strong>In any text box:</strong> lines starting with <code>-</code> or <code>*</code> become a bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become paragraphs.</p>
+<p><strong>To add a link,</strong> put the wording in square brackets and the address in round brackets straight after it, with no space between:</p>
 <p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
-
-<form id="outlineForm">
-
-  <fieldset>
-    <legend>Document type</legend>
-    <p class="hint">A syllabus carries everything an outline does, plus the instructor, the term,
-    the weekly schedule, and dated assessments.</p>
-    <div class="radio-row">
-      <input type="radio" name="docType" id="typeOutline" value="outline" checked>
-      <label for="typeOutline">Course outline</label>
-    </div>
-    <div class="radio-row">
-      <input type="radio" name="docType" id="typeSyllabus" value="syllabus">
-      <label for="typeSyllabus">Course syllabus</label>
-    </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Course identification</legend>
-
-    <p class="field">
-      <label for="courseTitle">Course code, number, and title (required)</label>
-      <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition">
-    </p>
-
-    <p class="field" id="oneSentenceWrap">
-      <label for="oneSentence">One-sentence description (recommended)</label>
-      <input type="text" id="oneSentence" placeholder="e.g. An introduction to reading and writing about poetry, fiction, and drama.">
-      <span class="hint">A single sentence that sits directly under the course title. Keep it
-      shorter and plainer than the calendar description below.</span>
-    </p>
-
-    <p class="field" id="outlineLinkWrap" hidden>
-      <label for="outlineLink">Course outline link</label>
-      <input type="text" id="outlineLink" inputmode="url"
-             placeholder="https://langara.ca/programs-and-courses/courses/...">
-      <span class="hint">The web address of the EDCO-approved course outline published on
-      langara.ca. Paste the address on its own, or use
-      <code>[wording](address)</code> if you want to choose the link wording.</span>
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Credits</legend>
-
-    <div class="radio-row">
-      <input type="radio" name="creditUnit" id="unitCredits" value="credits" checked>
-      <label for="unitCredits">Credits</label>
-    </div>
-    <div class="radio-row">
-      <input type="radio" name="creditUnit" id="unitCeus" value="ceus">
-      <label for="unitCeus">CEUs</label>
-    </div>
-
-    <p class="field" id="creditsWrap">
-      <label for="credits">Credits (required)</label>
-      <select id="credits" aria-required="true">
-        <option value="">Choose one</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="6">6</option>
-      </select>
-    </p>
-
-    <p class="field" id="ceusWrap" hidden>
-      <label for="ceus">CEUs (required)</label>
-      <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="e.g. 3.5">
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Contact hours (at least one required)</legend>
-
-    <p class="hint">Enter these as <strong>hours per week</strong>. A field left blank or set to
-    <code>0</code> is left out of the document, and a total appears only once two kinds of hour
-    are entered.</p>
-    <p class="hint">Continuing Studies courses may instead enter each field as a
-    <strong>total for the whole course</strong> rather than per week. Whichever basis you use, use
-    the same one for all three fields.</p>
-
-    <p class="field">
-      <label for="lectureHours">Lecture hours per week</label>
-      <input type="number" id="lectureHours" step="0.5" min="0" placeholder="e.g. 3">
-    </p>
-
-    <p class="field">
-      <label for="labHours">Lab hours per week</label>
-      <input type="number" id="labHours" step="0.5" min="0" placeholder="e.g. 2">
-    </p>
-
-    <p class="field">
-      <label for="seminarHours">Seminar hours per week</label>
-      <input type="number" id="seminarHours" step="0.5" min="0" placeholder="e.g. 0">
-    </p>
-
-    <p class="hint" id="hoursTotal">Total hours: not yet entered</p>
-    <!-- The visible total updates on every keystroke, which is what a sighted
+<form id="outlineForm"><fieldset><legend>Document type</legend>
+<p class="hint">A syllabus carries everything an outline does, plus the instructor, the term, the weekly schedule, and dated assessments.</p>
+<div class="radio-row"><input type="radio" name="docType" id="typeOutline" value="outline" checked="checked"> <label for="typeOutline">Course outline</label></div>
+<div class="radio-row"><input type="radio" name="docType" id="typeSyllabus" value="syllabus"> <label for="typeSyllabus">Course syllabus</label></div>
+</fieldset><fieldset><legend>Course identification</legend>
+<p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
+<p class="field" id="oneSentenceWrap"><label for="oneSentence">One-sentence description (recommended)</label> <input type="text" id="oneSentence" placeholder="e.g. An introduction to reading and writing about poetry, fiction, and drama."> <span class="hint">A single sentence that sits directly under the course title. Keep it shorter and plainer than the calendar description below.</span></p>
+</fieldset><fieldset><legend>Credits</legend>
+<div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
+<div class="radio-row"><input type="radio" name="creditUnit" id="unitCeus" value="ceus"> <label for="unitCeus">CEUs</label></div>
+<p class="field" id="creditsWrap"><label for="credits">Credits (required)</label><select id="credits" aria-required="true">
+<option value="">Choose one</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="6">6</option>
+</select></p>
+<p class="field" id="ceusWrap" hidden=""><label for="ceus">CEUs (required)</label> <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="e.g. 3.5"></p>
+</fieldset><fieldset><legend>Contact hours (at least one required)</legend>
+<p class="hint">Enter these as <strong>hours per week</strong>. A field left blank or set to <code>0</code> is left out of the document, and a total appears only once two kinds of hour are entered.</p>
+<p class="hint">Continuing Studies courses may instead enter each field as a <strong>total for the whole course</strong> rather than per week. Whichever basis you use, use the same one for all three fields.</p>
+<p class="field"><label for="lectureHours">Lecture hours per week</label> <input type="number" id="lectureHours" step="0.5" min="0" placeholder="e.g. 3"></p>
+<p class="field"><label for="labHours">Lab hours per week</label> <input type="number" id="labHours" step="0.5" min="0" placeholder="e.g. 2"></p>
+<p class="field"><label for="seminarHours">Seminar hours per week</label> <input type="number" id="seminarHours" step="0.5" min="0" placeholder="e.g. 0"></p>
+<p class="hint" id="hoursTotal">Total hours: not yet entered</p>
+<!-- The visible total updates on every keystroke, which is what a sighted
          author wants and what a screen reader user does not: a live region tied
          to keystrokes interrupts constantly. The announcement is therefore split
-         off and fires once per field, when the field is left. -->
-    <span class="visually-hidden" id="hoursAnnounce" role="status"></span>
-  </fieldset>
-
-  <fieldset>
-    <legend>Course details</legend>
-
-    <p class="field" id="yearSemesterWrap" hidden>
-      <label for="yearSemester">Year and semester</label>
-      <input type="text" id="yearSemester" placeholder="e.g. Fall 2026">
-      <span class="hint">Which offering of the course this syllabus describes.</span>
-    </p>
-
-    <p class="field">
-      <label for="semesterLength">Semester length in weeks (recommended)</label>
-      <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 15">
-    </p>
-
-    <p class="field">
-      <label for="mode">Method of delivery (recommended)</label>
-      <select id="mode">
-        <option value="">Choose one</option>
-        <option value="In-person">In-person</option>
-        <option value="Mixed mode">Mixed mode</option>
-        <option value="Online">Online</option>
-      </select>
-    </p>
-
-    <p class="field">
-      <label for="department">Department or programs offering the course (recommended)</label>
-      <input type="text" id="department" placeholder="e.g. English">
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Enrolment restrictions and pre/corequisites</legend>
-
-    <p id="restrictQuestion">Does this course have enrolment restrictions?</p>
-    <div role="radiogroup" aria-labelledby="restrictQuestion">
-      <div class="radio-row">
-        <input type="radio" name="restrict" id="restrictNo" value="no" checked>
-        <label for="restrictNo">No</label>
-      </div>
-      <div class="radio-row">
-        <input type="radio" name="restrict" id="restrictYes" value="yes">
-        <label for="restrictYes">Yes</label>
-      </div>
-    </div>
-
-    <p class="field" id="restrictWrap" hidden>
-      <label for="restrictDetail">Enrolment restrictions</label>
-      <input type="text" id="restrictDetail" placeholder="e.g. Restricted to students admitted to the Nursing program.">
-    </p>
-
-    <p id="reqQuestion">Does this course have pre/corequisites?</p>
-    <div role="radiogroup" aria-labelledby="reqQuestion">
-      <div class="radio-row">
-        <input type="radio" name="req" id="reqNo" value="no" checked>
-        <label for="reqNo">No</label>
-      </div>
-      <div class="radio-row">
-        <input type="radio" name="req" id="reqYes" value="yes">
-        <label for="reqYes">Yes</label>
-      </div>
-    </div>
-
-    <p class="field" id="reqWrap" hidden>
-      <label for="reqDetail">Pre/corequisites</label>
-      <input type="text" id="reqDetail" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent.">
-      <span class="hint">Link syntax works here too, so a named course can point at its own page.</span>
-    </p>
-  </fieldset>
-
-  <fieldset id="instructorFieldset" hidden>
-    <legend>Instructor</legend>
-    <p class="hint">A syllabus names the instructor and how to reach them. Answer office hours
-    explicitly, even if the answer is that there are none.</p>
-
-    <p class="field">
-      <label for="instructors">Instructor name(s)</label>
-      <input type="text" id="instructors" autocomplete="name">
-    </p>
-    <p class="field">
-      <label for="office">Office</label>
-      <input type="text" id="office" placeholder="e.g. A322b">
-    </p>
-    <p class="field">
-      <label for="phone">Phone</label>
-      <input type="tel" id="phone" autocomplete="tel" placeholder="e.g. 604 323 5511">
-    </p>
-    <p class="field">
-      <label for="email">Email</label>
-      <input type="email" id="email" autocomplete="email">
-    </p>
-    <p class="field">
-      <label for="officeHours">Office hours</label>
-      <input type="text" id="officeHours" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment">
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Course description</legend>
-    <p class="field">
-      <label for="courseDescription">Calendar course description (required)</label>
-      <textarea id="courseDescription" rows="6" aria-required="true"></textarea>
-      <span class="hint">The description as it appears in the College calendar.</span>
-    </p>
-  </fieldset>
-
-  <fieldset id="topicListFieldset">
-    <legend>General topic list</legend>
-    <p class="field">
-      <label for="courseContent">General topic list (recommended)</label>
-      <textarea id="courseContent" rows="7">Topics covered may vary by instructor. An example of topics covered might be:</textarea>
-      <span class="hint">Write your topics on the lines below the sentence already in the box, one
-      per line, each starting with <code>-</code>.</span>
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Learning outcomes</legend>
-    <p class="field">
-      <label for="learningOutcomes">Learning outcomes (required)</label>
-      <textarea id="learningOutcomes" rows="7" aria-required="true">Upon successful completion of this course, students will be able to</textarea>
-      <span class="hint">Write your outcomes on the lines below the sentence already in the box,
-      one per line, each starting with <code>-</code>.</span>
-    </p>
-  </fieldset>
-
-  <fieldset id="scheduleFieldset" hidden>
-    <legend>Detailed course schedule (at least one week required)</legend>
-
-    <div class="table-scroll" tabindex="0">
-      <table id="scheduleTable">
-        <caption>Week-by-week schedule</caption>
-        <thead>
-          <tr>
-            <th scope="col">Week</th>
-            <th scope="col">Topic</th>
-            <th scope="col">Readings and activities</th>
-            <th scope="col">Activities due</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody id="scheduleBody"></tbody>
-      </table>
-    </div>
-
-    <p><button type="button" id="addWeekBtn">Add week</button></p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Assessment and grading</legend>
-
-    <div class="table-scroll" tabindex="0">
-      <table id="assessTable">
-        <caption id="assessCaption">
-          <span id="assessCaptionText">Typical means of assessment and weighting</span><span
-            id="assessCaptionNote"> (at least one required)</span>
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">Assessment activity</th>
-            <th scope="col">Weight</th>
-            <th scope="col" id="assessDueHeader" hidden>Due date</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody id="assessBody"></tbody>
-      </table>
-    </div>
-
-    <!-- The visible total updates on every keystroke, which is what a sighted
+         off and fires once per field, when the field is left. --> <span class="visually-hidden" id="hoursAnnounce" role="status"></span></fieldset><fieldset><legend>Course details</legend>
+<p class="field" id="yearSemesterWrap" hidden=""><label for="yearSemester">Year and semester</label> <input type="text" id="yearSemester" placeholder="e.g. Fall 2026"> <span class="hint">Which offering of the course this syllabus describes.</span></p>
+<p class="field"><label for="semesterLength">Semester length in weeks (recommended)</label> <input type="number" id="semesterLength" step="1" min="0" placeholder="e.g. 15"></p>
+<p class="field"><label for="mode">Method of delivery (recommended)</label><select id="mode">
+<option value="">Choose one</option>
+<option value="In-person">In-person</option>
+<option value="Mixed mode">Mixed mode</option>
+<option value="Online">Online</option>
+</select></p>
+<p class="field"><label for="department">Department or programs offering the course (recommended)</label> <input type="text" id="department" placeholder="e.g. English"></p>
+</fieldset><fieldset><legend>Enrolment restrictions and pre/corequisites</legend>
+<p id="restrictQuestion">Does this course have enrolment restrictions?</p>
+<div role="radiogroup" aria-labelledby="restrictQuestion">
+<div class="radio-row"><input type="radio" name="restrict" id="restrictNo" value="no" checked="checked"> <label for="restrictNo">No</label></div>
+<div class="radio-row"><input type="radio" name="restrict" id="restrictYes" value="yes"> <label for="restrictYes">Yes</label></div>
+</div>
+<p class="field" id="restrictWrap" hidden=""><label for="restrictDetail">Enrolment restrictions</label> <input type="text" id="restrictDetail" placeholder="e.g. Restricted to students admitted to the Nursing program."></p>
+<p id="reqQuestion">Does this course have pre/corequisites?</p>
+<div role="radiogroup" aria-labelledby="reqQuestion">
+<div class="radio-row"><input type="radio" name="req" id="reqNo" value="no" checked="checked"> <label for="reqNo">No</label></div>
+<div class="radio-row"><input type="radio" name="req" id="reqYes" value="yes"> <label for="reqYes">Yes</label></div>
+</div>
+<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites</label> <input type="text" id="reqDetail" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."> <span class="hint">Link syntax works here too, so a named course can point at its own page.</span></p>
+</fieldset><fieldset id="instructorFieldset" hidden=""><legend>Instructor</legend>
+<p class="hint">A syllabus names the instructor and how to reach them. Answer office hours explicitly, even if the answer is that there are none.</p>
+<p class="field"><label for="instructors">Instructor name(s)</label> <input type="text" id="instructors" autocomplete="name"></p>
+<p class="field"><label for="office">Office</label> <input type="text" id="office" placeholder="e.g. A322b"></p>
+<p class="field"><label for="phone">Phone</label> <input type="tel" id="phone" autocomplete="tel" placeholder="e.g. 604 323 5511"></p>
+<p class="field"><label for="email">Email</label> <input type="email" id="email" autocomplete="email"></p>
+<p class="field"><label for="officeHours">Office hours</label> <input type="text" id="officeHours" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment"></p>
+</fieldset><fieldset><legend>Course description</legend>
+<p class="field"><label for="courseDescription">Calendar course description (required)</label> <textarea id="courseDescription" rows="6" aria-required="true"></textarea> <span class="hint">The description as it appears in the College calendar.</span></p>
+</fieldset><fieldset><legend>Learning outcomes</legend>
+<p id="outcomeFormatQuestion">Are the course learning outcomes a list or a paragraph?</p>
+<div role="radiogroup" aria-labelledby="outcomeFormatQuestion">
+<div class="radio-row"><input type="radio" name="outcomeFormat" id="outcomeList" value="list" checked="checked"> <label for="outcomeList">A list</label></div>
+<div class="radio-row"><input type="radio" name="outcomeFormat" id="outcomeParagraph" value="paragraph"> <label for="outcomeParagraph">A paragraph</label></div>
+</div>
+<div id="outcomeListWrap">
+<p class="hint">One outcome per field.</p>
+<!-- No .table-scroll wrapper here, unlike the assessment and schedule
+           tables. That wrapper exists to keep a wide table from widening the
+           page, and carries tabindex="0" so the scrollable region is keyboard
+           reachable. This table is one text column that shrinks with the
+           viewport and cannot overflow, so the wrapper would contribute
+           nothing but an extra tab stop with nothing to scroll. -->
+<table id="outcomeTable"><caption>Learning outcomes (at least one required)</caption>
+<thead>
+<tr>
+<th scope="col">Learning outcome</th>
+<th scope="col"><span class="visually-hidden">Actions</span></th>
+</tr>
+</thead>
+<tbody id="outcomeBody"></tbody>
+</table>
+<p><button type="button" id="addOutcomeBtn">Add learning outcome</button></p>
+</div>
+<p class="field" id="outcomeParagraphWrap" hidden=""><label for="learningOutcomes">Learning outcomes (required)</label> <textarea id="learningOutcomes" rows="7" aria-required="true">Upon successful completion of this course, students will be able to</textarea></p>
+</fieldset><fieldset id="topicListFieldset"><legend>General topic list</legend>
+<p class="field"><label for="courseContent">General topic list (recommended)</label> <textarea id="courseContent" rows="7">Topics covered may vary by instructor. An example of topics covered might be:</textarea> <span class="hint">Write your topics on the lines below the sentence already in the box, one per line, each starting with <code>-</code>.</span></p>
+</fieldset><fieldset id="scheduleFieldset" hidden=""><legend>Detailed course schedule (at least one week required)</legend>
+<div class="table-scroll" tabindex="0">
+<table id="scheduleTable"><caption>Week-by-week schedule</caption>
+<thead>
+<tr>
+<th scope="col">Week</th>
+<th scope="col">Topic</th>
+<th scope="col">Readings and activities</th>
+<th scope="col">Activities due</th>
+<th scope="col"><span class="visually-hidden">Actions</span></th>
+</tr>
+</thead>
+<tbody id="scheduleBody"></tbody>
+</table>
+</div>
+<p><button type="button" id="addWeekBtn">Add week</button></p>
+</fieldset><fieldset><legend>Assessment and grading</legend>
+<div class="table-scroll" tabindex="0">
+<table id="assessTable"><caption id="assessCaption"><span id="assessCaptionText">Typical means of assessment and weighting</span><span id="assessCaptionNote"> (at least one required)</span></caption>
+<thead>
+<tr>
+<th scope="col">Assessment activity</th>
+<th scope="col">Weight</th>
+<th scope="col" id="assessDueHeader" hidden="">Due date</th>
+<th scope="col"><span class="visually-hidden">Actions</span></th>
+</tr>
+</thead>
+<tbody id="assessBody"></tbody>
+</table>
+</div>
+<!-- The visible total updates on every keystroke, which is what a sighted
          author wants and what a screen reader user does not. The announcement
          is split off and fires once per cell, when the cell is left. -->
-    <p class="hint" id="weightTotal" hidden>Total weight: not yet entered</p>
-    <span class="visually-hidden" id="weightAnnounce" role="status"></span>
-
-    <p><button type="button" id="addAssessBtn">Add assessment row</button></p>
-
-    <p class="field" id="gradingWrap" hidden>
-      <label for="gradingNotes">Grading guidelines</label>
-      <textarea id="gradingNotes" rows="5"></textarea>
-      <span class="hint">Optional. How the grade is arrived at for this section &#8212; rounding,
-      late penalties, minimum passing requirements. Leave blank and nothing is added.</span>
-    </p>
-
-    <p class="hint">A link to the College&#8217;s <strong>Grades</strong> page is added to this
-    section automatically.</p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Course materials and textbooks</legend>
-    <p class="field">
-      <label for="textbook">Course materials and textbooks (required)</label>
-      <textarea id="textbook" rows="7" aria-required="true">Textbook selection may vary by instructor. An example of texts and course materials for this course might be:</textarea>
-      <span class="hint">Write your texts on the lines below the sentence already in the box, one
-      per line, each starting with <code>-</code>.</span>
-    </p>
-    <p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara
-    Bookstore course listing, is added to the end of this section automatically.</p>
-
-    <div class="radio-row" id="privacyWrap" hidden>
-      <input type="checkbox" id="privacy">
-      <label for="privacy">This course uses an online resource hosted outside Canada for graded
-      work &#8212; add the privacy notice</label>
-    </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Departmental and course guidelines</legend>
-    <p class="field">
-      <label for="deptPolicies">Departmental and course guidelines</label>
-      <textarea id="deptPolicies" rows="6"></textarea>
-      <span class="hint">Optional. Anything the department requires beyond the College policies,
-      which are added automatically. Leave blank and the section is left out.</span>
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Versioning</legend>
-    <p class="field">
-      <label for="effectiveDate">Effective date (required)</label>
-      <input type="text" id="effectiveDate" aria-required="true" placeholder="e.g. September 2026">
-      <span class="hint">The date this version of the curriculum took effect &#8212; not
-      today&#8217;s date.</span>
-    </p>
-    <p class="hint">The subject-to-change note is added automatically. A link to previous versions
-    is added once an archive address is set in the file.</p>
-  </fieldset>
-
-  <fieldset id="exportFormatFieldset" hidden>
-    <legend>Export format</legend>
-    <p class="hint" id="exportHint">A syllabus can go out as plain HTML or as a Brightspace (D2L)
-    page. An outline always goes to the College website as plain HTML, so this choice does not
-    apply to one and is not shown.</p>
-    <div class="radio-row">
-      <input type="radio" name="exportFormat" id="exportPaste" value="paste" checked>
-      <label for="exportPaste">I want to paste into a document or webpage</label>
-    </div>
-    <div class="radio-row">
-      <input type="radio" name="exportFormat" id="exportBrightspace" value="brightspace">
-      <label for="exportBrightspace">I want to paste into Brightspace</label>
-    </div>
-  </fieldset>
-
-  <p class="actions">
-    <button type="button" id="generateBtn">Generate outline</button>
-    <button type="button" id="downloadBtn">Download HTML</button>
-    <button type="button" id="copyBtn">Copy HTML</button>
-    <span id="status" role="status"></span>
-  </p>
-
-</form>
-
-<hr>
-
+<p class="hint" id="weightTotal" hidden="">Total weight: not yet entered</p>
+<span class="visually-hidden" id="weightAnnounce" role="status"></span>
+<p><button type="button" id="addAssessBtn">Add assessment row</button></p>
+<p class="field" id="gradingWrap" hidden=""><label for="gradingNotes">Grading guidelines</label> <textarea id="gradingNotes" rows="5"></textarea> <span class="hint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span></p>
+<p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
+</fieldset><fieldset><legend>Course materials and textbooks</legend>
+<div class="radio-row" id="zeroCostWrap" hidden=""><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has zero textbook cost</label></div>
+<p class="field"><label for="textbook">Course materials and textbooks (required)</label> <textarea id="textbook" rows="7" aria-required="true">Textbook selection may vary by instructor. An example of texts and course materials for this course might be:</textarea> <span class="hint">Write your texts on the lines below the sentence already in the box, one per line, each starting with <code>-</code>.</span> <span class="hint" id="zeroCostHint" hidden=""><strong>List every required material here, even the free ones.</strong> Zero cost does not mean nothing to list — open textbooks, library readings and instructor-made materials all still belong in this box, so students know what they will be working from. Learn more about <a href="https://langara.libguides.com/open-education/open-education-at-langara" target="_blank" rel="noopener noreferrer">Open Langara</a>.</span></p>
+<p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to the end of this section automatically.</p>
+<!-- Shown on both document types. The notice it adds is a FIPPA
+         disclosure attached to the resource, and an outline of record names
+         the resources a course typically uses, so the disclosure belongs
+         wherever the resource is named. syncMode() no longer touches this
+         wrapper, which is why it carries no hidden attribute. -->
+<div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacy"> <label for="privacy">This course uses an online resource hosted outside Canada for graded work — add the privacy notice</label></div>
+</fieldset><fieldset><legend>Departmental and course guidelines</legend>
+<p class="field"><label for="deptPolicies">Departmental and course guidelines</label> <textarea id="deptPolicies" rows="6"></textarea> <span class="hint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span></p>
+</fieldset><!-- The Versioning fieldset is gone. Its one field, the effective date, is
+       now filled in from the clock at generate time, and the rest of the
+       section (the subject-to-change note, the archive link) was already
+       automatic. A fieldset groups form controls, so one holding nothing but
+       explanatory hints would be the wrong element for what was left; the
+       "Added automatically" line under the completeness check carries that
+       explanation instead. --><fieldset id="exportFormatFieldset" hidden=""><legend>Export format</legend>
+<p class="hint" id="exportHint">A syllabus can go out as plain HTML or as a Brightspace (D2L) page. An outline always goes to the College website as plain HTML, so this choice does not apply to one and is not shown.</p>
+<div class="radio-row"><input type="radio" name="exportFormat" id="exportPaste" value="paste" checked="checked"> <label for="exportPaste">I want to paste into a document or webpage</label></div>
+<div class="radio-row"><input type="radio" name="exportFormat" id="exportBrightspace" value="brightspace"> <label for="exportBrightspace">I want to paste into Brightspace</label></div>
+</fieldset><!-- Generate stays with the form it acts on. Download and Copy moved below
+       the preview, so the order of the page matches the order of the work:
+       fill in, generate, check the result, then take it away. -->
+<p class="actions"><button type="button" id="generateBtn">Generate outline</button> <span id="status" role="status"></span></p>
+</form><hr>
 <h2 id="checklistHeading">Completeness check</h2>
 <div id="checklist" tabindex="-1"></div>
-
 <h2>Preview</h2>
-<iframe id="preview" title="Course outline preview" height="600"></iframe>
-
+<p class="hint">This preview carries no styling of its own, so text appears in whatever font your browser falls back to. The finished document takes its appearance from wherever it ends up — the College website, Brightspace, or a document you paste it into — so this may not be exactly how the content will look once it is placed.</p>
+<iframe id="preview" title="Course outline preview" height="600"></iframe> <!-- These act on the generated document rather than on the form, so they sit
+     with the generated document. Both call generate(false) first, so neither
+     depends on Generate having been pressed. Their own status region, rather
+     than the form's: a confirmation that renders a screen away from the button
+     that caused it is a confirmation nobody sees. -->
+<p class="actions"><button type="button" id="downloadBtn">Download HTML</button> <button type="button" id="copyBtn">Copy HTML</button> <span id="exportStatus" role="status"></span></p>
 <h2>HTML source</h2>
 <p><label for="source">Generated HTML (read-only)</label></p>
-<textarea id="source" rows="20" readonly></textarea>
-
-</main>
-
-<script>
+<textarea id="source" rows="20" readonly="readonly"></textarea></main>
+<p><script>
 "use strict";
 
 /* ------------------------------------------------------------------ *
@@ -562,12 +347,33 @@ var POLICY_LINKS = [
   ["Withdrawal from Courses and Deferred Standing \u2013 E2011", "https://langara.ca/policy/e2011-withdrawal-courses-and-deferred-standing"]
 ];
 
-var FIPPA_NOTE = "Note: This course may use an electronic (online) instructional resource that is " +
+/* Emitted verbatim when the zero-cost box is ticked. The checkbox label is
+   the same sentence without the full stop, since a control label is not
+   prose; test.js pins the two together so neither can be reworded alone. */
+var ZERO_COST_NOTE = "This course has zero textbook cost.";
+
+/* Identical in both document types except for the closing clause. A syllabus
+   is one instructor addressing their own section, so "provide the pseudonym to
+   me so I can identify you" has someone speaking it. An outline of record is a
+   departmental document with no single author, so the same first person has
+   nobody behind it; the outline variant names the instructor in the third
+   person instead.
+
+   Built from a shared body plus a per-type tail rather than two complete
+   strings, so the three sentences that do not differ cannot be reworded in one
+   variant and not the other. The body ends mid-sentence, hence the trailing
+   space - do not "tidy" it away. */
+var FIPPA_BODY = "Note: This course may use an electronic (online) instructional resource that is " +
   "located outside of Canada for mandatory graded class work. You may be required to enter personal " +
   "information, such as your name and email address, to log in to this resource. This means that your " +
   "personal information could be stored on servers located outside of Canada and may be accessed by " +
   "U.S. authorities, subject to federal laws. Where possible, you may log in with an email pseudonym " +
-  "as long as you provide the pseudonym to me so I can identify you when reviewing your class work.";
+  "as long as you provide the pseudonym to ";
+
+var FIPPA_NOTE = {
+  outline: FIPPA_BODY + "your instructor so they can identify you when reviewing your class work.",
+  syllabus: FIPPA_BODY + "me so I can identify you when reviewing your class work."
+};
 
 /* PLACEHOLDER \u2014 replace with the wording approved by the College. */
 var DISCLAIMER = {
@@ -579,6 +385,32 @@ var DISCLAIMER = {
    Leave it as an empty string and the whole line is omitted from the output. */
 var ARCHIVE_URL   = "";
 var ARCHIVE_LABEL = "View previous versions of this document";
+
+/* Month names, written out rather than read from the runtime.
+
+   toLocaleDateString("en-CA", { month: "long", year: "numeric" }) would look
+   like the obvious way to do this and is the wrong one here twice over. It
+   returns "September 2026" in some engines and "September of 2026" or a
+   comma-separated form in others, and the moment the locale argument is
+   dropped - or a browser ignores it, which happens - a machine set to French
+   emits "septembre 2026" into an English document. A fixed array is the only
+   thing that guarantees identical wording on every machine that opens the
+   file, which matters when the output is a College record. */
+var MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+
+/* The effective date, replacing the field that used to ask for it.
+
+   Read at generate time rather than at page load, so a form left open across
+   the turn of a month does not stamp the old one onto the document. The
+   parameter exists so a test can pin a date; nothing in the page passes it. */
+function effectiveDate(now) {
+  /* Duck-typed rather than "now instanceof Date", which is false for a Date
+     built in another realm - an iframe, or a test harness driving the page
+     from outside it - and would silently fall back to the wall clock. */
+  var d = (now && typeof now.getMonth === "function") ? now : new Date();
+  return MONTH_NAMES[d.getMonth()] + " " + d.getFullYear();
+}
 
 /* Lead-in sentences seeded into the form. These are values the instructor
    writes after, not placeholder attributes, so they carry into the export. */
@@ -628,7 +460,15 @@ var WORDING = {
     materialsItem: "Typical textbooks and course materials",
     materialsClause: "3.2(e)",
     assessClause: "3.2(f)",
-    gradesNote: "for grading guidelines"
+    gradesNote: "for grading guidelines",
+    previewTitle: "Course outline preview",
+    /* Used in the completeness check's own prose, which said "outline" in
+       both modes and so told a syllabus author their outline was incomplete. */
+    docNoun: "outline",
+    /* What is lost when the title does not open with a code. The test behind
+       this item is the same in both modes - courseSlug() - but the
+       consequence differs, so only the wording moves. */
+    codeItem: "Course code and number at the start of the title, so the header can set them apart"
   },
   syllabus: {
     fallbackTitle: "Course syllabus",
@@ -643,7 +483,10 @@ var WORDING = {
     /* A syllabus can carry the instructor's own grading guidelines just above
        this line, so the link is named for what it actually is rather than
        repeating the phrase and reading as a contradiction. */
-    gradesNote: "for the College's grade scale and notations"
+    gradesNote: "for the College's grade scale and notations",
+    previewTitle: "Course syllabus preview",
+    docNoun: "syllabus",
+    codeItem: "Course code and number, so the course outline link can be built"
   }
 };
 
@@ -957,6 +800,90 @@ function assessRows() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Learning outcomes format
+ *
+ * F1003 3.2(d) asks for the outcomes, not for a shape to write them in, so
+ * both forms satisfy it. A list is the overwhelmingly common case and is the
+ * default; the paragraph box is kept for departments whose approved outcomes
+ * are written as prose, or who reword the lead-in sentence.
+ *
+ * Independent of document type: an outline and a syllabus carry the same
+ * outcomes, so the choice is offered on both and behaves identically.
+ * ------------------------------------------------------------------ */
+
+function isOutcomeList() {
+  var el = document.getElementById("outcomeList");
+  return !!(el && el.checked);
+}
+
+/* Rows whose text opens with something the author probably meant as a bullet.
+
+   The set is wider than what blocks() actually parses, on purpose: this is a
+   warning, not a parser. A paste out of Word or an existing outline arrives
+   carrying "\u2022", an en or em dash, or "1.", and every one of those lands in the
+   output as a literal character inside the bullet. All of them are worth
+   flagging even though only "-" and "*" would have meant anything in a
+   textarea.
+
+   The numeric branch requires whitespace after the marker so that an outcome
+   opening "1.5 hours of ..." is not mistaken for a numbered list item; the
+   bullet branch does not, since "-Analyze" is still a stray dash. */
+var OUTCOME_MARKER = /^\s*(?:[-*\u2022\u2013\u2014]\s*|\d+[.)]\s+)/;
+
+function markedOutcomeRows() {
+  var out = [];
+  var body = document.getElementById("outcomeBody");
+  if (!body) return out;
+  Array.prototype.forEach.call(body.rows, function (tr, i) {
+    var input = tr.querySelector("input");
+    var v = input ? input.value.trim() : "";
+    if (v && OUTCOME_MARKER.test(v)) out.push(i + 1);
+  });
+  return out;
+}
+
+/* "2", "2 and 4", "2, 4, and 5". */
+function joinNumbers(nums) {
+  if (nums.length === 1) return String(nums[0]);
+  if (nums.length === 2) return nums[0] + " and " + nums[1];
+  return nums.slice(0, -1).join(", ") + ", and " + nums[nums.length - 1];
+}
+
+function outcomeRows() {
+  var rows = [];
+  var body = document.getElementById("outcomeBody");
+  if (!body) return rows;
+  Array.prototype.forEach.call(body.rows, function (tr) {
+    var input = tr.querySelector("input");
+    var v = input ? input.value.trim() : "";
+    if (v) rows.push(v);
+  });
+  return rows;
+}
+
+/* List mode emits the lead-in as its own paragraph and the rows as a single
+   list, which is byte-for-byte what the paragraph box produces when someone
+   types the stem on line one and dashes below it. The two modes are different
+   ways of filling the same output, not two different outputs.
+
+   The stem is the constant here rather than an editable value, so a
+   department that has reworded its own framing sentence has to use the
+   paragraph mode to keep that wording. inline() on each row, so link syntax
+   works in an outcome the way it does everywhere else; esc() on the stem,
+   which is ours and contains no link syntax to parse. */
+function learningOutcomesBody() {
+  if (!isOutcomeList()) return blocks(val("learningOutcomes"));
+
+  var rows = outcomeRows();
+  if (!rows.length) return [];
+
+  var out = ["<p>" + esc(OUTCOME_STEM) + "</p>", "<ul>"];
+  rows.forEach(function (r) { out.push("<li>" + inline(r) + "</li>"); });
+  out.push("</ul>");
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
  * Building the fragment
  * ------------------------------------------------------------------ */
 
@@ -1060,18 +987,172 @@ function link(url, label) {
   return href ? anchor(href, label) : esc(label);
 }
 
-var OUTLINE_LINK_TEXT = "Approved course outline";
+var COURSE_PAGE_BASE = "https://langara.ca/programs-courses/";
 
-/* The field takes a bare web address, because that is what someone pastes. A
-   bare address is not link syntax, so inline() would leave it as dead text -
-   it is wrapped here instead. Markdown is still honoured for anyone who wants
-   to choose the wording. */
-function outlineLinkHtml() {
-  var v = val("outlineLink");
-  if (!v) return "";
-  if (/\[[^\]]+\]\([^)\s]+\)/.test(v)) return inline(v);
-  var href = safeUrl(v);
-  return href ? anchor(href, OUTLINE_LINK_TEXT) : esc(v);
+/* Splits the course title field into the three things read off it: the
+   subject code, the course number, and whatever heading text follows.
+   "ENGL 1123 Literature and Composition" gives ENGL / 1123 / "Literature and
+   Composition".
+
+   One regex, used by two callers that used to want the same thing from
+   different code: the course page slug and the header's code chip. Keeping
+   them on one parser means the rules about what counts as a course code
+   cannot drift apart.
+
+   The number is allowed a trailing letter, so a sectioned code like 1123A
+   survives; two or more leading letters, so a stray initial does not read as
+   a subject code. */
+function courseParts() {
+  var raw = val("courseTitle");
+  var m = /^\s*([A-Za-z]{2,})\s+([0-9][0-9A-Za-z]*)\s*(.*)$/.exec(raw);
+  if (!m) return { subject: null, number: null, title: raw, chip: false };
+
+  var rest = m[3].trim();
+  return {
+    subject: m[1].toUpperCase(),
+    number: m[2],
+    /* Nothing after the code means the whole entry was the code, and lifting
+       it into the chip would leave an empty heading. Keep it in the heading
+       and drop the chip instead - the same instinct as returning null below
+       rather than guessing at an address. */
+    title: rest || raw,
+    chip: !!rest
+  };
+}
+
+/* The course page slug: "ENGL 1123 Literature and Composition" gives
+   "engl-1123".
+
+   Returns null rather than a guess when the title does not open with a code
+   and a number. A title someone has typed as "Poetry Workshop" has nothing to
+   build an address from, and inventing one would produce a confident link
+   straight to a 404 - worse than no link, because nobody would think to check
+   it. The completeness check flags that case instead.
+
+   Behaviour is unchanged by the move onto courseParts(), including for a
+   title that is nothing but a code: subject and number are still filled in
+   there, only chip is not, so "ENGL 1123" alone still yields a slug. */
+function courseSlug() {
+  var p = courseParts();
+  return p.subject ? (p.subject + "-" + p.number).toLowerCase() : null;
+}
+
+/* The whole title as the link text, the slug as the address. */
+function coursePageLinkHtml() {
+  var slug = courseSlug();
+  return slug ? link(COURSE_PAGE_BASE + slug, val("courseTitle")) : "";
+}
+
+/* ------------------------------------------------------------------ *
+ * Course header band (outline only)
+ *
+ * Modelled on the header of Langara's own course pages: orange band, white
+ * title, the subject and number in a white chip above it. The hours and
+ * credits are deliberately NOT in the band - they go to STAT_BAND below it.
+ * On the real course page they sit inside the band as white body text on
+ * orange, which is 3.37:1 and fails SC 1.4.3; moving them out is what lets
+ * them keep their own size and colour.
+ *
+ * Outline only. A syllabus keeps the plain heading it has always had: the
+ * band is a public-facing course-page treatment, the one-sentence
+ * description it carries is already an outline-only field, and a full
+ * orange band inside an LMS is louder than the content warrants - the same
+ * judgement that produced the toned-down SYLLABUS_STAT_BAND.
+ * ------------------------------------------------------------------ */
+
+/* Every size in here is load-bearing for contrast, not taste.
+
+   White on #F15A22 is 3.37:1 - the same figure STAT_BAND cites for the
+   colour the other way round, contrast being symmetric. That clears the 3:1
+   large-text threshold and fails the 4.5:1 normal-text one, so every piece
+   of text in this band has to qualify as large: 24px+ regular, or 18.66px+
+   bold. The title has room to spare. The description sits exactly on the
+   line at 1.5rem (24px, the 18pt cutoff), so do not shrink it - at 1.375rem
+   it fails. The chip clears the separate bold cutoff at 20px bold, and fails
+   if either the weight or the size comes down.
+
+   Padding and title size use clamp() rather than a breakpoint, because a
+   style attribute cannot hold a media query - the same constraint that
+   produced the auto-fit grids in INSTRUCTOR_GRID and SYLLABUS_STAT_BAND. The
+   trade-off against the real course page is that it centres its text below
+   992px and left-aligns above; clamp cannot express that, so this stays left
+   aligned throughout. */
+var COURSE_HEADER = {
+  /* No full-bleed trick. On langara.ca the orange runs edge to edge because
+     the band is a direct child of the page body. A pasted fragment sits
+     inside whatever column Drupal or Brightspace gives it, and the usual
+     negative-margin escape (margin-left: calc(50% - 50vw)) produces
+     horizontal scrolling as often as it works - an SC 1.4.10 failure traded
+     for a cosmetic gain. The band is the width of its container instead,
+     which is honest about where the fragment actually lives. */
+  band: "background-color: #F15A22; " +
+        "padding: clamp(2rem, 5vw, 6.25rem) clamp(1.5rem, 3vw, 3rem); " +
+        "margin: 0 0 1.5rem;",
+
+  /* 1070px is the theme's own .top-content cap, kept so a long title breaks
+     in roughly the same place it would on the course page. */
+  inner: "max-width: 1070px; margin: 0 auto;",
+
+  /* inline-flex plus a gap is what separates subject from number: there is
+     no space character between the two spans, matching the theme, where
+     .pre-title-field does exactly this. */
+  chip: "display: inline-flex; gap: 0.75rem; margin: 0 0 1rem; " +
+        "padding: 0.3125rem 0.625rem; background-color: #ffffff; color: #F15A22; " +
+        "font-family: Lato, 'Helvetica Neue', Arial, sans-serif; " +
+        "font-size: 1.25rem; font-weight: 700; line-height: 1.3;",
+
+  /* Adelle is the theme's heading face, but it is not declared anywhere in
+     the College stylesheet - it is served from a separate font provider - so
+     a plain export or a Brightspace page falls back. Lato is named second
+     because it is the face the College's own pages do load, and is already
+     the stack SYLLABUS_STAT_BAND uses.
+
+     overflow-wrap guards SC 1.4.10: one long unbroken word in a title would
+     otherwise push a horizontal scrollbar onto the page at 68px. */
+  title: "margin: 0; color: #ffffff; " +
+         "font-family: 'Adelle', Lato, 'Helvetica Neue', Arial, sans-serif; " +
+         "font-size: clamp(2rem, 5vw, 4.25rem); font-weight: 700; " +
+         "line-height: 1.15; overflow-wrap: break-word;",
+
+  /* 60ch caps the measure, so the description does not run the full width of
+     a wide screen - at 24px that would be an unreadable line length. */
+  lede: "margin: 1.5rem 0 0; max-width: 60ch; color: #ffffff; " +
+        "font-family: Lato, 'Helvetica Neue', Arial, sans-serif; " +
+        "font-size: 1.5rem; line-height: 1.4;"
+};
+
+/* div/p and a real h1, never a styled div standing in for a heading: the
+   band is decoration around the document's heading, not a replacement for
+   it, so the outline of the page is unchanged by adding it. Same element
+   discipline as statBand() and INSTRUCTOR_GRID otherwise - no dl/dt/dd
+   anywhere, because the Brightspace editor strips styling from those. */
+function courseHeaderBlock() {
+  var H = COURSE_HEADER;
+  var p = courseParts();
+  var out = [];
+
+  out.push('<div style="' + esc(H.band) + '">');
+  out.push('<div style="' + esc(H.inner) + '">');
+
+  if (p.chip) {
+    out.push('<p style="' + esc(H.chip) + '">' +
+             "<span>" + esc(p.subject) + "</span>" +
+             "<span>" + esc(p.number) + "</span></p>");
+  }
+
+  out.push('<h1 style="' + esc(H.title) + '">' +
+           esc(p.title || words().fallbackTitle) + "</h1>");
+
+  /* The same condition buildHtml() used to apply to this line directly. The
+     field is outline-only on the form, and this function is only reached on
+     an outline, but the test is kept rather than assumed. */
+  if (!isSyllabus() && val("oneSentence")) {
+    out.push('<p style="' + esc(H.lede) + '">' + inline(val("oneSentence")) + "</p>");
+  }
+
+  out.push("</div>");
+  out.push("</div>");
+  return out;
 }
 
 /* The stat band for credits and hours. Two variants, chosen by document type
@@ -1097,7 +1178,7 @@ var STAT_BAND = {
      two-digit sum. text-align is inherited, so setting it once here reaches
      both the <dt> and the <dd> without repeating it on each. */
   column: "text-align: center;",
-  label: "font-family: Arial, Helvetica, sans-serif; font-size: 1rem; color: #000000;",
+  label: "margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 1rem; color: #000000;",
   /* 3rem is 36pt, well past the 18pt/24px threshold for large text, which
      needs only 3:1 contrast. #f15a22 on white is 3.37:1 - it passes at this
      size and would fail at body size, so do not shrink these figures without
@@ -1156,43 +1237,45 @@ function statBand() {
 
   if (!stats.length) return [];
 
-  var bs = isBrightspace();
   var syl = isSyllabus();
   var out = [];
 
+  /* div/p throughout, never dl/dt/dd - the same element choice the instructor
+     grid uses, and for the same reason: the Brightspace editor strips styling
+     from dl/dt/dd on save while leaving div/p alone.
+
+     This applies to the plain-HTML exports too, not just the Brightspace one.
+     A plain fragment is not guaranteed to end up outside Brightspace: the
+     export format is a statement of intent, not a destination, and someone who
+     copies the plain HTML and pastes it into the LMS anyway would otherwise
+     get a band with its styling quietly removed. Nothing in any export uses a
+     description list now, which is a far simpler thing to keep true than "dl
+     here, div there, depending where this file is going."
+
+     The cost is that a label and its figure are no longer paired
+     programmatically, only visually and by reading order. Not a WCAG failure,
+     and worth it against a layout that silently collapses. */
   if (syl) {
-    /* Element choice tracks the export format, styling tracks the document
-       type. Brightspace gets div/p because that editor strips styling from
-       dl/dt/dd (confirmed by direct comparison - see INSTRUCTOR_GRID); a
-       plain-HTML export keeps dl/dt/dd, which pairs each label with its
-       figure programmatically rather than just visually. Same grid, same
-       styling, either way. */
     var S = SYLLABUS_STAT_BAND;
-    out.push(bs ? '<div style="' + esc(S.wrap) + '">' : '<dl style="' + esc(S.wrap) + '">');
+    out.push('<div style="' + esc(S.wrap) + '">');
     stats.forEach(function (s) {
       out.push('<div style="' + esc(S.column) + '">');
-      if (bs) {
-        out.push('<p style="' + esc(S.label) + '">' + esc(s[0]) + "</p>");
-        out.push('<p style="' + esc(S.value) + '"><strong>' + esc(s[1]) + "</strong></p>");
-      } else {
-        out.push('<dt style="' + esc(S.label) + '">' + esc(s[0]) + "</dt>");
-        out.push('<dd style="' + esc(S.value) + '"><strong>' + esc(s[1]) + "</strong></dd>");
-      }
+      out.push('<p style="' + esc(S.label) + '">' + esc(s[0]) + "</p>");
+      out.push('<p style="' + esc(S.value) + '"><strong>' + esc(s[1]) + "</strong></p>");
       out.push("</div>");
     });
-    out.push(bs ? "</div>" : "</dl>");
+    out.push("</div>");
   } else {
-    /* Outline: the display-sized brand band, unchanged. An outline can never
-       be a Brightspace export, so dl/dt/dd is always safe here. */
+    /* Outline: the display-sized brand band, same elements, its own styling. */
     out.push('<div style="' + esc(STAT_BAND.wrap) + '">');
-    out.push('<dl style="' + esc(STAT_BAND.list) + '">');
+    out.push('<div style="' + esc(STAT_BAND.list) + '">');
     stats.forEach(function (s) {
       out.push('<div style="' + esc(STAT_BAND.column) + '">' +
-        '<dt style="' + esc(STAT_BAND.label) + '">' + esc(s[0]) + "</dt>" +
-        '<dd style="' + esc(STAT_BAND.value) + '"><strong>' + esc(s[1]) + "</strong></dd>" +
+        '<p style="' + esc(STAT_BAND.label) + '">' + esc(s[0]) + "</p>" +
+        '<p style="' + esc(STAT_BAND.value) + '"><strong>' + esc(s[1]) + "</strong></p>" +
         "</div>");
     });
-    out.push("</dl>");
+    out.push("</div>");
     out.push("</div>");
   }
   return out;
@@ -1204,15 +1287,22 @@ function buildHtml() {
   var bs = isBrightspace();
   var W = words();
 
-  L.push(heading(1, val("courseTitle") || W.fallbackTitle));
-
-  if (!syl && val("oneSentence")) L.push("<p>" + inline(val("oneSentence")) + "</p>");
+  /* An outline opens with the orange course-page header, which carries the
+     code chip, the title and the one-sentence description together. A
+     syllabus opens with the plain heading it always had - see COURSE_HEADER
+     for why the band is outline-only. */
+  if (syl) {
+    L.push(heading(1, val("courseTitle") || W.fallbackTitle));
+  } else {
+    L = L.concat(courseHeaderBlock());
+  }
 
   /* The authoritative outline this syllabus is based on - syllabus only, since
-     an outline of record does not point at itself. It sits ahead of the course
-     facts because it is the document those facts are drawn from. */
-  if (syl && outlineLinkHtml()) {
-    L.push("<p><strong>Course outline:</strong> " + outlineLinkHtml() + "</p>");
+     an outline of record does not point at itself. It sits directly under the
+     title because it is the document the facts below are drawn from. */
+  if (syl) {
+    var coursePage = coursePageLinkHtml();
+    if (coursePage) L.push("<p>" + coursePage + " course outline</p>");
   }
 
   /* Course facts, in the order they are asked for on the form. Both document
@@ -1279,8 +1369,13 @@ function buildHtml() {
   }
 
   L = L.concat(section(2, "Course description", blocks(val("courseDescription"))));
+  /* Outcomes before the topic list, matching the form. What a student will be
+     able to do is the more consequential of the two, and the topic list reads
+     as the means to it, so the general list follows rather than precedes. The
+     topic list is outline-only, so on a syllabus the outcomes simply run on
+     into the weekly schedule. */
+  L = L.concat(section(2, "Learning outcomes", learningOutcomesBody()));
   if (!syl) L = L.concat(section(2, "General topic list", blocks(val("courseContent"))));
-  L = L.concat(section(2, "Learning outcomes", blocks(val("learningOutcomes"))));
 
   /* Detailed course schedule - syllabus only, F1003 3.4(d) */
   if (syl) {
@@ -1331,8 +1426,19 @@ function buildHtml() {
 
   /* Course materials. The privacy notice belongs with the resource that
      triggers it, and the bookstore search always closes the section. */
-  var textbookBody = blocks(val("textbook"));
-  if (syl && checked("privacy")) textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
+  var textbookBody = [];
+  /* Above the list rather than below it: a reader scanning for cost wants the
+     answer at the top of the section, not after working through the titles. */
+  if (syl && checked("zeroCost")) {
+    textbookBody.push("<p><strong>" + esc(ZERO_COST_NOTE) + "</strong></p>");
+  }
+  textbookBody = textbookBody.concat(blocks(val("textbook")));
+  /* No longer gated on syl: the checkbox is offered on both document types
+     now, so the answer is honoured on both. The wording differs by type,
+     picked the same way DISCLAIMER is. */
+  if (checked("privacy")) {
+    textbookBody.push("<p>" + esc(syl ? FIPPA_NOTE.syllabus : FIPPA_NOTE.outline) + "</p>");
+  }
   textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
   L = L.concat(section(2, W.materialsHeading, textbookBody));
 
@@ -1356,10 +1462,11 @@ function buildHtml() {
       link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
   ]));
 
+  /* Always present now that it is generated rather than typed, so there is no
+     blank case left to guard against. esc() rather than inline(): the string
+     comes from the clock, not from a box someone could put link syntax in. */
   var versionBody = [];
-  if (val("effectiveDate")) {
-    versionBody.push("<p><strong>Effective date:</strong> " + inline(val("effectiveDate")) + "</p>");
-  }
+  versionBody.push("<p><strong>Effective date:</strong> " + esc(effectiveDate()) + "</p>");
   versionBody.push("<p>" + esc(syl ? DISCLAIMER.syllabus : DISCLAIMER.outline) + "</p>");
   if (safeUrl(ARCHIVE_URL)) {
     versionBody.push("<p>" + link(ARCHIVE_URL, ARCHIVE_LABEL) + "</p>");
@@ -1395,7 +1502,6 @@ var BASE_MARKERS = {
   courseDescription: "required",
   learningOutcomes: "required",
   textbook: "required",
-  effectiveDate: "required",
   semesterLength: "recommended",
   department: "recommended"
 };
@@ -1416,17 +1522,15 @@ var MODE_MARKERS = {
     email: "required",
     /* F1003 3.4(a) qualifies office hours with "if applicable"; Langara asks for
        an explicit answer instead, so a blank is never left ambiguous. */
-    officeHours: "required",
-    outlineLink: "recommended"
+    officeHours: "required"
   }
 };
 
 /* Every field either tier can name, so a marker can be cleared as well as set
    when the mode changes. */
 var MARKED_FIELDS = ["courseTitle", "credits", "ceus", "courseDescription", "learningOutcomes",
-  "textbook", "effectiveDate", "oneSentence", "semesterLength", "department", "mode",
-  "courseContent", "yearSemester", "instructors", "office", "phone", "email", "officeHours",
-  "outlineLink"];
+  "textbook", "oneSentence", "semesterLength", "department", "mode",
+  "courseContent", "yearSemester", "instructors", "office", "phone", "email", "officeHours"];
 
 function markerMap() {
   var map = {};
@@ -1492,8 +1596,13 @@ function checklistItems() {
   var W = words();
   var map = markerMap();
 
-  function add(tier, label, ok, clause, target) {
-    items.push({ tier: tier, label: label, ok: ok, clause: clause || null, target: target });
+  /* flags is an optional { ok: "...", bad: "..." } override for the two words
+     the checklist stamps on an item. Every completeness item wants the
+     defaults; the outcome marker check is not a completeness item - nothing is
+     missing - so "Missing" would be a false statement about it. */
+  function add(tier, label, ok, clause, target, flags) {
+    items.push({ tier: tier, label: label, ok: ok, clause: clause || null,
+                 target: target, flags: flags || null });
   }
   function tierOf(id) {
     return map[id] === "required" ? "required" : "recommended";
@@ -1502,7 +1611,13 @@ function checklistItems() {
   /* Listed in form order, so the summary reads as a walk through the page. */
   add("required", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
   if (!syl) add("recommended", "One-sentence description", !!val("oneSentence"), null, "oneSentence");
-  if (syl) add(tierOf("outlineLink"), "Course outline link", !!val("outlineLink"), null, "outlineLink");
+  /* Not a field of its own: the code and number are read off the front of
+     the title. Both document types lose something when they are absent - a
+     syllabus drops its course outline link, an outline drops the chip above
+     its heading - so this fires in both modes now, with W.codeItem naming
+     whichever consequence applies. The test is identical either way, both
+     features being built from the one regex in courseParts(). */
+  add("recommended", W.codeItem, courseSlug() !== null, null, "courseTitle");
   add("required", creditLabel(), !!creditValue(), "3.2(b)",
       creditUnit() === "ceus" ? "ceus" : "credits");
   /* 3.2(b) requires contact hours, but a course need not have all three kinds,
@@ -1522,8 +1637,37 @@ function checklistItems() {
   }
 
   add("required", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
+
+  /* Which control can satisfy this depends on the chosen format, so both the
+     test and the link target move with it. The list item targets the first
+     text field rather than the Add button, because with three rows already
+     seeded the field is what the author needs to reach, not another row. */
+  if (isOutcomeList()) {
+    add("required", "At least one learning outcome", outcomeRows().length > 0, "3.2(d)", "outcomeText1");
+
+    /* Reported, never corrected. In list mode a field becomes one <li> whole,
+       so a leading "-", bullet or "1." is not parsed away the way it is in a
+       textarea: it survives into the output as a literal character sitting
+       inside the bullet. Stripping it would be quietly editing what someone
+       typed, which is the thing this file does not do - so this says what is
+       wrong, links to the field, and leaves the decision alone.
+
+       Added only when it fires. An item permanently reading "Clear - no
+       markers found" is noise in a list whose job is naming what is left. */
+    var marked = markedOutcomeRows();
+    if (marked.length) {
+      var plural = marked.length > 1;
+      add("recommended",
+          "Learning outcome" + (plural ? "s " : " ") + joinNumbers(marked) +
+          (plural ? " begin" : " begins") + " with a list marker, which will appear inside " +
+          "the bullet rather than making one",
+          false, null, "outcomeText" + marked[0], { bad: "Check" });
+    }
+  } else {
+    add("required", "Learning outcomes", hasContentBeyond("learningOutcomes"), "3.2(d)", "learningOutcomes");
+  }
+
   if (!syl) add("recommended", "General topic list", hasContentBeyond("courseContent"), null, "courseContent");
-  add("required", "Learning outcomes", hasContentBeyond("learningOutcomes"), "3.2(d)", "learningOutcomes");
 
   if (syl) {
     add("required", "At least one scheduled week", scheduleRows().length > 0, "3.4(d)", "addWeekBtn");
@@ -1531,7 +1675,13 @@ function checklistItems() {
 
   add("required", "At least one assessment activity", assessRows().length > 0, W.assessClause, "addAssessBtn");
   add("required", W.materialsItem, hasContentBeyond("textbook"), W.materialsClause, "textbook");
-  add("required", "Effective date", !!val("effectiveDate"), null, "effectiveDate");
+  /* The effective date was listed here while it was a field someone could
+     leave blank. It is generated now, so it can never be outstanding, and an
+     item that is permanently "Included" is noise in a list whose job is to
+     say what is left to do. It moves to the "Added automatically" line at the
+     foot of the check instead. Note that it never carried a clause citation:
+     it was Langara practice rather than an F1003 obligation, so nothing
+     policy-cited leaves the required tier with it. */
 
   return items;
 }
@@ -1584,7 +1734,9 @@ function renderChecklist() {
       var flag = document.createElement("span");
       flag.className = "flag";
       /* Words, not colour or icons alone \u2014 SC 1.4.1. */
-      flag.textContent = item.ok ? "Included" : "Missing";
+      var okWord = (item.flags && item.flags.ok) || "Included";
+      var badWord = (item.flags && item.flags.bad) || "Missing";
+      flag.textContent = item.ok ? okWord : badWord;
       li.appendChild(flag);
       li.appendChild(document.createTextNode(" \u2014 "));
 
@@ -1610,17 +1762,28 @@ function renderChecklist() {
     host.appendChild(ul);
   }
 
+  var noun = words().docNoun;
   group("Required",
-        "Your outline is not complete without these. Items citing a clause are obliged by " +
-        "Policy F1003; the rest are Langara practice.", required);
+        "Your " + noun + " is not complete without these. Items citing a clause are obliged " +
+        "by Policy F1003; the rest are Langara practice.", required);
   group("Recommended",
-        "Not required, but expected on a Langara course outline.", recommended);
+        "Not required, but expected on a Langara course " + noun + ".", recommended);
 
   var auto = document.createElement("p");
-  auto.textContent = "Added automatically: the Grades link, the bookstore textbook search, " +
-    "the BC Transfer Guide link, the Student Support and academic accommodation links, " +
-    "the College policy list, and the subject-to-change note.";
+  auto.textContent = "Added automatically: the effective date, the Grades link, the bookstore " +
+    "textbook search, the BC Transfer Guide link, the Student Support and academic " +
+    "accommodation links, the College policy list, and the subject-to-change note.";
   host.appendChild(auto);
+
+  /* The effective date used to be visible on the form, so an author could see
+     what the document would say. With the field gone this line is the only
+     place it appears before generating, which is why the value itself is
+     named and not just the fact that something fills it in. */
+  var dated = document.createElement("p");
+  dated.className = "hint";
+  dated.textContent = "The effective date is the month this document is generated, so it will " +
+    "read " + effectiveDate() + ".";
+  host.appendChild(dated);
 
   return counts;
 }
@@ -1815,11 +1978,98 @@ function renumberScheduleRows() {
 }
 
 /* ------------------------------------------------------------------ *
+ * Learning outcome rows (list format only)
+ *
+ * Same shape as the assessment and schedule tables - seeded rows, per-row
+ * Remove, delegated Add, renumbered visually-hidden labels, focus moved on
+ * removal - so an instructor who has met one of those tables has met this
+ * one. One text column rather than several, and no due-date style hidden
+ * cell, so the machinery is the same but shorter.
+ * ------------------------------------------------------------------ */
+
+function addOutcomeRow(text) {
+  var body = document.getElementById("outcomeBody");
+  var tr = document.createElement("tr");
+
+  var td = document.createElement("td");
+  var lab = document.createElement("label");
+  lab.className = "visually-hidden";
+  td.appendChild(lab);
+  var input = document.createElement("input");
+  input.type = "text";
+  input.value = text || "";
+  td.appendChild(input);
+  tr.appendChild(td);
+
+  var actions = document.createElement("td");
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "removeOutcome";
+  remove.appendChild(document.createTextNode("Remove"));
+  var sr = document.createElement("span");
+  sr.className = "visually-hidden";
+  remove.appendChild(sr);
+  remove.addEventListener("click", function () { removeOutcomeRow(tr); });
+  actions.appendChild(remove);
+  tr.appendChild(actions);
+
+  body.appendChild(tr);
+  renumberOutcomeRows();
+  return tr;
+}
+
+function removeOutcomeRow(tr) {
+  var body = document.getElementById("outcomeBody");
+  var rows = Array.prototype.slice.call(body.rows);
+  var index = rows.indexOf(tr);
+  body.removeChild(tr);
+
+  /* Never leave the table empty, for the same reason the other two do not:
+     a header with no rows under it is a dead end for anyone who removed the
+     last row by mistake. It also keeps outcomeText1 a real id, which the
+     completeness check links to. */
+  if (!body.rows.length) addOutcomeRow("");
+  renumberOutcomeRows();
+
+  var next = body.rows[Math.min(index, body.rows.length - 1)];
+  var target = next ? next.querySelector(".removeOutcome")
+                    : document.getElementById("addOutcomeBtn");
+  if (target) target.focus();
+  setStatus("Learning outcome removed.");
+}
+
+function renumberOutcomeRows() {
+  var body = document.getElementById("outcomeBody");
+  Array.prototype.forEach.call(body.rows, function (tr, i) {
+    var n = i + 1;
+    var lab = tr.querySelector("label");
+    var input = tr.querySelector("input");
+    if (lab && input) {
+      var id = "outcomeText" + n;
+      input.id = id;
+      lab.setAttribute("for", id);
+      lab.textContent = "Learning outcome " + n;
+    }
+    var sr = tr.querySelector(".removeOutcome .visually-hidden");
+    if (sr) sr.textContent = " learning outcome " + n;
+  });
+}
+
+/* ------------------------------------------------------------------ *
  * Wiring
  * ------------------------------------------------------------------ */
 
 function setStatus(message) {
   document.getElementById("status").textContent = message;
+}
+
+/* The second status region, the one beside Download and Copy. Those two
+   buttons now sit below the preview, far enough from the form's own status
+   line that writing their confirmation there would put it off screen. Both
+   regions are role="status", so both are announced; they differ only in where
+   the message is visible. */
+function setExportStatus(message) {
+  document.getElementById("exportStatus").textContent = message;
 }
 
 function syncCreditUnit() {
@@ -1848,12 +2098,23 @@ function setStem(id, stem, want) {
   }
 }
 
+/* Which of the two learning-outcome inputs is showing. Independent of
+   document type, so it is its own sync rather than part of syncMode(). */
+function syncOutcomeMode() {
+  var list = isOutcomeList();
+  document.getElementById("outcomeListWrap").hidden = !list;
+  document.getElementById("outcomeParagraphWrap").hidden = list;
+}
+
 function syncMode() {
   var syl = isSyllabus();
   var W = words();
 
-  ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap", "privacyWrap",
-   "gradingWrap", "weightTotal", "outlineLinkWrap", "exportFormatFieldset"]
+  /* privacyWrap is no longer in this list: the privacy notice checkbox is
+     offered on both document types now. */
+  ["instructorFieldset", "scheduleFieldset", "yearSemesterWrap",
+   "gradingWrap", "weightTotal", "exportFormatFieldset",
+   "zeroCostWrap", "zeroCostHint"]
     .forEach(function (id) { document.getElementById(id).hidden = !syl; });
 
   /* Outline-only, so these hide on the opposite condition. The one-sentence
@@ -1890,6 +2151,12 @@ function syncMode() {
   document.getElementById("assessCaptionText").textContent = W.assessCaption;
   /* "(at least one required)" is an outline note only. */
   document.getElementById("assessCaptionNote").hidden = syl;
+
+  /* The iframe's accessible name, which was fixed at "Course outline preview"
+     and so mislabelled the preview for the whole of a syllabus session. The
+     document title inside the frame is set from the same wording in
+     generate(). */
+  document.getElementById("preview").setAttribute("title", W.previewTitle);
 
   Object.keys(OUTLINE_STEMS).forEach(function (id) {
     setStem(id, OUTLINE_STEMS[id], !syl);
@@ -1931,7 +2198,7 @@ function generate(announce) {
   var previewDoc = /^\s*<!DOCTYPE/i.test(html)
     ? html
     : '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
-      '<title>Course outline preview</title></head><body>' + html + "</body></html>";
+      "<title>" + esc(words().previewTitle) + "</title></head><body>" + html + "</body></html>";
   document.getElementById("preview").setAttribute("srcdoc", previewDoc);
 
   var counts = renderChecklist();
@@ -1966,7 +2233,7 @@ function download() {
   a.click();
   document.body.removeChild(a);
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  setStatus("Downloaded " + fileName() + ".");
+  setExportStatus("Downloaded " + fileName() + ".");
 }
 
 function copy() {
@@ -1978,12 +2245,12 @@ function copy() {
     source.select();
     try { document.execCommand("copy"); } catch (e) { /* nothing more to try */ }
     source.setAttribute("readonly", "readonly");
-    setStatus("HTML copied to the clipboard.");
+    setExportStatus("HTML copied to the clipboard.");
   }
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(html).then(function () {
-      setStatus("HTML copied to the clipboard.");
+      setExportStatus("HTML copied to the clipboard.");
     }, fallback);
   } else {
     fallback();
@@ -2013,6 +2280,18 @@ function init() {
   ["restrictYes", "restrictNo", "reqYes", "reqNo"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", syncBranches);
   });
+  /* The checklist is re-rendered here because the format change swaps which
+     item is being tested - "At least one learning outcome" against the rows,
+     or "Learning outcomes" against the box - and a stale item would report on
+     an input that is no longer showing. */
+  ["outcomeList", "outcomeParagraph"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", function () {
+      syncOutcomeMode();
+      setStatus(isOutcomeList() ? "Learning outcomes set to a list."
+                                : "Learning outcomes set to a paragraph.");
+      renderChecklist();
+    });
+  });
   ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
     var el = document.getElementById(id);
     el.addEventListener("input", syncHoursTotal);
@@ -2025,6 +2304,10 @@ function init() {
 
   for (var w = 1; w <= 3; w++) addScheduleRow([String(w), "", "", ""]);
 
+  addOutcomeRow("");
+  addOutcomeRow("");
+  addOutcomeRow("");
+
   /* Delegated, so a row added later needs no wiring of its own. */
   var assessBody = document.getElementById("assessBody");
   assessBody.addEventListener("input", syncWeightTotal);
@@ -2035,6 +2318,13 @@ function init() {
     var first = tr.querySelector("input");
     if (first) first.focus();
     setStatus("Row added.");
+  });
+
+  document.getElementById("addOutcomeBtn").addEventListener("click", function () {
+    var tr = addOutcomeRow("");
+    var first = tr.querySelector("input");
+    if (first) first.focus();
+    setStatus("Learning outcome added.");
   });
 
   document.getElementById("addWeekBtn").addEventListener("click", function () {
@@ -2055,6 +2345,7 @@ function init() {
     generate(true);
   });
 
+  syncOutcomeMode();
   syncMode();
   renderChecklist();
 }
@@ -2064,6 +2355,4 @@ if (document.readyState === "loading") {
 } else {
   init();
 }
-</script>
-</body>
-</html>
+</script></p></body></html>
