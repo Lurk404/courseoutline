@@ -725,6 +725,195 @@ function blocks(s) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Paste normalisation
+ *
+ * blocks() reads "-", "*" and "1." at the start of a line. A list copied out
+ * of a PDF or a Word document almost never arrives as any of those: the
+ * bullet is a glyph - \u2022, \u25aa, \u25e6, or a private-use character out of Symbol
+ * or Wingdings - and long lines are broken mid-word with a hyphen wherever
+ * the original column ran out. Pasted in as-is, none of that is recognised,
+ * so a six-item list becomes six paragraphs and a hyphenated word becomes
+ * two. Nothing errors; the preview is just quietly the wrong shape, which is
+ * the failure mode hardest to notice and hardest to attribute.
+ *
+ * The clean-up therefore happens at the moment of the paste, in the open:
+ * the text lands in the box already converted, the author is looking at that
+ * box, and a line underneath it says what changed.
+ *
+ * That is deliberately a different answer from the stray-marker check on the
+ * learning outcome rows, which reports and refuses to correct. Two things
+ * separate them. That check fires long after the typing, out of sight of the
+ * person who did it, so a silent repair there would be editing someone's
+ * work behind their back. And a row becomes one <li> whole, so a leading
+ * bullet there has no syntax to be converted INTO - there is no right answer
+ * to apply, only a wrong one to point at. Here the conversion is visible as
+ * it happens, announced, and undoable.
+ *
+ * Wired to the textareas only. Every one of them is read through blocks(),
+ * so "- " means something in all six.
+ * ------------------------------------------------------------------ */
+
+/* The textareas whose contents reach blocks(). */
+var PASTE_FIELDS = ["courseDescription", "learningOutcomes", "courseContent",
+                    "textbook", "gradingNotes", "deptPolicies"];
+
+/* Glyphs a bullet arrives as. Wider than the set OUTCOME_MARKER watches for,
+   because that one only has to recognise that a marker is present, while
+   this one has to catch every shape a real paste produces.
+
+   The \uf0xx entries are not Unicode bullets at all - they are Symbol and
+   Wingdings glyphs sitting in the private use area, which is what Word
+   writes when its list bullet comes from one of those fonts. They are the
+   most common thing to survive a copy out of a Word-generated PDF and the
+   least likely to be guessed at, so they are named here explicitly. */
+var PASTE_BULLETS = "\u2022\u2023\u2043\u25aa\u25ab\u25a0\u25a1\u25cf\u25cb\u25e6" +
+                    "\u00b7\u2219\u2013\u2014\u2212\u27a2\u2756" +
+                    "\uf076\uf0a7\uf0b7\uf0d8\uf0fc";
+
+var RE_GLYPH_BULLET = new RegExp("^[ \\t]*[" + PASTE_BULLETS + "]+[ \\t]*");
+
+/* Word's second-level bullet is a literal lower-case "o", and it pastes as
+   the letter. Requiring a tab or a run of two spaces after it is what tells
+   "o" the bullet apart from "o" the first letter of a word: a real
+   sub-bullet carries the whitespace that positions its text, never a single
+   space. */
+var RE_O_BULLET = /^[ \t]*o(?:\t+|[ ]{2,})/;
+
+/* "-Analyze", "*Analyze" - a marker blocks() will not read, since it wants
+   whitespace after one. Restricted to a following letter so a line opening
+   "-5% for each day late" keeps its minus sign. */
+var RE_TIGHT_BULLET = /^[ \t]*[-*](?=[A-Za-z\u00c0-\u024f])/;
+
+var RE_HYPHEN_END  = /[A-Za-z\u00c0-\u024f][-\u2010]$/;
+var RE_LOWER_START = /^[a-z\u00df-\u024f]/;
+
+function convertBulletLine(line) {
+  var m = RE_GLYPH_BULLET.exec(line) || RE_O_BULLET.exec(line);
+  if (m) {
+    var rest = line.slice(m[0].length);
+    /* A line holding nothing but the bullet is scaffolding left by a wrapped
+       list, not an empty item, so it is dropped rather than turned into a
+       "- " with nothing after it. */
+    if (!rest.trim()) return { line: "", hit: false };
+    return { line: "- " + rest, hit: true };
+  }
+  var t = RE_TIGHT_BULLET.exec(line);
+  if (t) return { line: "- " + line.slice(t[0].length), hit: true };
+  return { line: line, hit: false };
+}
+
+/* Returns the cleaned text and what had to be done to it, so the caller can
+   both insert it and say what happened. */
+function normalizePaste(raw) {
+  var original = String(raw == null ? "" : raw);
+  var text = original;
+
+  /* A soft hyphen sitting at the end of a line is the least ambiguous wrap
+     marker there is - the character exists for no other purpose than to mark
+     a break point - so it is promoted to a real hyphen and handed to the
+     joining pass below. Anywhere else it is invisible debris, and stripping
+     it before that pass would hide the very break it was marking. */
+  text = text.replace(/\u00ad(?=\r?\n|\u2028)/g, "-");
+
+  /* The rest of the invisible characters, taken out first so nothing below
+     has to reason about them. A zero-width space or a byte order mark
+     otherwise reaches the export as a character nobody can see to delete. */
+  text = text.replace(/[\u00ad\u200b\ufeff]/g, "");
+
+  /* Line separators split() would not treat as line breaks, so they would
+     otherwise sit in the output as literal characters. */
+  text = text.replace(/\r\n?/g, "\n")
+             .replace(/\u2028/g, "\n")
+             .replace(/\u2029/g, "\n\n");
+
+  /* Page breaks, dropped rather than converted: in a PDF paste they arrive on
+     a line of their own, so the newlines already around them do the work. */
+  text = text.replace(/[\f\v]/g, "");
+
+  /* The exotic spaces Word and PDF extraction emit, flattened so the line
+     tests below only have to know about a space and a tab. */
+  text = text.replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ");
+
+  var lines = text.split("\n");
+  var last = lines.length - 1;
+  var bullets = 0;
+
+  lines = lines.map(function (line, i) {
+    var c = convertBulletLine(line);
+    if (c.hit) bullets++;
+    line = c.line;
+
+    /* Tab runs are column alignment out of a PDF, never anything a textarea
+       wants. Done after the bullet test, which needs the tab that follows
+       Word's "o" sub-bullet still in place to recognise it. */
+    line = line.replace(/\t+/g, " ");
+
+    /* Leading space comes off every line but the first, trailing space off
+       every line but the last. A paste can land in the middle of a line
+       somebody is already writing, and trimming those two ends would run the
+       pasted text into the words either side of it. Everywhere else the
+       whitespace is free to go, because blocks() trims each line anyway. */
+    if (i !== 0)    line = line.replace(/^[ \t]+/, "");
+    if (i !== last) line = line.replace(/[ \t]+$/, "");
+
+    return line;
+  });
+
+  /* Line-wrap hyphenation. A PDF breaks a word at the column edge and leaves
+     the hyphen behind, so "assess-\nment" pastes as two lines and reads as
+     two words. Joining asks both halves to look like halves: a letter then a
+     hyphen ending one line, a lower-case letter opening the next. That keeps
+     a capital, a digit or a bullet on the following line out of it.
+
+     It cannot be made exact. "well-\nbeing" is a real hyphen that happens to
+     fall at a wrap, and it is joined to "wellbeing". That is precisely why
+     the count is reported: the author is told how many joins were made and
+     can look at them, rather than the repair being made silently and the
+     error surfacing in a published document. */
+  var joins = 0;
+  var out = [];
+  for (var i = 0; i < lines.length; i++) {
+    var cur = lines[i];
+    while (i + 1 < lines.length &&
+           RE_HYPHEN_END.test(cur) && RE_LOWER_START.test(lines[i + 1])) {
+      cur = cur.replace(/[-\u2010]$/, "") + lines[i + 1];
+      joins++;
+      i++;
+    }
+    out.push(cur);
+  }
+
+  /* More than one blank line says nothing blocks() can act on - it closes an
+     open list at the first. */
+  var result = out.join("\n").replace(/\n{3,}/g, "\n\n");
+
+  return {
+    text: result,
+    bullets: bullets,
+    joins: joins,
+    changed: result !== original
+  };
+}
+
+/* One line, and specific about the count: "cleaned up" on its own gives the
+   author nothing to check against. */
+function pasteNoteText(r) {
+  var bits = [];
+  if (r.bullets) {
+    bits.push("Converted " + r.bullets + " pasted bullet" +
+              (r.bullets === 1 ? "" : "s") + " to list format.");
+  }
+  if (r.joins) {
+    bits.push("Joined " + r.joins + " hyphenated line break" +
+              (r.joins === 1 ? "" : "s") + ".");
+  }
+  /* Something changed or this would not have been called, so there is always
+     a sentence to write even when neither count fired. */
+  if (!bits.length) bits.push("Tidied spacing and invisible characters in the pasted text.");
+  return bits.join(" ");
+}
+
+/* ------------------------------------------------------------------ *
  * Reading the form
  * ------------------------------------------------------------------ */
 
@@ -2072,6 +2261,106 @@ function setExportStatus(message) {
   document.getElementById("exportStatus").textContent = message;
 }
 
+/* ------------------------------------------------------------------ *
+ * Paste wiring
+ * ------------------------------------------------------------------ */
+
+function pasteNoteId(id) { return id + "PasteNote"; }
+
+/* A note of its own under each field rather than the shared status line
+   beside Generate. Two reasons. The list fields sit well up a long form and
+   that line is at the bottom of it, so the message would be announced and
+   then not be anywhere the author is looking. And a message about a paste is
+   only unambiguous if it is next to the box that was pasted into - one
+   shared line cannot say which of six fields it means without naming it.
+   Both regions are role="status", so both are announced identically. */
+function setPasteNote(id, message) {
+  var el = document.getElementById(pasteNoteId(id));
+  if (el) el.textContent = message;
+}
+
+/* Built empty at start-up rather than on the first paste: a live region has
+   to be in the document before its text changes, or the change is not
+   announced. Generated here rather than written into the markup so it cannot
+   fall out of step with PASTE_FIELDS. */
+function buildPasteNotes() {
+  PASTE_FIELDS.forEach(function (id) {
+    var field = document.getElementById(id);
+    if (!field || document.getElementById(pasteNoteId(id))) return;
+    var note = document.createElement("span");
+    note.className = "hint";
+    note.id = pasteNoteId(id);
+    note.setAttribute("role", "status");
+    field.parentNode.insertBefore(note, field.nextSibling);
+  });
+}
+
+/* insertText rather than assigning to value, so the paste stays on the
+   browser's own undo stack and Ctrl+Z puts back what was there before. It is
+   a deprecated call and it returns false where it is not supported, hence
+   the fallback - which does lose undo, and dispatches the input event the
+   assignment would not otherwise fire. */
+function insertAtCursor(el, text) {
+  el.focus();
+  var done = false;
+  try {
+    done = !!(document.execCommand && document.execCommand("insertText", false, text));
+  } catch (e) {
+    done = false;
+  }
+  if (done) return;
+
+  var start = el.selectionStart;
+  var end = el.selectionEnd;
+  if (typeof start === "number" && typeof end === "number") {
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    el.selectionStart = el.selectionEnd = start + text.length;
+  } else {
+    el.value += text;
+  }
+
+  var ev;
+  try {
+    ev = new Event("input", { bubbles: true });
+  } catch (e2) {
+    ev = document.createEvent("Event");
+    ev.initEvent("input", true, false);
+  }
+  el.dispatchEvent(ev);
+}
+
+function handlePaste(ev) {
+  var el = ev.target;
+  var data = ev.clipboardData || window.clipboardData;
+  /* No readable clipboard, or a flavour with no plain text in it at all - an
+     image, say. Left to the browser, which will do the right thing or
+     nothing. */
+  if (!data) return;
+
+  var raw = "";
+  try {
+    raw = data.getData("text/plain") || data.getData("Text") || "";
+  } catch (e) {
+    return;
+  }
+  if (!raw) return;
+
+  var report = normalizePaste(raw);
+
+  /* Nothing to change: the default paste is allowed to run, which keeps undo
+     behaving natively for the ordinary case. The note is cleared so an
+     earlier one does not sit there describing a paste that is no longer on
+     screen. */
+  if (!report.changed) {
+    setPasteNote(el.id, "");
+    return;
+  }
+
+  ev.preventDefault();
+  insertAtCursor(el, report.text);
+  setPasteNote(el.id, pasteNoteText(report));
+}
+
 function syncCreditUnit() {
   var ceus = checked("unitCeus");
   document.getElementById("creditsWrap").hidden = ceus;
@@ -2261,6 +2550,12 @@ function init() {
   syncCreditUnit();
   syncBranches();
   syncHoursTotal();
+
+  buildPasteNotes();
+  PASTE_FIELDS.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("paste", handlePaste);
+  });
 
   ["typeOutline", "typeSyllabus"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", function () {
