@@ -295,12 +295,19 @@
 <div id="checklist" tabindex="-1"></div>
 <h2>Preview</h2>
 <p class="hint">This preview carries no styling of its own, so text appears in whatever font your browser falls back to. The finished document takes its appearance from wherever it ends up — the College website, Brightspace, or a document you paste it into — so this may not be exactly how the content will look once it is placed.</p>
-<iframe id="preview" title="Course outline preview" height="600"></iframe> <!-- These act on the generated document rather than on the form, so they sit
-     with the generated document. Both call generate(false) first, so neither
-     depends on Generate having been pressed. Their own status region, rather
-     than the form's: a confirmation that renders a screen away from the button
-     that caused it is a confirmation nobody sees. -->
-<p class="actions"><button type="button" id="downloadBtn">Download HTML</button> <button type="button" id="copyBtn">Copy HTML</button> <span id="exportStatus" role="status"></span></p>
+<iframe id="preview" title="Course outline preview" height="600"></iframe> <p class="hint">Copy formatted puts the finished layout on the clipboard, ready to paste straight into Brightspace, Drupal, or Word. Copy HTML puts the underlying markup there instead, for when a code or source view is what's needed.</p>
+<!-- These act on the generated document rather than on the form, so they sit
+     with the generated document. All three call generate(false) first, so
+     none depends on Generate having been pressed. Their own status region,
+     rather than the form's: a confirmation that renders a screen away from
+     the button that caused it is a confirmation nobody sees.
+
+     Copy formatted goes first, ahead of the two buttons that were already
+     here, because it is the one built for the instructor who does not want
+     to see a code view at all - Copy HTML is what that view is for, and
+     staying second in reading order after Download keeps it out of the way
+     of someone who was never going to use it. -->
+<p class="actions"><button type="button" id="copyFormattedBtn">Copy formatted</button> <button type="button" id="downloadBtn">Download HTML</button> <button type="button" id="copyBtn">Copy HTML</button> <span id="exportStatus" role="status"></span></p>
 <h2>HTML source</h2>
 <p><label for="source">Generated HTML (read-only)</label></p>
 <textarea id="source" rows="20" readonly="readonly"></textarea></main>
@@ -2511,6 +2518,123 @@ function fileName() {
   return stem + ".html";
 }
 
+/* ------------------------------------------------------------------ *
+ * Copy formatted
+ *
+ * Copy HTML puts the raw markup on the clipboard, which is correct for
+ * someone about to paste into a code or source view and useless to anyone
+ * else, since the destination then shows the tags as text instead of
+ * rendering them. This is the other half: a text/html clipboard entry
+ * alongside a text/plain one, which is what a browser already writes on its
+ * own when a person selects rendered page content and presses Ctrl+C - the
+ * same mechanism that lets a paragraph copied out of a webpage keep its
+ * bold and its links when it lands in Word. This button does that without
+ * asking anyone to click into the preview frame and select everything by
+ * hand, which is not a discoverable thing to do and is exactly the trip
+ * into unfamiliar territory this button exists to avoid.
+ *
+ * Built from the HTML string generate() already returns, not read back out
+ * of the preview iframe's own rendered document. Setting srcdoc schedules
+ * an asynchronous navigation, so contentDocument can still be showing the
+ * PREVIOUS render for a tick after generate() runs; the returned string has
+ * no such delay and is exactly what the iframe is about to display.
+ *
+ * DOMParser rather than assigning to a detached element's innerHTML: an
+ * outline or a Paste-format syllabus is a bare fragment, but a
+ * Brightspace-format syllabus is a full document - <html>, <head>, script
+ * tags and all. innerHTML on a div handles a fragment fine and a full
+ * document inconsistently across browsers, since <html>/<head> are not
+ * legal children of a div; DOMParser("text/html") parses either shape
+ * correctly and hands back a real Document, so the same code can read
+ * .body off it regardless of which one came in. */
+function previewBodyHtml(html) {
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body ? doc.body.innerHTML : "";
+}
+
+function previewBodyText(html) {
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  var text = doc.body ? doc.body.textContent : "";
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* Fallback for a browser or context the Async Clipboard API will not run
+   in - most concretely, this file opened straight from disk over a file://
+   address while checking a change, since navigator.clipboard.write() is
+   refused outside a secure context and file: does not count as one.
+
+   A temporary element in the MAIN document, not the preview iframe:
+   building the rich clipboard content off generate()'s own string already
+   avoids the iframe, and selecting the copy in the top document sidesteps
+   every cross-frame selection and focus quirk that would come with
+   selecting inside the iframe instead. Off-screen rather than hidden
+   outright, since a hidden element cannot hold a selection; removed again
+   as soon as the copy command has run, so nothing lingers in the tab order
+   or the accessibility tree. */
+function execCommandCopyHtml(bodyHtml) {
+  var holder = document.createElement("div");
+  holder.style.position = "fixed";
+  holder.style.left = "-9999px";
+  holder.style.top = "0";
+  holder.setAttribute("aria-hidden", "true");
+  holder.innerHTML = bodyHtml;
+  document.body.appendChild(holder);
+
+  var ok = false;
+  try {
+    var range = document.createRange();
+    range.selectNodeContents(holder);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    ok = !!(document.execCommand && document.execCommand("copy"));
+    sel.removeAllRanges();
+  } catch (e) {
+    ok = false;
+  }
+
+  document.body.removeChild(holder);
+  return ok;
+}
+
+function copyFormatted() {
+  var html = generate(false);
+  var bodyHtml = previewBodyHtml(html);
+
+  if (!bodyHtml) {
+    setExportStatus("Nothing to copy yet.");
+    return;
+  }
+
+  var bodyText = previewBodyText(html);
+
+  function onFail() {
+    if (execCommandCopyHtml(bodyHtml)) {
+      setExportStatus("Formatted content copied \u2014 paste into Brightspace, Drupal, or Word.");
+    } else {
+      setExportStatus("Copy failed. Try Copy HTML instead, or select the preview and press Ctrl+C.");
+    }
+  }
+
+  if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+    try {
+      var item = new ClipboardItem({
+        "text/html": new Blob([bodyHtml], { type: "text/html" }),
+        "text/plain": new Blob([bodyText], { type: "text/plain" })
+      });
+      navigator.clipboard.write([item]).then(function () {
+        setExportStatus("Formatted content copied \u2014 paste into Brightspace, Drupal, or Word.");
+      }, onFail);
+      return;
+    } catch (e) {
+      onFail();
+      return;
+    }
+  }
+
+  onFail();
+}
+
 function download() {
   var html = generate(false);
   var blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -2631,6 +2755,7 @@ function init() {
   });
 
   document.getElementById("generateBtn").addEventListener("click", function () { generate(true); });
+  document.getElementById("copyFormattedBtn").addEventListener("click", copyFormatted);
   document.getElementById("downloadBtn").addEventListener("click", download);
   document.getElementById("copyBtn").addEventListener("click", copy);
 
