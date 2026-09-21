@@ -1,248 +1,499 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Course Syllabus Builder</title>
 <style>
-  /* Minimal CSS, added only to satisfy accessibility criteria that cannot be met
-     with markup alone: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus Visible.
-     Nothing here is decorative. Extend or replace freely. */
+  /* Minimal CSS. Present only to satisfy accessibility criteria that markup
+     alone cannot meet: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus
+     Visible, 2.5.8 Target Size. The one exception is .help-box, whose shading
+     sets the formatting instructions apart from the form. */
 
   body {
-    max-width: 62rem;
+    max-width: 90%;
     margin: 0 auto;
     padding: 1rem;
     font-family: system-ui, -apple-system, sans-serif;
     line-height: 1.5;
   }
 
-  /* Reflow: fluid controls instead of fixed `size`/`cols` character widths,
-     so nothing overflows at a 320px viewport. */
+  /* A flex or grid display value beats the hidden attribute, so it is forced
+     to win for the credits/CEUs and pre/corequisite branches. */
+  [hidden] { display: none !important; }
+
+  /* Reflow: fluid controls, never fixed character widths. */
+  /* Every text-entry type is listed. tel and email look like plain text
+     fields but are separate input types, so leaving them out of this
+     selector left them at browser-default width and height while every
+     other field was full-width - the reason they looked wrong. url, search
+     and date are here pre-emptively, so adding one later does not
+     reintroduce the same mismatch. */
   input[type="text"],
-  input[type="email"],
+  input[type="number"],
   input[type="tel"],
-  textarea {
+  input[type="email"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  textarea,
+  select {
     width: 100%;
     box-sizing: border-box;
     font: inherit;
-    padding: 0.35rem;
-    border: 1px solid #595959; /* 7:1 against white, clears the 3:1 minimum */
+    padding: 0.4rem;
+    border: 1px solid #595959;   /* 7:1 on white, clears the 3:1 minimum */
   }
 
-  /* Browsers give fieldset `min-inline-size: min-content`, so a fieldset will
-     refuse to shrink below its widest child. That defeats the schedule table's
-     scroll container and pushes the whole page wider than the viewport. */
+  /* Browsers default fieldsets to min-inline-size: min-content, which stops
+     them shrinking below their widest child at narrow viewports. */
   fieldset {
-    margin-bottom: 1.5rem;
-    min-width: 0;
+    min-inline-size: 0;
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem 1rem;
+    border: 1px solid #595959;
   }
-  legend { font-weight: bold; }
+  legend { font-weight: bold; padding: 0 0.35rem; }
 
-  /* Native buttons render ~21px tall, under the 24px minimum in WCAG 2.2
-     SC 2.5.8 and well under a comfortable touch target. */
+  label { display: inline-block; margin-bottom: 0.15rem; }
+  .field { margin: 0 0 1rem; }
+  /* display: block so that a field carrying more than one hint stacks them
+     and the top margin actually applies - on an inline span it is ignored. */
+  .hint { display: block; font-size: 0.875rem; color: #4a4a4a; margin: 0.2rem 0 0; }
+
   button {
     font: inherit;
-    min-height: 44px;
+    min-height: 2.75rem;
     padding: 0.4rem 0.9rem;
+    border: 1px solid #595959;
+    background: #f2f2f2;
     cursor: pointer;
   }
 
-  .actions {
+  .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+  /* Radio and checkbox rows. The 2.25rem row height guarantees a 24px
+     undisturbed circle around each control, which is how SC 2.5.8 is met
+     without inflating the controls themselves. */
+  .radio-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
     align-items: center;
+    gap: 0.5rem;
+    min-height: 2.25rem;
   }
+  .radio-row input { width: 1.25rem; height: 1.25rem; margin: 0; }
+  .radio-row label { margin: 0; }
 
-  /* Focus indicator that survives any later restyling. */
-  :focus-visible {
-    outline: 3px solid #0b5fff;
-    outline-offset: 2px;
-  }
+  :focus-visible { outline: 3px solid #0b5fff; outline-offset: 2px; }
 
-  /* Data tables are exempt from reflow, but they should scroll in their own
-     container rather than breaking the page. tabindex makes that scrollable
-     region reachable by keyboard. */
-  /* position:relative matters here. The visually-hidden text in the last column
-     header is absolutely positioned; without a positioned ancestor it anchors to
-     the initial containing block, escapes this scroll container, and widens the
-     whole document. */
-  .table-wrap {
-    position: relative;
-    overflow-x: auto;
-  }
+  /* Data tables are exempt from reflow but must scroll in their own container
+     rather than widening the page. tabindex makes that region keyboard
+     reachable, which a scrollable area otherwise is not. */
+  .table-scroll { overflow-x: auto; }
 
-  #scheduleTable {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 34rem;
-  }
-  #scheduleTable th,
-  #scheduleTable td {
+  /* Three columns plus the row actions. Wide enough that the cells do not
+     crush together, narrow enough to stay inside .table-scroll on a phone. */
+  #assessTable { min-width: 36rem; }
+  #scheduleTable { min-width: 46rem; }
+
+  table { border-collapse: collapse; width: 100%; }
+  caption { text-align: left; font-weight: bold; padding-bottom: 0.35rem; }
+  th, td {
     border: 1px solid #595959;
-    padding: 0.35rem;
+    padding: 0.5rem 0.6rem;
     text-align: left;
+    vertical-align: top;
+    /* Keeps absolutely positioned row labels inside their own cell instead of
+       escaping the scroll container and widening the document. */
+    position: relative;
   }
-  #scheduleTable td:first-child { width: 5rem; }
-  #scheduleTable td:last-child { width: 6rem; }
-
-  #status { display: inline-block; margin-left: 0.5rem; }
-
-  #preview, #source { border: 1px solid #595959; }
-  #preview { width: 100%; max-width: 100%; height: 600px; }
-  #source { width: 100%; box-sizing: border-box; font-family: ui-monospace, monospace; }
-
-  @media (max-width: 40rem) {
-    body { padding: 0.75rem; }
-    #preview { height: 22rem; }
-  }
+  th { background: #f2f2f2; }
 
   .visually-hidden {
     position: absolute;
-    width: 1px; height: 1px;
-    margin: -1px; padding: 0;
+    width: 1px;
+    height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
+    clip-path: inset(50%);
     white-space: nowrap;
-    border: 0;
   }
+
+  #checklist ul { list-style: none; padding: 0; margin: 0.35rem 0 0; }
+  #checklist li { margin: 0.2rem 0; }
+  #checklist h3 { font-size: 1rem; margin: 1rem 0 0; }
+  /* Focus moves here after a generate that leaves items outstanding.
+     Programmatic focus does not always trigger :focus-visible, so :focus is
+     matched too, guaranteeing a visible indicator (SC 2.4.7). */
+  #checklist:focus { outline: 3px solid #0b5fff; outline-offset: 2px; }
+  .flag { font-weight: bold; }
+
+  iframe { width: 100%; border: 1px solid #595959; }
+
+  code { background: #f2f2f2; padding: 0 0.2rem; }
+
+  /* Light enough that body text keeps 18:1 on it (contrast.js reads this
+     value back and checks it). The code samples inside go white, or they
+     would disappear into the box they sit in. */
+  .help-box { background: #f2f2f2; padding: 0.75rem 1rem; margin: 0 0 1.5rem; border-radius: 4px; }
+  .help-box p { margin: 0 0 0.5rem; }
+  .help-box p:last-child { margin-bottom: 0; }
+  .help-box code { background: #ffffff; }
 </style>
-</head>
-<body>
-
-<main>
-
+</head><body><main>
 <h1>Course Syllabus Builder</h1>
-<p>Fill in the fields, then generate the HTML. Blank fields are left out of the export. In the larger boxes, lines starting with <code>-</code> or <code>*</code> become a bulleted list; other lines become paragraphs.</p>
-
-<form id="outlineForm" onsubmit="return false;">
-
-  <fieldset>
-    <legend>Course</legend>
-    <p>
-      <label for="courseTitle">Course Code, Number, and Title:</label><br>
-      <input type="text" id="courseTitle">
-    </p>
-    <p>
-      <label for="yearSemester">Year and semester (YYYY#0):</label><br>
-      <input type="text" id="yearSemester" placeholder="e.g. 202510">
-    </p>
-    <p>
-      <label for="courseFormat">Course Format:</label><br>
-      <input type="text" id="courseFormat">
-    </p>
-    <p>
-      <label for="credits">Credits:</label><br>
-      <input type="text" id="credits" inputmode="numeric">
-    </p>
-    <p>
-      <label for="courseDescription">Course Description, Prerequisites, and Corequisites:</label><br>
-      <textarea id="courseDescription" rows="6"></textarea>
-    </p>
-    <p>
-      <label for="learningOutcomes">Learning Outcomes:</label><br>
-      <textarea id="learningOutcomes" rows="6">Upon successful completion of this course, students will be able to</textarea>
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Instructor</legend>
-    <p>
-      <label for="instructors">Instructor(s):</label><br>
-      <input type="text" id="instructors" autocomplete="name">
-    </p>
-    <p>
-      <label for="office">Office:</label><br>
-      <input type="text" id="office">
-    </p>
-    <p>
-      <label for="phone">Phone:</label><br>
-      <input type="tel" id="phone" autocomplete="tel">
-    </p>
-    <p>
-      <label for="email">Email:</label><br>
-      <input type="email" id="email" autocomplete="email">
-    </p>
-    <p>
-      <label for="officeHours">Office Hours:</label><br>
-      <input type="text" id="officeHours">
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Materials and assessment</legend>
-    <p>
-      <label for="textbook">Textbook and Course Materials:</label><br>
-      <textarea id="textbook" rows="6"></textarea>
-    </p>
-    <p>
-      <label for="assessments">Assessments and Weighting:</label><br>
-      <textarea id="assessments" rows="6"></textarea>
-    </p>
-    <p>
-      <label for="grading">Grading:</label><br>
-      <textarea id="grading" rows="4"></textarea>
-    </p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Detailed Course Schedule:</legend>
-    <div class="table-wrap" role="region" aria-label="Course schedule" tabindex="0">
-      <table id="scheduleTable">
-        <thead>
-          <tr>
-            <th scope="col">Week</th>
-            <th scope="col">Topic</th>
-            <th scope="col">Reading</th>
-            <th scope="col"><span class="visually-hidden">Actions</span></th>
-          </tr>
-        </thead>
-        <tbody id="scheduleBody"></tbody>
-      </table>
-    </div>
-    <p><button type="button" id="addRowBtn">Add week</button></p>
-  </fieldset>
-
-  <fieldset>
-    <legend>Policy</legend>
-    <p>
-      <label for="deptPolicies">Departmental/Course Policies:</label><br>
-      <textarea id="deptPolicies" rows="6"></textarea>
-    </p>
-  </fieldset>
-
-  <p class="actions">
-    <button type="button" id="generateBtn">Generate outline</button>
-    <button type="button" id="downloadBtn">Download HTML</button>
-    <button type="button" id="copyBtn">Copy HTML</button>
-    <span id="status" role="status"></span>
-  </p>
-
-</form>
-
-<hr>
-
+<p>Fill in the fields, then choose <strong>Generate syllabus</strong>.</p>
+<div class="help-box">
+<p><strong>In any text box:</strong> lines starting with <code>-</code> or <code>*</code> become a bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become paragraphs.</p>
+<p><strong>To add a link,</strong> put the wording in square brackets and the address in round brackets straight after it, with no space between:</p>
+<p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
+</div>
+<form id="outlineForm"><fieldset><legend>Course identification</legend>
+<p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
+</fieldset><fieldset><legend>Credits</legend>
+<div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
+<div class="radio-row"><input type="radio" name="creditUnit" id="unitCeus" value="ceus"> <label for="unitCeus">CEUs</label></div>
+<p class="field" id="creditsWrap"><label for="credits">Credits (required)</label><select id="credits" aria-required="true">
+<option value="">Choose one</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="6">6</option>
+</select></p>
+<p class="field" id="ceusWrap" hidden=""><label for="ceus">CEUs (required)</label> <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="e.g. 3.5"></p>
+</fieldset><fieldset><legend>Contact hours (at least one required)</legend>
+<p class="hint">Enter these as <strong>hours per week</strong>. A field left blank or set to <code>0</code> is left out of the document, and a total appears only once two kinds of hour are entered.</p>
+<p class="hint">Continuing Studies courses may instead enter each field as a <strong>total for the whole course</strong> rather than per week. Whichever basis you use, use the same one for all three fields.</p>
+<p class="field"><label for="lectureHours">Lecture hours per week</label> <input type="number" id="lectureHours" step="0.5" min="0" placeholder="e.g. 3"></p>
+<p class="field"><label for="labHours">Lab hours per week</label> <input type="number" id="labHours" step="0.5" min="0" placeholder="e.g. 2"></p>
+<p class="field"><label for="seminarHours">Seminar hours per week</label> <input type="number" id="seminarHours" step="0.5" min="0" placeholder="e.g. 0"></p>
+<p class="hint" id="hoursTotal">Total hours: not yet entered</p>
+<!-- The visible total updates on every keystroke, which is what a sighted
+         author wants and what a screen reader user does not: a live region tied
+         to keystrokes interrupts constantly. The announcement is therefore split
+         off and fires once per field, when the field is left. --> <span class="visually-hidden" id="hoursAnnounce" role="status"></span></fieldset><fieldset><legend>Course details</legend>
+<p class="field" id="yearSemesterWrap"><label for="yearSemester">Year and semester</label> <span class="hint" id="yearSemesterHint">Which offering of the course this syllabus describes.</span> <input type="text" id="yearSemester" aria-describedby="yearSemesterHint" placeholder="e.g. Fall 2026"></p>
+<p class="field"><label for="mode">Course format</label><select id="mode">
+<option value="">Choose one</option>
+<option value="In-person">In-person</option>
+<option value="Mixed mode">Mixed mode</option>
+<option value="Online">Online</option>
+</select></p>
+</fieldset><fieldset><legend>Pre/corequisites</legend>
+<p id="reqQuestion">Does this course have pre/corequisites?</p>
+<div role="radiogroup" aria-labelledby="reqQuestion">
+<div class="radio-row"><input type="radio" name="req" id="reqNo" value="no" checked="checked"> <label for="reqNo">No</label></div>
+<div class="radio-row"><input type="radio" name="req" id="reqYes" value="yes"> <label for="reqYes">Yes</label></div>
+</div>
+<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites</label> <span class="hint" id="reqDetailHint">Link syntax works here too, so a named course can point at its own page.</span> <input type="text" id="reqDetail" aria-describedby="reqDetailHint" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."></p>
+</fieldset><fieldset id="instructorFieldset"><legend>Instructor</legend>
+<p class="hint">A syllabus names the instructor and how to reach them. Answer office hours explicitly, even if the answer is that there are none.</p>
+<p class="field"><label for="instructors">Instructor name(s)</label> <input type="text" id="instructors" autocomplete="name"></p>
+<p class="field"><label for="office">Office</label> <input type="text" id="office" placeholder="e.g. A322b"></p>
+<p class="field"><label for="phone">Phone</label> <input type="tel" id="phone" autocomplete="tel" placeholder="e.g. 604 323 5511"></p>
+<p class="field"><label for="email">Email</label> <input type="email" id="email" autocomplete="email"></p>
+<p class="field"><label for="officeHours">Office hours</label> <input type="text" id="officeHours" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment"></p>
+</fieldset><fieldset><legend>Course description</legend>
+<p class="field"><label for="courseDescription">Calendar course description (required)</label> <span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
+</fieldset><fieldset><legend>Learning outcomes</legend>
+<p id="outcomeFormatQuestion">Are the course learning outcomes a list or a paragraph?</p>
+<div role="radiogroup" aria-labelledby="outcomeFormatQuestion">
+<div class="radio-row"><input type="radio" name="outcomeFormat" id="outcomeList" value="list" checked="checked"> <label for="outcomeList">A list</label></div>
+<div class="radio-row"><input type="radio" name="outcomeFormat" id="outcomeParagraph" value="paragraph"> <label for="outcomeParagraph">A paragraph</label></div>
+</div>
+<div id="outcomeListWrap">
+<p class="hint">One outcome per field.</p>
+<!-- No .table-scroll wrapper here, unlike the assessment and schedule
+           tables. That wrapper exists to keep a wide table from widening the
+           page, and carries tabindex="0" so the scrollable region is keyboard
+           reachable. This table is one text column that shrinks with the
+           viewport and cannot overflow, so the wrapper would contribute
+           nothing but an extra tab stop with nothing to scroll. -->
+<table id="outcomeTable"><caption>Learning outcomes (at least one required)</caption>
+<thead>
+<tr>
+<th scope="col">Learning outcome</th>
+<th scope="col"><span class="visually-hidden">Actions</span></th>
+</tr>
+</thead>
+<tbody id="outcomeBody"></tbody>
+</table>
+<p><button type="button" id="addOutcomeBtn">Add learning outcome</button></p>
+</div>
+<p class="field" id="outcomeParagraphWrap" hidden=""><label for="learningOutcomes">Learning outcomes (required)</label> <textarea id="learningOutcomes" rows="7" aria-required="true">Upon successful completion of this course, students will be able to</textarea></p>
+</fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (at least one week required)</legend>
+<div class="table-scroll" tabindex="0">
+<table id="scheduleTable"><caption>Week-by-week schedule</caption>
+<thead>
+<tr>
+<th scope="col">Week</th>
+<th scope="col">Topic</th>
+<th scope="col">Readings and activities</th>
+<th scope="col">Activities due</th>
+<th scope="col"><span class="visually-hidden">Actions</span></th>
+</tr>
+</thead>
+<tbody id="scheduleBody"></tbody>
+</table>
+</div>
+<p><button type="button" id="addWeekBtn">Add week</button></p>
+</fieldset><fieldset><legend>Assessment and grading</legend>
+<div class="table-scroll" tabindex="0">
+<table id="assessTable"><caption id="assessCaption">Means of assessment and weighting (at least one required)</caption>
+<thead>
+<tr>
+<th scope="col">Assessment activity</th>
+<th scope="col">Weight</th>
+<th scope="col" id="assessDueHeader">Due date</th>
+<th scope="col"><span class="visually-hidden">Actions</span></th>
+</tr>
+</thead>
+<tbody id="assessBody"></tbody>
+</table>
+</div>
+<!-- The visible total updates on every keystroke, which is what a sighted
+         author wants and what a screen reader user does not. The announcement
+         is split off and fires once per cell, when the cell is left. -->
+<p class="hint" id="weightTotal">Total weight: not yet entered</p>
+<span class="visually-hidden" id="weightAnnounce" role="status"></span>
+<p><button type="button" id="addAssessBtn">Add assessment row</button></p>
+<p class="field" id="gradingWrap"><label for="gradingNotes">Grading guidelines</label> <span class="hint" id="gradingNotesHint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></p>
+<p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
+</fieldset><fieldset><legend>Course materials and textbooks</legend>
+<p class="field"><label for="textbook">Course materials and textbooks (required)</label> <span class="hint" id="textbookHint">One per line, each starting with <code>-</code>.</span> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></p>
+<p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to the end of this section automatically.</p>
+<!-- The notice is a FIPPA disclosure attached to the resource, so it
+         belongs in the section where the resource is named. It appears
+         verbatim in Langara's own Course Outline template. -->
+<div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacy"> <label for="privacy">This course uses an online resource hosted outside Canada for graded work — add the privacy notice</label></div>
+</fieldset><fieldset><legend>Departmental and course guidelines</legend>
+<p class="field"><label for="deptPolicies">Departmental and course guidelines</label> <span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></p>
+</fieldset><!-- The Versioning fieldset is gone. Its one field, the effective date, is
+       now filled in from the clock at generate time, and the rest of the
+       section (the subject-to-change note, the archive link) was already
+       automatic. A fieldset groups form controls, so one holding nothing but
+       explanatory hints would be the wrong element for what was left; the
+       "Added automatically" line under the completeness check carries that
+       explanation instead. -->
+<!-- There is no export format choice. The same output pastes into
+       Brightspace and into Word; the Langara page template is applied by
+       Brightspace itself, chosen from its document templates when the file is
+       created, so this tool no longer wraps the output in a copy of it. -->
+<!-- Generate stays with the form it acts on. Download and Copy moved below
+       the preview, so the order of the page matches the order of the work:
+       fill in, generate, check the result, then take it away. -->
+<p class="actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
+</form><hr>
+<h2 id="checklistHeading">Completeness check</h2>
+<div id="checklist" tabindex="-1"></div>
 <h2>Preview</h2>
-<iframe id="preview" title="Outline preview" width="100%" height="600"></iframe>
+<p class="hint">This preview carries no styling of its own, so text appears in whatever font your browser falls back to. The finished document takes its appearance from wherever it ends up — Brightspace or a Word document you paste it into — so this may not be exactly how the content will look once it is placed.</p>
+<iframe id="preview" title="Course syllabus preview" height="600"></iframe>
+<!-- The steps sit here, between the result and the button they start with,
+     because this is the point on the page where they are acted on. -->
+<p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
+<ol aria-labelledby="workflowIntro">
+<li>Choose <strong>Copy formatted</strong>, just below.</li>
+<li>In your course, choose <strong>Upload / Create</strong> &gt; <strong>Create a file</strong>.</li>
+<li>Select a document template.</li>
+<li>Paste into the editor, then save.</li>
+</ol>
+<p class="hint">Copy formatted puts the finished layout on the clipboard, ready to paste into Brightspace or Word. If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
+<!-- These act on the generated document rather than on the form, so they sit
+     with the generated document. All call generate(false) first, so none
+     depends on Generate having been pressed. Their own status region, rather
+     than the form's: a confirmation that renders a screen away from the
+     button that caused it is a confirmation nobody sees.
 
-<h2 id="sourceHeading">HTML source</h2>
-<p>Content only &mdash; no <code>&lt;!DOCTYPE&gt;</code>, <code>&lt;head&gt;</code> or <code>&lt;body&gt;</code> wrapper. Paste it straight into an existing page.</p>
-<textarea id="source" rows="20" aria-labelledby="sourceHeading" readonly></textarea>
+     Copy formatted first, as the path almost everyone takes; Copy HTML second,
+     as its fallback. The raw markup and the file download are for the few who
+     want them, so they sit closed in the details element below. -->
+<p class="actions"><button type="button" id="copyFormattedBtn">Copy formatted</button> <button type="button" id="copyBtn">Copy HTML</button> <span id="exportStatus" role="status"></span></p>
+<!-- "Show" rather than "Click to see": the summary is operated by keyboard
+     and touch as often as by mouse, and a screen reader already announces it
+     as expandable. -->
+<details id="sourceDetails">
+<summary>Show HTML source code</summary>
+<p><label for="source">Generated HTML (read-only)</label></p>
+<textarea id="source" rows="20" readonly="readonly"></textarea>
+<p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
+</details></main>
+<p><script>
+"use strict";
 
-</main>
+/* ------------------------------------------------------------------ *
+ * Boilerplate. Everything an instructor does not type lives here.
+ * ------------------------------------------------------------------ */
 
-<script>
-const POLICY_LINKS = [
-  ["Student Code of Conduct - E1003", "https://langara.ca/about-langara/policies/pdf/E1003.pdf"],
-  ["Academic Integrity - F1004", "https://langara.ca/about-langara/policies/pdf/F1004.pdf"],
-  ["Academic Standing - Academic Probation and Academic Suspension - E2008", "https://langara.ca/about-langara/policies/pdf/E2008.pdf"],
-  ["Appeal of Final Grade - E2006", "https://langara.ca/about-langara/policies/pdf/E2006.pdf"],
-  ["Concerns about Instruction - F1002", "https://langara.ca/about-langara/policies/pdf/F1002.pdf"],
-  ["Withdrawal from Courses and Deferred Standing - E2011", "https://langara.ca/about-langara/policies/pdf/E2011.pdf"]
+var GRADES_URL   = "https://langara.ca/student-services/enrolment-services/student-records/grading";
+var GRADES_LABEL = "Grades";
+
+/* The pipe in the query string is encoded. A raw "|" is outside the set a URI
+   may legally contain, and some link checkers and CMS sanitisers drop or mangle
+   it; %7C is the same address and survives them. */
+var BOOKSTORE_URL   = "https://mycampusstore.langara.bc.ca/buy_courselisting.asp?selTerm=3%7C8";
+var BOOKSTORE_LABEL = "Search for textbooks";
+
+var TRANSFER_URL   = "https://www.bctransferguide.ca/";
+var TRANSFER_LABEL = "bctransferguide.ca";
+
+var SUPPORT_URL   = "https://langara.ca/student-services";
+var SUPPORT_LABEL = "Langara Student Services";
+
+/* F1003 cites the accommodation policy by its download address. The /policy/
+   address below is the canonical landing page for the same document: it
+   survives re-uploads, and it does not push a file at the reader. Swap the
+   constant if literal compliance is wanted. */
+var ACCOMMODATION_URL   = "https://langara.ca/policy/e1005-academic-accommodation-students-disabilities";
+var ACCOMMODATION_LABEL = "Academic Accommodation for Students with Disabilities \u2013 E1005";
+
+var POLICY_INDEX_URL   = "https://langara.ca/administration/college-policies-procedures";
+var POLICY_INDEX_LABEL = "College policies and procedures";
+
+/* The first three are named explicitly in F1003 3.2(h) and must stay. */
+var POLICY_LINKS = [
+  ["Standards of Student Conduct \u2013 E1003", "https://langara.ca/policy/e1003-standards-student-conduct"],
+  ["Academic Integrity \u2013 F1004", "https://langara.ca/policy/f1004-academic-integrity"],
+  ["Student Attendance and Participation \u2013 F1008", "https://langara.ca/policy/f1008-student-attendance-and-participation"],
+  ["Academic Standing \u2013 E2008", "https://langara.ca/policy/e2008-academic-standing"],
+  ["Appeal of Final Grade \u2013 E2006", "https://langara.ca/policy/e2006-appeal-final-grade"],
+  ["Concerns about Instruction and Course Delivery \u2013 F1002", "https://langara.ca/policy/f1002-concerns-about-instruction-and-course-delivery"],
+  ["Withdrawal from Courses and Deferred Standing \u2013 E2011", "https://langara.ca/policy/e2011-withdrawal-courses-and-deferred-standing"]
 ];
 
-const NOTE_TEXT = "Note: This course may use an electronic (online) instructional resource that is located outside of Canada for mandatory graded class work. You may be required to enter personal information, such as your name and email address, to log in to this resource. This means that your personal information could be stored on servers located outside of Canada and may be accessed by U.S. authorities, subject to federal laws. Where possible, you may log in with an email pseudonym as long as you provide the pseudonym to me so I can identify you when reviewing your class work.";
+/* Reproduced word for word from Langara's Course Outline template. A
+   syllabus is one instructor addressing their own section, so the first
+   person of the closing clause has someone speaking it. Do not reword any
+   part of this: it is a FIPPA disclosure, not house prose. */
+var FIPPA_NOTE = "Note: This course may use an electronic (online) instructional resource that is " +
+  "located outside of Canada for mandatory graded class work. You may be required to enter personal " +
+  "information, such as your name and email address, to log in to this resource. This means that your " +
+  "personal information could be stored on servers located outside of Canada and may be accessed by " +
+  "U.S. authorities, subject to federal laws. Where possible, you may log in with an email pseudonym " +
+  "as long as you provide the pseudonym to me so I can identify you when reviewing your class work.";
+
+/* PLACEHOLDER \u2014 replace with the wording approved by the College. */
+var DISCLAIMER = "This syllabus is subject to change. Confirm the current version before relying on it.";
+
+/* The territorial acknowledgement carried in the footer of Langara's Course
+   Outline template, reproduced character for character. Written as escapes
+   rather than literal glyphs so the combining marks on w and m cannot be
+   normalised away by an editor that decides to be helpful. */
+var ACKNOWLEDGEMENT = "sn\u0259w\u0313ey\u0259\u026C lel\u0259m\u0313 Langara College acknowledges " +
+  "that we are located on the unceded territory of the Musqueam people.";
+
+/* PLACEHOLDER \u2014 set ARCHIVE_URL to the archive location once one exists.
+   Leave it as an empty string and the whole line is omitted from the output. */
+var ARCHIVE_URL   = "";
+var ARCHIVE_LABEL = "View previous versions of this document";
+
+/* Month names, written out rather than read from the runtime.
+
+   toLocaleDateString("en-CA", { month: "long", year: "numeric" }) would look
+   like the obvious way to do this and is the wrong one here twice over. It
+   returns "September 2026" in some engines and "September of 2026" or a
+   comma-separated form in others, and the moment the locale argument is
+   dropped - or a browser ignores it, which happens - a machine set to French
+   emits "septembre 2026" into an English document. A fixed array is the only
+   thing that guarantees identical wording on every machine that opens the
+   file, which matters when the output is a College record. */
+var MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+
+/* The effective date, replacing the field that used to ask for it.
+
+   Read at generate time rather than at page load, so a form left open across
+   the turn of a month does not stamp the old one onto the document. The
+   parameter exists so a test can pin a date; nothing in the page passes it. */
+function effectiveDate(now) {
+  /* Duck-typed rather than "now instanceof Date", which is false for a Date
+     built in another realm - an iframe, or a test harness driving the page
+     from outside it - and would silently fall back to the wall clock. */
+  var d = (now && typeof now.getMonth === "function") ? now : new Date();
+  return MONTH_NAMES[d.getMonth()] + " " + d.getFullYear();
+}
+
+/* Lead-in sentences seeded into the form. These are values the instructor
+   writes after, not placeholder attributes, so they carry into the export. */
+var OUTCOME_STEM = "Upon successful completion of this course, students will be able to";
+
+/* ------------------------------------------------------------------ *
+ * Wording
+ *
+ * One document type, so this is a plain constant rather than a pair of
+ * variants selected at run time. words() is kept as the accessor every call
+ * site already uses, so nothing below has to know the difference.
+ * ------------------------------------------------------------------ */
+
+var WORDING = {
+  fallbackTitle: "Course syllabus",
+  fileStem: "course-syllabus",
+  generatedStatus: "Syllabus generated.",
+  materialsHeading: "Textbooks and course materials",
+  /* F1003 3.4(b)(c) ask a syllabus for the SPECIFIC materials and
+     assessments, against 3.2(e)(f)'s "typical" for an outline of record. */
+  materialsItem: "Specific textbooks and course materials",
+  materialsClause: "3.4(b)",
+  assessClause: "3.4(c)",
+  /* A syllabus can carry the instructor's own grading guidelines just above
+     this line, so the link is named for what it actually is rather than
+     repeating the phrase and reading as a contradiction. */
+  gradesNote: "for the College's grade scale and notations",
+  previewTitle: "Course syllabus preview",
+  docNoun: "syllabus"
+};
+
+function words() {
+  return WORDING;
+}
+
+/* The instructor grid, built with CSS Grid's auto-fit/minmax rather than
+   Bootstrap's own .row/.col-* classes, even though a page built on the
+   Langara template loads Bootstrap. Reasoning: auto-fit + minmax reflows on its own, with no media
+   query and no dependency on whether bootstrap.min.css actually resolves in a
+   given D2L deployment - the grid keeps working even if that link 404s. It is
+   also the one technique that can express "reflow by width" in a plain style
+   attribute at all, since @media rules cannot appear there.
+
+   It uses div/p rather than dl/dt/dd. Confirmed directly: with identical grid CSS on both,
+   the Brightspace editor stripped a <dl>'s style on save while leaving this
+   <div> alone - not a CSS specificity problem (no amount of !important
+   survives a style attribute that gets removed outright), but the editor's
+   own content filter treating dl/dt/dd more restrictively than div/p. An
+   earlier version attributed the same symptom to a possible CSS override and
+   added !important as a defensive measure; that diagnosis is superseded by
+   this more direct evidence, though !important is kept regardless - it costs
+   nothing and covers a genuine cascade conflict if one also exists. */
+var INSTRUCTOR_GRID = {
+  /* Two columns, deliberately, so the four fields pair up as Office / Office
+     hours above Phone / Email.
+
+     "auto 1fr" rather than two equal tracks, because equal tracks were the
+     reason office hours wrapped: they gave Office a share it did not need
+     while starving the field that did. "Office: A322b" wants about 110px and
+     "Phone: 604 323 5511" about 150px, so the auto track settles near 150px
+     and hands everything else to the second - roughly 600px inside a
+     Brightspace content column, against the ~420px an office hours line
+     typically needs. auto also shrinks toward min-content under pressure
+     rather than forcing overflow, so a long office string wraps instead of
+     pushing a horizontal scrollbar onto the page.
+
+     No max-width, so the second track runs to the edge of whatever column
+     the document sits in, and office hours breaks only if it genuinely
+     reaches that edge. The trade-off is that this no longer collapses to a
+     single column on a phone the way an auto-fit/minmax grid did - at narrow
+     widths it stays two uneven columns and the text wraps inside them. That
+     wraps rather than overflows, so there is still no horizontal scrolling,
+     but it is tighter than a stacked layout would be. Cap this back to a
+     fixed width if mobile stacking ever matters more than the one-line
+     office hours. */
+  wrap: "margin: 1rem 0; display: grid !important; " +
+        "grid-template-columns: auto 1fr !important; gap: 0.75rem 1.5rem;"
+};
+
+/* ------------------------------------------------------------------ *
+ * Escaping and inline links
+ * ------------------------------------------------------------------ */
 
 function esc(s) {
   return String(s == null ? "" : s)
@@ -252,306 +503,1770 @@ function esc(s) {
     .replace(/"/g, "&quot;");
 }
 
-function val(id) {
-  const el = document.getElementById(id);
-  return el ? el.value.trim() : "";
+/* Only http, https, mailto and relative paths may appear in an href. Anything
+   else - javascript:, data:, protocol-relative - is refused. */
+function safeUrl(u) {
+  var s = String(u == null ? "" : u).trim();
+  if (!s) return null;
+  if (/[\u0000-\u001f\u007f]/.test(s)) return null;
+  if (/^\/\//.test(s)) return null;
+  var m = /^([a-z][a-z0-9+.\-]*):/i.exec(s);
+  if (m) {
+    var scheme = m[1].toLowerCase();
+    if (scheme !== "http" && scheme !== "https" && scheme !== "mailto") return null;
+  }
+  return s;
 }
 
-// Turn a textarea's contents into block-level HTML.
-// Lines starting with -, * or • become a <ul>; everything else becomes <p>.
-function blocks(text, indent) {
-  const pad = indent || "";
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length === 0) return [];
-  const out = [];
-  let list = null;
-  for (const line of lines) {
-    const bullet = /^[-*\u2022]\s*(.*)$/.exec(line);
-    if (bullet) {
-      if (!list) list = [];
-      list.push(bullet[1]);
-    } else {
-      if (list) { out.push(renderList(list, pad)); list = null; }
-      out.push(pad + "<p>" + esc(line) + "</p>");
-    }
+/* Every link in the export opens in a new tab.
+
+   rel is not optional here: a target="_blank" link hands the opened page a
+   window.opener handle back to the host page unless noopener severs it. The
+   modern browsers imply noopener, older ones do not, and noreferrer covers the
+   same gap in those that support neither. Drop noreferrer if the College's
+   analytics need the referrer header on internal links. */
+var LINK_ATTRS = ' target="_blank" rel="noopener noreferrer"';
+
+function anchor(href, label) {
+  return '<a href="' + esc(href) + '"' + LINK_ATTRS + ">" + esc(label) + "</a>";
+}
+
+/* Converts [text](url) and escapes everything else. A refused address is left
+   on the page as literal text rather than dropped, so nothing disappears
+   silently and the author can see what was rejected. */
+function inline(s) {
+  var text = String(s == null ? "" : s);
+  var re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
+  var out = "";
+  var last = 0;
+  var m;
+  while ((m = re.exec(text)) !== null) {
+    out += esc(text.slice(last, m.index));
+    var href = safeUrl(m[2]);
+    out += href ? anchor(href, m[1]) : esc(m[0]);
+    last = m.index + m[0].length;
   }
-  if (list) out.push(renderList(list, pad));
+  return out + esc(text.slice(last));
+}
+
+/* Turns a textarea value into block markup. */
+function blocks(s) {
+  var lines = String(s == null ? "" : s).split(/\r?\n/);
+  var out = [];
+  var list = null;
+
+  function closeList() {
+    if (list) { out.push("</" + list + ">"); list = null; }
+  }
+
+  lines.forEach(function (raw) {
+    var line = raw.trim();
+    if (!line) { closeList(); return; }
+
+    var ul = /^[-*]\s+(.*)$/.exec(line);
+    var ol = /^\d+[.)]\s+(.*)$/.exec(line);
+
+    if (ul) {
+      if (list !== "ul") { closeList(); out.push("<ul>"); list = "ul"; }
+      out.push("<li>" + inline(ul[1]) + "</li>");
+    } else if (ol) {
+      if (list !== "ol") { closeList(); out.push("<ol>"); list = "ol"; }
+      out.push("<li>" + inline(ol[1]) + "</li>");
+    } else {
+      closeList();
+      out.push("<p>" + inline(line) + "</p>");
+    }
+  });
+
+  closeList();
   return out;
 }
 
-function renderList(items, pad) {
-  return pad + "<ul>\n" +
-    items.map(i => pad + "  <li>" + esc(i) + "</li>").join("\n") +
-    "\n" + pad + "</ul>";
+/* ------------------------------------------------------------------ *
+ * Paste normalisation
+ *
+ * blocks() reads "-", "*" and "1." at the start of a line. A list copied out
+ * of a PDF or a Word document almost never arrives as any of those: the
+ * bullet is a glyph - \u2022, \u25aa, \u25e6, or a private-use character out of Symbol
+ * or Wingdings - and long lines are broken mid-word with a hyphen wherever
+ * the original column ran out. Pasted in as-is, none of that is recognised,
+ * so a six-item list becomes six paragraphs and a hyphenated word becomes
+ * two. Nothing errors; the preview is just quietly the wrong shape, which is
+ * the failure mode hardest to notice and hardest to attribute.
+ *
+ * The clean-up therefore happens at the moment of the paste, in the open:
+ * the text lands in the box already converted, the author is looking at that
+ * box, and a line underneath it says what changed.
+ *
+ * That is deliberately a different answer from the stray-marker check on the
+ * learning outcome rows, which reports and refuses to correct. Two things
+ * separate them. That check fires long after the typing, out of sight of the
+ * person who did it, so a silent repair there would be editing someone's
+ * work behind their back. And a row becomes one <li> whole, so a leading
+ * bullet there has no syntax to be converted INTO - there is no right answer
+ * to apply, only a wrong one to point at. Here the conversion is visible as
+ * it happens, announced, and undoable.
+ *
+ * Wired to the textareas only. Every one of them is read through blocks(),
+ * so "- " means something in all six.
+ * ------------------------------------------------------------------ */
+
+/* The textareas whose contents reach blocks(). */
+var PASTE_FIELDS = ["courseDescription", "learningOutcomes",
+                    "textbook", "gradingNotes", "deptPolicies"];
+
+/* Glyphs a bullet arrives as. Wider than the set OUTCOME_MARKER watches for,
+   because that one only has to recognise that a marker is present, while
+   this one has to catch every shape a real paste produces.
+
+   The \uf0xx entries are not Unicode bullets at all - they are Symbol and
+   Wingdings glyphs sitting in the private use area, which is what Word
+   writes when its list bullet comes from one of those fonts. They are the
+   most common thing to survive a copy out of a Word-generated PDF and the
+   least likely to be guessed at, so they are named here explicitly. */
+var PASTE_BULLETS = "\u2022\u2023\u2043\u25aa\u25ab\u25a0\u25a1\u25cf\u25cb\u25e6" +
+                    "\u00b7\u2219\u2013\u2014\u2212\u27a2\u2756" +
+                    "\uf076\uf0a7\uf0b7\uf0d8\uf0fc";
+
+var RE_GLYPH_BULLET = new RegExp("^[ \\t]*[" + PASTE_BULLETS + "]+[ \\t]*");
+
+/* Word's second-level bullet is a literal lower-case "o", and it pastes as
+   the letter. Requiring a tab or a run of two spaces after it is what tells
+   "o" the bullet apart from "o" the first letter of a word: a real
+   sub-bullet carries the whitespace that positions its text, never a single
+   space. */
+var RE_O_BULLET = /^[ \t]*o(?:\t+|[ ]{2,})/;
+
+/* "-Analyze", "*Analyze" - a marker blocks() will not read, since it wants
+   whitespace after one. Restricted to a following letter so a line opening
+   "-5% for each day late" keeps its minus sign. */
+var RE_TIGHT_BULLET = /^[ \t]*[-*](?=[A-Za-z\u00c0-\u024f])/;
+
+var RE_HYPHEN_END  = /[A-Za-z\u00c0-\u024f][-\u2010]$/;
+var RE_LOWER_START = /^[a-z\u00df-\u024f]/;
+
+function convertBulletLine(line) {
+  var m = RE_GLYPH_BULLET.exec(line) || RE_O_BULLET.exec(line);
+  if (m) {
+    var rest = line.slice(m[0].length);
+    /* A line holding nothing but the bullet is scaffolding left by a wrapped
+       list, not an empty item, so it is dropped rather than turned into a
+       "- " with nothing after it. */
+    if (!rest.trim()) return { line: "", hit: false };
+    return { line: "- " + rest, hit: true };
+  }
+  var t = RE_TIGHT_BULLET.exec(line);
+  if (t) return { line: "- " + line.slice(t[0].length), hit: true };
+  return { line: line, hit: false };
 }
 
-// A labelled one-line value, e.g. <p><strong>Credits:</strong> 3</p>
-function labelled(label, value) {
-  if (!value) return null;
-  return "<p><strong>" + esc(label) + ":</strong> " + esc(value) + "</p>";
+/* Returns the cleaned text and what had to be done to it, so the caller can
+   both insert it and say what happened. */
+function normalizePaste(raw) {
+  var original = String(raw == null ? "" : raw);
+  var text = original;
+
+  /* A soft hyphen sitting at the end of a line is the least ambiguous wrap
+     marker there is - the character exists for no other purpose than to mark
+     a break point - so it is promoted to a real hyphen and handed to the
+     joining pass below. Anywhere else it is invisible debris, and stripping
+     it before that pass would hide the very break it was marking. */
+  text = text.replace(/\u00ad(?=\r?\n|\u2028)/g, "-");
+
+  /* The rest of the invisible characters, taken out first so nothing below
+     has to reason about them. A zero-width space or a byte order mark
+     otherwise reaches the export as a character nobody can see to delete. */
+  text = text.replace(/[\u00ad\u200b\ufeff]/g, "");
+
+  /* Line separators split() would not treat as line breaks, so they would
+     otherwise sit in the output as literal characters. */
+  text = text.replace(/\r\n?/g, "\n")
+             .replace(/\u2028/g, "\n")
+             .replace(/\u2029/g, "\n\n");
+
+  /* Page breaks, dropped rather than converted: in a PDF paste they arrive on
+     a line of their own, so the newlines already around them do the work. */
+  text = text.replace(/[\f\v]/g, "");
+
+  /* The exotic spaces Word and PDF extraction emit, flattened so the line
+     tests below only have to know about a space and a tab. */
+  text = text.replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ");
+
+  var lines = text.split("\n");
+  var last = lines.length - 1;
+  var bullets = 0;
+
+  lines = lines.map(function (line, i) {
+    var c = convertBulletLine(line);
+    if (c.hit) bullets++;
+    line = c.line;
+
+    /* Tab runs are column alignment out of a PDF, never anything a textarea
+       wants. Done after the bullet test, which needs the tab that follows
+       Word's "o" sub-bullet still in place to recognise it. */
+    line = line.replace(/\t+/g, " ");
+
+    /* Leading space comes off every line but the first, trailing space off
+       every line but the last. A paste can land in the middle of a line
+       somebody is already writing, and trimming those two ends would run the
+       pasted text into the words either side of it. Everywhere else the
+       whitespace is free to go, because blocks() trims each line anyway. */
+    if (i !== 0)    line = line.replace(/^[ \t]+/, "");
+    if (i !== last) line = line.replace(/[ \t]+$/, "");
+
+    return line;
+  });
+
+  /* Line-wrap hyphenation. A PDF breaks a word at the column edge and leaves
+     the hyphen behind, so "assess-\nment" pastes as two lines and reads as
+     two words. Joining asks both halves to look like halves: a letter then a
+     hyphen ending one line, a lower-case letter opening the next. That keeps
+     a capital, a digit or a bullet on the following line out of it.
+
+     It cannot be made exact. "well-\nbeing" is a real hyphen that happens to
+     fall at a wrap, and it is joined to "wellbeing". That is precisely why
+     the count is reported: the author is told how many joins were made and
+     can look at them, rather than the repair being made silently and the
+     error surfacing in a published document. */
+  var joins = 0;
+  var out = [];
+  for (var i = 0; i < lines.length; i++) {
+    var cur = lines[i];
+    while (i + 1 < lines.length &&
+           RE_HYPHEN_END.test(cur) && RE_LOWER_START.test(lines[i + 1])) {
+      cur = cur.replace(/[-\u2010]$/, "") + lines[i + 1];
+      joins++;
+      i++;
+    }
+    out.push(cur);
+  }
+
+  /* More than one blank line says nothing blocks() can act on - it closes an
+     open list at the first. */
+  var result = out.join("\n").replace(/\n{3,}/g, "\n\n");
+
+  return {
+    text: result,
+    bullets: bullets,
+    joins: joins,
+    changed: result !== original
+  };
 }
 
-function scheduleRows() {
-  const rows = [];
-  document.querySelectorAll("#scheduleBody tr").forEach(tr => {
-    const cells = Array.from(tr.querySelectorAll("input")).map(i => i.value.trim());
-    // The week number is pre-filled, so a row only counts as used
-    // once it has a topic or a reading in it.
-    if (cells[1].length > 0 || cells[2].length > 0) rows.push(cells);
+/* One line, and specific about the count: "cleaned up" on its own gives the
+   author nothing to check against. */
+function pasteNoteText(r) {
+  var bits = [];
+  if (r.bullets) {
+    bits.push("Converted " + r.bullets + " pasted bullet" +
+              (r.bullets === 1 ? "" : "s") + " to list format.");
+  }
+  if (r.joins) {
+    bits.push("Joined " + r.joins + " hyphenated line break" +
+              (r.joins === 1 ? "" : "s") + ".");
+  }
+  /* Something changed or this would not have been called, so there is always
+     a sentence to write even when neither count fired. */
+  if (!bits.length) bits.push("Tidied spacing and invisible characters in the pasted text.");
+  return bits.join(" ");
+}
+
+/* ------------------------------------------------------------------ *
+ * Reading the form
+ * ------------------------------------------------------------------ */
+
+function val(id) {
+  var el = document.getElementById(id);
+  return el ? String(el.value).trim() : "";
+}
+
+function checked(id) {
+  var el = document.getElementById(id);
+  return !!(el && el.checked);
+}
+
+function creditUnit() {
+  return checked("unitCeus") ? "ceus" : "credits";
+}
+
+/* Credits read as "3.0" rather than "3" throughout Langara's calendar, and CEUs
+   are conventionally written the same way. */
+function creditValue() {
+  var raw = creditUnit() === "ceus" ? val("ceus") : val("credits");
+  if (raw === "") return "";
+  var n = Number(raw);
+  return isFinite(n) ? n.toFixed(1) : raw;
+}
+
+function creditLabel() {
+  return creditUnit() === "ceus" ? "CEUs" : "Credits";
+}
+
+/* Blank and zero mean the same thing: a course with no seminar does not list
+   seminar hours at all, rather than listing them as zero. */
+function hourValue(id) {
+  var raw = val(id);
+  if (raw === "") return null;
+  var n = Number(raw);
+  if (!isFinite(n) || n === 0) return null;
+  return n;
+}
+
+function enteredHours() {
+  return ["lectureHours", "labHours", "seminarHours"]
+    .map(function (id) { return hourValue(id); })
+    .filter(function (n) { return n !== null; });
+}
+
+/* A total that repeats a single figure says nothing, so it appears only once
+   there is more than one kind of hour to add up. */
+function totalHours() {
+  var hours = enteredHours();
+  if (hours.length < 2) return null;
+  var sum = hours.reduce(function (a, n) { return a + n; }, 0);
+  /* Half-hour contact times must not surface as 4.499999999999999. */
+  return Math.round(sum * 100) / 100;
+}
+
+function assessRows() {
+  var rows = [];
+  var body = document.getElementById("assessBody");
+  if (!body) return rows;
+  Array.prototype.forEach.call(body.rows, function (tr) {
+    var inputs = tr.querySelectorAll("input");
+    var activity = inputs[0] ? inputs[0].value.trim() : "";
+    var weight = inputs[1] ? inputs[1].value.trim() : "";
+    var due = inputs[2] ? inputs[2].value.trim() : "";
+    var used = activity || weight || due;
+    if (used) rows.push([activity, weight, due]);
   });
   return rows;
 }
 
-// The export is a fragment meant to be pasted into an existing page, so it
-// carries no doctype, <html>, <head> or <body> wrapper. The host page supplies
-// those, along with the character encoding and the lang attribute.
+/* ------------------------------------------------------------------ *
+ * Due-date ordering
+ *
+ * Output only: the form keeps the rows in the order they were typed, so
+ * nobody's table rearranges itself under them while they work.
+ *
+ * Due dates are free text, so this reads the two shapes people actually use
+ * - "Week 6" and a month-and-day like "Oct 15", "Friday, October 15" or
+ * "15 October 2026" (ISO 2026-10-15 too) - and sorts only when it is sure.
+ * If any due date is in neither shape ("TBA", "Final exam period"), or weeks
+ * and dates are mixed, or a date is purely numeric like 10/03 (day-month or
+ * month-day?), the rows go out in the order entered. Guessing wrong would
+ * silently misorder a student's deadlines; leaving them is the safe failure.
+ *
+ * Rows with no due date at all go last, in their entered order. Ties keep
+ * entered order too.
+ * ------------------------------------------------------------------ */
+
+function monthNumber(word) {
+  var w = String(word).toLowerCase();
+  if (w.length < 3) return 0;
+  for (var i = 0; i < MONTH_NAMES.length; i++) {
+    if (MONTH_NAMES[i].toLowerCase().indexOf(w) === 0) return i + 1;
+  }
+  return 0;
+}
+
+function dueDate(y, m, d) {
+  if (!m || d < 1 || d > 31) return null;
+  return { kind: "date", y: y, m: m, d: d };
+}
+
+function dueKey(s) {
+  var t = String(s).trim();
+  var m = /^(?:weeks?|wk)\.?\s*(\d{1,2})\b/i.exec(t);
+  if (m) return { kind: "week", n: parseInt(m[1], 10) };
+
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})\b/.exec(t);
+  if (m) return dueDate(+m[1], +m[2], +m[3]);
+
+  /* A leading weekday is decoration: "Friday, October 15" sorts as Oct 15. */
+  var u = t.replace(/^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+/i, "");
+
+  m = /^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{4}))?/i.exec(u);
+  if (m) return dueDate(m[3] ? +m[3] : null, monthNumber(m[1]), +m[2]);
+
+  m = /^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?(?:,?\s+(\d{4}))?\b/i.exec(u);
+  if (m) return dueDate(m[3] ? +m[3] : null, monthNumber(m[2]), +m[1]);
+
+  return null;
+}
+
+function sortByDue(rows) {
+  var items = rows.map(function (r, i) {
+    return { row: r, i: i, due: r[2] ? dueKey(r[2]) : undefined };
+  });
+  var dated = items.filter(function (it) { return it.due !== undefined; });
+  if (dated.length < 2) return rows;
+  if (dated.some(function (it) { return it.due === null; })) return rows;
+
+  var kind = dated[0].due.kind;
+  if (dated.some(function (it) { return it.due.kind !== kind; })) return rows;
+
+  /* A term never crosses a year boundary at Langara, so month and day order
+     dates correctly on their own. The year joins the key only when every
+     date has one; mixing "Oct 15" with "2026-09-30" still sorts by month. */
+  var withYears = kind === "date" && dated.every(function (it) { return it.due.y !== null; });
+
+  function key(it) {
+    if (it.due === undefined) return Infinity;
+    if (kind === "week") return it.due.n;
+    return (withYears ? it.due.y * 10000 : 0) + it.due.m * 100 + it.due.d;
+  }
+
+  return items.slice().sort(function (a, b) {
+    var diff = key(a) - key(b);
+    return (diff && !isNaN(diff)) ? diff : a.i - b.i;
+  }).map(function (it) { return it.row; });
+}
+
+/* ------------------------------------------------------------------ *
+ * Learning outcomes format
+ *
+ * F1003 3.2(d) asks for the outcomes, not for a shape to write them in, so
+ * both forms satisfy it. A list is the overwhelmingly common case and is the
+ * default; the paragraph box is kept for departments whose approved outcomes
+ * are written as prose, or who reword the lead-in sentence.
+ * ------------------------------------------------------------------ */
+
+function isOutcomeList() {
+  var el = document.getElementById("outcomeList");
+  return !!(el && el.checked);
+}
+
+/* Rows whose text opens with something the author probably meant as a bullet.
+
+   The set is wider than what blocks() actually parses, on purpose: this is a
+   warning, not a parser. A paste out of Word or an existing outline arrives
+   carrying "\u2022", an en or em dash, or "1.", and every one of those lands in the
+   output as a literal character inside the bullet. All of them are worth
+   flagging even though only "-" and "*" would have meant anything in a
+   textarea.
+
+   The numeric branch requires whitespace after the marker so that an outcome
+   opening "1.5 hours of ..." is not mistaken for a numbered list item; the
+   bullet branch does not, since "-Analyze" is still a stray dash. */
+var OUTCOME_MARKER = /^\s*(?:[-*\u2022\u2013\u2014]\s*|\d+[.)]\s+)/;
+
+function markedOutcomeRows() {
+  var out = [];
+  var body = document.getElementById("outcomeBody");
+  if (!body) return out;
+  Array.prototype.forEach.call(body.rows, function (tr, i) {
+    var input = tr.querySelector("input");
+    var v = input ? input.value.trim() : "";
+    if (v && OUTCOME_MARKER.test(v)) out.push(i + 1);
+  });
+  return out;
+}
+
+/* "2", "2 and 4", "2, 4, and 5". */
+function joinNumbers(nums) {
+  if (nums.length === 1) return String(nums[0]);
+  if (nums.length === 2) return nums[0] + " and " + nums[1];
+  return nums.slice(0, -1).join(", ") + ", and " + nums[nums.length - 1];
+}
+
+function outcomeRows() {
+  var rows = [];
+  var body = document.getElementById("outcomeBody");
+  if (!body) return rows;
+  Array.prototype.forEach.call(body.rows, function (tr) {
+    var input = tr.querySelector("input");
+    var v = input ? input.value.trim() : "";
+    if (v) rows.push(v);
+  });
+  return rows;
+}
+
+/* List mode emits the lead-in as its own paragraph and the rows as a single
+   list, which is byte-for-byte what the paragraph box produces when someone
+   types the stem on line one and dashes below it. The two modes are different
+   ways of filling the same output, not two different outputs.
+
+   The stem is the constant here rather than an editable value, so a
+   department that has reworded its own framing sentence has to use the
+   paragraph mode to keep that wording. inline() on each row, so link syntax
+   works in an outcome the way it does everywhere else; esc() on the stem,
+   which is ours and contains no link syntax to parse. */
+function learningOutcomesBody() {
+  if (!isOutcomeList()) return blocks(val("learningOutcomes"));
+
+  var rows = outcomeRows();
+  if (!rows.length) return [];
+
+  var out = ["<p>" + esc(OUTCOME_STEM) + "</p>", "<ul>"];
+  rows.forEach(function (r) { out.push("<li>" + inline(r) + "</li>"); });
+  out.push("</ul>");
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ * Building the fragment
+ * ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ *
+ * Running weight total (syllabus only)
+ *
+ * The weight column is free text, because a weight is not always a number -
+ * "Pass/Fail" and "ungraded" are real answers. So the total is read out of
+ * whatever numbers it can find and says plainly how many entries it could not
+ * count, rather than silently reporting a total that is quietly wrong.
+ * ------------------------------------------------------------------ */
+
+function weightNumbers() {
+  var nums = [];
+  var skipped = 0;
+  assessRows().forEach(function (r) {
+    if (!r[1]) return;
+    var m = /-?\d+(?:\.\d+)?/.exec(r[1]);
+    if (m) nums.push(parseFloat(m[0]));
+    else skipped++;
+  });
+  return { nums: nums, skipped: skipped };
+}
+
+function weightTotalText() {
+  var w = weightNumbers();
+  if (!w.nums.length) {
+    return w.skipped ? "Total weight: no numbered weights entered" : "Total weight: not yet entered";
+  }
+  var sum = w.nums.reduce(function (a, b) { return a + b; }, 0);
+  /* Floating point: 33.3 + 33.3 + 33.4 must not read as 99.99999999999999. */
+  sum = Math.round(sum * 100) / 100;
+
+  var text = "Total weight: " + sum + "%";
+  if (w.skipped) {
+    text += " (" + w.skipped + " entr" + (w.skipped === 1 ? "y" : "ies") + " without a number not counted)";
+  }
+  /* Flagged, never blocked - the same rule the completeness check follows. */
+  if (sum !== 100) text += " \u2014 does not add up to 100%";
+  return text;
+}
+
+function syncWeightTotal() {
+  var el = document.getElementById("weightTotal");
+  if (el) el.textContent = weightTotalText();
+}
+
+function announceWeightTotal() {
+  var el = document.getElementById("weightAnnounce");
+  if (el) el.textContent = weightTotalText();
+}
+
+/* The one place the export departs from being class-free and style-free.
+
+   Everything else in the fragment leaves presentation to the host page's
+   stylesheet, which is the right default. Table cells are the exception: a host
+   page that styles no cell padding renders these tables tight enough to be hard
+   to read, and there is no class on the fragment for a stylesheet to hook.
+
+   Set CELL_STYLE to an empty string and the attributes disappear entirely,
+   handing the tables back to the host stylesheet. Do that once Langara's theme
+   carries a rule for them. */
+var CELL_STYLE = "padding: 0.5rem 0.75rem;";
+
+function cellStyleAttr() {
+  return CELL_STYLE ? ' style="' + esc(CELL_STYLE) + '"' : "";
+}
+
+function th(text) {
+  return '<th scope="col"' + cellStyleAttr() + ">" + esc(text) + "</th>";
+}
+
+/* The content is already escaped and link-parsed, so it is not escaped again. */
+function td(html) {
+  return "<td" + cellStyleAttr() + ">" + html + "</td>";
+}
+
+function heading(level, text) {
+  return "<h" + level + ">" + esc(text) + "</h" + level + ">";
+}
+
+function labelled(label, value) {
+  if (value === null || value === undefined || value === "") return [];
+  return ["<p><strong>" + esc(label) + ":</strong> " + inline(value) + "</p>"];
+}
+
+/* Same as labelled(), but as a grid cell: margin: 0 stops the paragraph's own
+   default vertical spacing from adding to the grid's own gap between cells. */
+function labelledGridCell(label, value) {
+  if (value === null || value === undefined || value === "") return [];
+  return ['<p style="margin: 0;"><strong>' + esc(label) + ":</strong> " + inline(value) + "</p>"];
+}
+
+function section(level, title, body) {
+  if (!body || !body.length) return [];
+  return [""].concat(heading(level, title), body);
+}
+
+function link(url, label) {
+  var href = safeUrl(url);
+  return href ? anchor(href, label) : esc(label);
+}
+
+/* Credits and hours as ordinary labelled lines - bold label, plain figure -
+   the same shape as the "Year and semester" line below them, but set closer
+   together so they read as one group.
+
+   The gap between them is half the gap between ordinary paragraphs: 0.5em,
+   against the 1em a browser puts between paragraphs (and the 1rem
+   Bootstrap's own stylesheet uses, inside the Langara template - equal to 1em
+   at body size). The top margin is zeroed so the gap is exactly the bottom
+   margin. The last line takes a full 1em, so the group is separated from
+   what follows by an ordinary paragraph gap rather than a half one. */
+var STAT_LINE_GAP = "margin: 0 0 0.5em;";
+var STAT_LAST_GAP = "margin: 0 0 1em;";
+
+function statBand() {
+  var stats = [];
+
+  if (creditValue()) stats.push([creditLabel(), creditValue()]);
+
+  [["Lecture hours", "lectureHours"],
+   ["Lab hours", "labHours"],
+   ["Seminar hours", "seminarHours"]].forEach(function (pair) {
+    var n = hourValue(pair[1]);
+    if (n !== null) stats.push([pair[0], String(n)]);
+  });
+
+  var total = totalHours();
+  if (total !== null) stats.push(["Total hours", String(total)]);
+
+  return stats.map(function (s, i) {
+    var gap = i === stats.length - 1 ? STAT_LAST_GAP : STAT_LINE_GAP;
+    return '<p style="' + gap + '"><strong>' + esc(s[0]) + ":</strong> " + esc(s[1]) + "</p>";
+  });
+}
+
 function buildHtml() {
-  const title = val("courseTitle");
-  const L = [];
+  var L = [];
+  var W = words();
 
-  L.push("<h1>Course Outline</h1>");
-  L.push("<h2>Course Code, Number, and Title:" + (title ? " " + esc(title) : "") + "</h2>");
+  L.push(heading(1, val("courseTitle") || W.fallbackTitle));
 
-  [["Year and semester (YYYY#0)", val("yearSemester")],
-   ["Course Format", val("courseFormat")],
-   ["Credits", val("credits")]].forEach(([k, v]) => {
-    const line = labelled(k, v);
-    if (line) L.push(line);
-  });
+  /* Course facts, in the order they are asked for on the form. */
+  L = L.concat(statBand());
 
-  L.push('<p><strong>Transfer Credit</strong>: For information, visit <a href="https://www.bctransferguide.ca">bctransferguide.ca</a></p>');
+  L = L.concat(labelled("Year and semester", val("yearSemester")));
+  /* The template calls this Course Format; the option list is delivery mode,
+     which is how most departments fill it in. If a department uses it for an
+     hours breakdown instead, the contact-hours fields above already carry
+     that and this should become a free-text field. */
+  L = L.concat(labelled("Course format", val("mode")));
 
-  const desc = blocks(val("courseDescription"));
-  if (desc.length) {
-    L.push("");
-    L.push("<p><strong>Course Description, Prerequisites, and Corequisites:</strong></p>");
-    desc.forEach(b => L.push(b));
-  }
+  /* Always stated, so a student never has to wonder whether a missing line
+     means none or forgotten: "None" when No is chosen or Yes is left blank.
+     Answering No still drops anything typed while Yes was selected, rather
+     than leaving it in the export where nobody can see it. */
+  var req = checked("reqYes") ? val("reqDetail") : "";
+  L = L.concat(labelled("Pre/corequisites", req || "None"));
 
-  const outcomes = blocks(val("learningOutcomes"));
-  if (outcomes.length) {
-    L.push("");
-    L.push("<p><strong>Learning Outcomes:</strong></p>");
-    outcomes.forEach(b => L.push(b));
-  }
+  /* Transfer credit is boilerplate rather than a field, but it is a labelled
+     line like the ones above it, so it closes the metadata block. Standing
+     alone further down it would sit under whatever heading happened to precede
+     it and be read as part of that section. */
+  L.push("<p><strong>Transfer credit:</strong> Check current transfer agreements for this " +
+         "course at " + link(TRANSFER_URL, TRANSFER_LABEL) + ".</p>");
 
-  L.push("");
-  const inst = val("instructors");
-  L.push("<h2>Instructor(s):" + (inst ? " " + esc(inst) : "") + "</h2>");
+  /* Instructor - F1003 3.4(a). Name stays a full-width intro
+     line above the grid: it is the one field with no fixed length, and a long
+     name wrapping awkwardly inside a narrow grid cell is a worse outcome than
+     leaving it outside. The other four go into a two-column grid, in an order
+     chosen for how they pair on a line rather than alphabetically or by
+     importance: Office beside Office hours (both about where and when to find
+     the instructor), Phone beside Email below them (both about how to reach
+     them). The grid flows in source order, so this ordering IS the layout -
+     changing the array below changes which fields share a row. */
+  var instructorBody = [];
+  if (val("instructors")) instructorBody.push("<p>" + inline(val("instructors")) + "</p>");
+
+  var details = [];
   [["Office", val("office")],
+   ["Office hours", val("officeHours")],
    ["Phone", val("phone")],
-   ["Email", val("email")],
-   ["Office Hours", val("officeHours")]].forEach(([k, v]) => {
-    const line = labelled(k, v);
-    if (line) L.push(line);
+   ["Email", val("email")]].forEach(function (pair) {
+    details = details.concat(labelledGridCell(pair[0], pair[1]));
   });
 
-  L.push("");
-  L.push("<h2>Textbook and Course Materials:</h2>");
-  blocks(val("textbook")).forEach(b => L.push(b));
-  L.push("<p>" + esc(NOTE_TEXT) + "</p>");
-
-  L.push("");
-  L.push("<h2>Assessments and Weighting:</h2>");
-  blocks(val("assessments")).forEach(b => L.push(b));
-
-  L.push("");
-  L.push("<h2>Grading:</h2>");
-  blocks(val("grading")).forEach(b => L.push(b));
-  L.push('<p><a href="https://langara.ca/student-services/enrolment-services/student-records/grading">Grades, Grade Points and Notations</a></p>');
-
-  L.push("");
-  L.push("<h2>Detailed Course Schedule:</h2>");
-  L.push("<table>");
-  L.push("  <thead>");
-  L.push('    <tr><th scope="col">Week</th><th scope="col">Topic</th><th scope="col">Reading</th></tr>');
-  L.push("  </thead>");
-  L.push("  <tbody>");
-  const rows = scheduleRows();
-  if (rows.length === 0) {
-    L.push("    <tr><td></td><td></td><td></td></tr>");
-  } else {
-    rows.forEach(r => {
-      L.push("    <tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td></tr>");
-    });
+  if (details.length) {
+    instructorBody.push('<div style="' + esc(INSTRUCTOR_GRID.wrap) + '">');
+    instructorBody = instructorBody.concat(details);
+    instructorBody.push("</div>");
   }
-  L.push("  </tbody>");
-  L.push("</table>");
 
-  L.push("");
-  L.push("<h2>Policy</h2>");
-  L.push("<p>As a student at Langara, you are responsible for familiarizing yourself and complying with the following policies:</p>");
-  L.push('<h3><a href="https://langara.ca/about-langara/college-policies-procedures">College Policies</a>:</h3>');
-  L.push("<ul>");
-  POLICY_LINKS.forEach(([text, href]) => {
-    L.push('  <li><a href="' + href + '">' + esc(text) + "</a></li>");
+  L = L.concat(section(2, "Instructor", instructorBody));
+
+  L = L.concat(section(2, "Course description", blocks(val("courseDescription"))));
+  L = L.concat(section(2, "Learning outcomes", learningOutcomesBody()));
+
+  /* Detailed course schedule, F1003 3.4(d). The template's own table is Week /
+     Topic / Reading; the fourth column is kept because 3.4(d) names deadlines
+     as well as the sequence of topics. */
+  var weeks = scheduleRows();
+  var schedBody = [];
+  if (weeks.length) {
+    schedBody.push("<table>");
+    schedBody.push("<caption>Week-by-week schedule</caption>");
+    schedBody.push("<thead>");
+    schedBody.push("<tr>" + th("Week") + th("Topic") + th("Readings and activities") +
+                   th("Activities due") + "</tr>");
+    schedBody.push("</thead>");
+    schedBody.push("<tbody>");
+    weeks.forEach(function (r) {
+      schedBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
+                     td(inline(r[2])) + td(inline(r[3])) + "</tr>");
+    });
+    schedBody.push("</tbody>");
+    schedBody.push("</table>");
+  }
+  L = L.concat(section(2, "Detailed course schedule", schedBody));
+
+  /* Assessment. The Grades link sits inside this section rather than carrying a
+     heading of its own. */
+  var rows = sortByDue(assessRows());
+  var assessBody = [];
+  if (rows.length) {
+    assessBody.push("<table>");
+    assessBody.push("<caption>Means of assessment and weighting</caption>");
+    assessBody.push("<thead>");
+    assessBody.push("<tr>" + th("Assessment activity") + th("Weight") +
+                    th("Due date") + "</tr>");
+    assessBody.push("</thead>");
+    assessBody.push("<tbody>");
+    rows.forEach(function (r) {
+      assessBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
+                      td(inline(r[2])) + "</tr>");
+    });
+    assessBody.push("</tbody>");
+    assessBody.push("</table>");
+  }
+  /* The instructor's own grading guidelines sit between the table and the link
+     to the College's scale - F1003 3.2(g). The heading goes out only with
+     content under it: an empty h3 is a heading for nothing. */
+  var grading = blocks(val("gradingNotes"));
+  if (grading.length) {
+    assessBody.push(heading(3, "Grading guidelines"));
+    assessBody = assessBody.concat(grading);
+  }
+  assessBody.push("<p>See " + link(GRADES_URL, GRADES_LABEL) + " " + esc(W.gradesNote) + ".</p>");
+  L = L.concat(section(2, "Assessment and grading", assessBody));
+
+  /* Course materials. The privacy notice belongs with the resource that
+     triggers it, and the bookstore search always closes the section. */
+  var textbookBody = [];
+  textbookBody = textbookBody.concat(blocks(val("textbook")));
+  if (checked("privacy")) {
+    textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
+  }
+  textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
+  L = L.concat(section(2, W.materialsHeading, textbookBody));
+
+  /* College policies before departmental ones: the College's obligations frame
+     the department's, not the other way round. */
+  var policyBody = ["<p>Students are responsible for reading the College policies that govern " +
+                    "their studies, including:</p>", "<ul>"];
+  POLICY_LINKS.forEach(function (p) {
+    policyBody.push("<li>" + link(p[1], p[0]) + "</li>");
   });
-  L.push("</ul>");
+  policyBody.push("</ul>");
+  policyBody.push("<p>The full list is at " + link(POLICY_INDEX_URL, POLICY_INDEX_LABEL) + ".</p>");
+  L = L.concat(section(2, "College policies", policyBody));
 
-  L.push("");
-  L.push("<h3>Departmental/Course Policies:</h3>");
-  blocks(val("deptPolicies")).forEach(b => L.push(b));
+  L = L.concat(section(2, "Departmental and course guidelines", blocks(val("deptPolicies"))));
 
-  // Collapse the blank-line separators left by any skipped sections.
+  L = L.concat(section(2, "Student support", [
+    "<p>Langara offers academic and personal supports to students. See " +
+      link(SUPPORT_URL, SUPPORT_LABEL) + ".</p>",
+    "<p>Students who require academic accommodation should consult " +
+      link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
+  ]));
+
+  /* Always present now that it is generated rather than typed, so there is no
+     blank case left to guard against. esc() rather than inline(): the string
+     comes from the clock, not from a box someone could put link syntax in. */
+  var versionBody = [];
+  versionBody.push("<p><strong>Effective date:</strong> " + esc(effectiveDate()) + "</p>");
+  versionBody.push("<p>" + esc(DISCLAIMER) + "</p>");
+  if (safeUrl(ARCHIVE_URL)) {
+    versionBody.push("<p>" + link(ARCHIVE_URL, ARCHIVE_LABEL) + "</p>");
+  }
+  L = L.concat(section(2, "Versioning", versionBody));
+
+  /* Closes the document, as it closes the College's own template. */
+  L.push("<p>" + esc(ACKNOWLEDGEMENT) + "</p>");
+
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-// The preview pane still needs a complete document so the iframe renders with a
-// declared encoding. Only the copied and downloaded output is a bare fragment.
-function previewDocument(fragment) {
-  return '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
-    '<title>Outline preview</title>\n</head>\n<body>\n' + fragment + '\n</body>\n</html>';
+/* ------------------------------------------------------------------ *
+ * Completeness tiers
+ *
+ * Two separate things get conflated when a form is "required": what Policy
+ * F1003 obliges a syllabus to carry, and what Langara wants on top of that.
+ * Keeping them apart means an instructor who challenges a flagged field gets a
+ * straight answer about which it is. Neither tier blocks anything - Generate,
+ * Copy and Download always work on a part-finished syllabus, because these
+ * get drafted over days and the preview is how people check progress.
+ * ------------------------------------------------------------------ */
+
+/* A syllabus carries every outline obligation and adds its own, because
+   F1003 3.4 says a syllabus contains what an outline contains plus the
+   section-level detail. One document type, so one map. */
+var MARKERS = {
+  courseTitle: "required",
+  credits: "required",
+  ceus: "required",
+  yearSemester: "required",
+  mode: "required",
+  instructors: "required",
+  office: "required",
+  phone: "required",
+  email: "required",
+  /* F1003 3.4(a) qualifies office hours with "if applicable"; Langara asks for
+     an explicit answer instead, so a blank is never left ambiguous. */
+  officeHours: "required",
+  courseDescription: "required",
+  learningOutcomes: "required",
+  textbook: "required"
+};
+
+/* Every field the map can name. Kept as its own list rather than derived from
+   the keys, so a field can be cleared of a marker as well as given one. */
+var MARKED_FIELDS = ["courseTitle", "credits", "ceus", "yearSemester", "mode",
+  "instructors", "office", "phone", "email", "officeHours",
+  "courseDescription", "learningOutcomes", "textbook"];
+
+function markerMap() {
+  return MARKERS;
 }
 
-function generate() {
-  const html = buildHtml();
-  document.getElementById("source").value = html;
-  document.getElementById("preview").srcdoc = previewDocument(html);
-  setStatus("Outline generated.");
-  return html;
-}
+/* Markers are written into the labels as words rather than an asterisk, which
+   needs a key to decode. They move with the mode, so they are applied in script
+   rather than baked into the markup.
 
-function setStatus(msg) {
-  const el = document.getElementById("status");
-  el.textContent = msg;
-  window.setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 4000);
-}
-
-function download() {
-  const html = generate();
-  const name = (val("courseTitle") || "course-outline")
-    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name + ".html";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  setStatus("Downloaded " + name + ".html");
-}
-
-function copySource() {
-  const html = generate();
-  const ta = document.getElementById("source");
-  ta.select();
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(html)
-      .then(() => setStatus("HTML copied to clipboard."))
-      .catch(() => setStatus("Copy failed. The HTML is selected below \u2014 press Ctrl/Cmd+C."));
-  } else {
-    setStatus("Copy is unavailable in this browser. The HTML is selected below \u2014 press Ctrl/Cmd+C.");
-  }
-}
-
-// Column headers do NOT name the inputs inside a table cell, so every schedule
-// input gets its own <label>. Real label elements rather than aria-label: some
-// checkers only accept a label element, and browser auto-translation routinely
-// skips aria-label attributes while always translating text nodes.
-// Names include the week, which the instructor can edit, so they are recomputed
-// whenever the table changes.
-function relabelScheduleRows() {
-  const rows = document.querySelectorAll("#scheduleBody tr");
-  rows.forEach((tr, i) => {
-    const inputs = tr.querySelectorAll("input");
-    const labels = tr.querySelectorAll("td > label");
-    const week = inputs[0].value.trim();
-    const ref = week ? "week " + week : "row " + (i + 1);
-    labels[0].textContent = "Week number, row " + (i + 1);
-    labels[1].textContent = "Topic for " + ref;
-    labels[2].textContent = "Reading for " + ref;
-    const qualifier = tr.querySelector("button > .visually-hidden");
-    if (qualifier) qualifier.textContent = " " + ref;
+   aria-required rather than the native required attribute: the outcomes box
+   ships seeded with a lead-in sentence, so a browser would consider it
+   satisfied while it is substantively blank. Native constraint validation
+   would report the wrong answer, and nothing here submits a form anyway. */
+function markFields() {
+  var map = markerMap();
+  MARKED_FIELDS.forEach(function (id) {
+    var lab = document.querySelector('label[for="' + id + '"]');
+    var el = document.getElementById(id);
+    var marker = map[id];
+    if (lab) {
+      var base = lab.textContent.replace(/\s*\((required|recommended)\)\s*$/, "");
+      lab.textContent = marker ? base + " (" + marker + ")" : base;
+    }
+    if (el) {
+      if (marker === "required") el.setAttribute("aria-required", "true");
+      else el.removeAttribute("aria-required");
+    }
   });
 }
 
-// Never reused, so ids stay unique even after rows are removed and added.
-let scheduleSeq = 0;
+function normalizeText(s) {
+  return String(s).replace(/\s+/g, " ").trim().toLowerCase();
+}
 
-function addScheduleRow(week, topicPlaceholder, readingPlaceholder) {
-  const tbody = document.getElementById("scheduleBody");
-  const uid = "sched" + (++scheduleSeq);
-  const tr = document.createElement("tr");
+/* Which lead-in, if any, a field is still carrying - so a box holding only
+   its lead-in can be told from one the instructor has written in. The
+   outcomes box is the only field that ships with one; a syllabus states its
+   section's actual texts, so the textbook box seeds empty. */
+function stemFor(id) {
+  return id === "learningOutcomes" ? OUTCOME_STEM : null;
+}
 
-  const mk = (key, value, placeholder) => {
-    const td = document.createElement("td");
-    const id = uid + "-" + key;
-    const label = document.createElement("label");
-    label.className = "visually-hidden";
-    label.htmlFor = id;
-    const input = document.createElement("input");
-    input.type = "text";
-    input.id = id;
-    if (value) input.value = value;
-    if (placeholder) input.placeholder = placeholder;
-    td.appendChild(label);
-    td.appendChild(input);
-    return td;
+/* True when a field holds something beyond the lead-in sentence it ships with.
+   A seeded field is not blank, so a plain truthiness test would report it as
+   complete before the instructor has written a word. */
+function hasContentBeyond(id) {
+  var v = val(id);
+  if (!v) return false;
+  var stem = stemFor(id);
+  if (!stem) return true;
+  return normalizeText(v) !== normalizeText(stem);
+}
+
+function checklistItems() {
+  var items = [];
+  var W = words();
+  var map = markerMap();
+
+  /* flags is an optional { ok: "...", bad: "..." } override for the two words
+     the checklist stamps on an item. Every completeness item wants the
+     defaults; the outcome marker check is not a completeness item - nothing is
+     missing - so "Missing" would be a false statement about it. */
+  function add(tier, label, ok, clause, target, flags) {
+    items.push({ tier: tier, label: label, ok: ok, clause: clause || null,
+                 target: target, flags: flags || null });
+  }
+  function tierOf(id) {
+    return map[id] === "required" ? "required" : "recommended";
+  }
+
+  /* Listed in form order, so the summary reads as a walk through the page. */
+  add("required", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
+  add("required", creditLabel(), !!creditValue(), "3.2(b)",
+      creditUnit() === "ceus" ? "ceus" : "credits");
+  /* 3.2(b) requires contact hours, but a course need not have all three kinds,
+     so this is a group rule: any one of the three satisfies it. */
+  add("required", "Contact hours (lecture, lab, or seminar)", enteredHours().length > 0, "3.2(b)", "lectureHours");
+  add(tierOf("yearSemester"), "Year and semester", !!val("yearSemester"), null, "yearSemester");
+  add(tierOf("mode"), "Course format", !!val("mode"), null, "mode");
+
+  add("required", "Instructor name(s)", !!val("instructors"), "3.4(a)", "instructors");
+  add("required", "Office", !!val("office"), null, "office");
+  add("required", "Phone", !!val("phone"), null, "phone");
+  add("required", "Email", !!val("email"), "3.4(a)", "email");
+  add("required", "Office hours", !!val("officeHours"), null, "officeHours");
+
+  add("required", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
+
+  /* Which control can satisfy this depends on the chosen format, so both the
+     test and the link target move with it. The list item targets the first
+     text field rather than the Add button, because with three rows already
+     seeded the field is what the author needs to reach, not another row. */
+  if (isOutcomeList()) {
+    add("required", "At least one learning outcome", outcomeRows().length > 0, "3.2(d)", "outcomeText1");
+
+    /* Reported, never corrected. In list mode a field becomes one <li> whole,
+       so a leading "-", bullet or "1." is not parsed away the way it is in a
+       textarea: it survives into the output as a literal character sitting
+       inside the bullet. Stripping it would be quietly editing what someone
+       typed, which is the thing this file does not do - so this says what is
+       wrong, links to the field, and leaves the decision alone.
+
+       Added only when it fires. An item permanently reading "Clear - no
+       markers found" is noise in a list whose job is naming what is left. */
+    var marked = markedOutcomeRows();
+    if (marked.length) {
+      var plural = marked.length > 1;
+      add("recommended",
+          "Learning outcome" + (plural ? "s " : " ") + joinNumbers(marked) +
+          (plural ? " begin" : " begins") + " with a list marker, which will appear inside " +
+          "the bullet rather than making one",
+          false, null, "outcomeText" + marked[0], { bad: "Check" });
+    }
+  } else {
+    add("required", "Learning outcomes", hasContentBeyond("learningOutcomes"), "3.2(d)", "learningOutcomes");
+  }
+
+  add("required", "At least one scheduled week", scheduleRows().length > 0, "3.4(d)", "addWeekBtn");
+
+  add("required", "At least one assessment activity", assessRows().length > 0, W.assessClause, "addAssessBtn");
+  add("required", W.materialsItem, hasContentBeyond("textbook"), W.materialsClause, "textbook");
+  /* The effective date was listed here while it was a field someone could
+     leave blank. It is generated now, so it can never be outstanding, and an
+     item that is permanently "Included" is noise in a list whose job is to
+     say what is left to do. It moves to the "Added automatically" line at the
+     foot of the check instead. Note that it never carried a clause citation:
+     it was Langara practice rather than an F1003 obligation, so nothing
+     policy-cited leaves the required tier with it. */
+
+  return items;
+}
+
+function renderChecklist() {
+  var host = document.getElementById("checklist");
+  host.textContent = "";
+
+  var items = checklistItems();
+  var required = items.filter(function (i) { return i.tier === "required"; });
+  var recommended = items.filter(function (i) { return i.tier === "recommended"; });
+
+  var counts = {
+    required: required.filter(function (i) { return !i.ok; }).length,
+    recommended: recommended.filter(function (i) { return !i.ok; }).length
   };
 
-  tr.appendChild(mk("week", week || "", ""));
-  tr.appendChild(mk("topic", "", topicPlaceholder || ""));
-  tr.appendChild(mk("reading", "", readingPlaceholder || ""));
-
-  // Editing the week number changes the other fields' labels.
-  tr.querySelectorAll("input")[0].addEventListener("input", relabelScheduleRows);
-
-  const tdBtn = document.createElement("td");
-  const btn = document.createElement("button");
-  btn.type = "button";
-  // Visible word plus a hidden qualifier, so the button reads "Remove week 3"
-  // while still matching a voice-control user saying "click Remove".
-  btn.appendChild(document.createTextNode("Remove"));
-  const qualifier = document.createElement("span");
-  qualifier.className = "visually-hidden";
-  btn.appendChild(qualifier);
-  btn.addEventListener("click", () => {
-    const rows = Array.from(document.querySelectorAll("#scheduleBody tr"));
-    const idx = rows.indexOf(tr);
-    const label = btn.textContent.trim();
-    tr.remove();
-    const remaining = document.querySelectorAll("#scheduleBody tr");
-    // Never strand focus on a removed element.
-    if (remaining.length === 0) {
-      document.getElementById("addRowBtn").focus();
-    } else {
-      const next = remaining[Math.min(idx, remaining.length - 1)];
-      const nextBtn = next.querySelector("button");
-      if (nextBtn) nextBtn.focus();
+  var intro = document.createElement("p");
+  if (!counts.required && !counts.recommended) {
+    intro.textContent = "Everything is filled in.";
+  } else {
+    var bits = [];
+    if (counts.required) {
+      bits.push(counts.required + " required item" + (counts.required === 1 ? "" : "s"));
     }
-    relabelScheduleRows();
-    setStatus(label.replace(/^Remove/, "Removed") + ".");
-  });
-  tdBtn.appendChild(btn);
-  tr.appendChild(tdBtn);
+    if (counts.recommended) {
+      bits.push(counts.recommended + " recommended item" + (counts.recommended === 1 ? "" : "s"));
+    }
+    intro.textContent = bits.join(" and ") + " outstanding. Nothing is blocked \u2014 " +
+      "you can still generate, copy and download.";
+  }
+  host.appendChild(intro);
 
-  tbody.appendChild(tr);
-  relabelScheduleRows();
+  function group(title, note, list) {
+    if (!list.length) return;
+
+    var h = document.createElement("h3");
+    h.textContent = title;
+    host.appendChild(h);
+
+    var p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = note;
+    host.appendChild(p);
+
+    var ul = document.createElement("ul");
+    list.forEach(function (item) {
+      var li = document.createElement("li");
+
+      var flag = document.createElement("span");
+      flag.className = "flag";
+      /* Words, not colour or icons alone \u2014 SC 1.4.1. */
+      var okWord = (item.flags && item.flags.ok) || "Included";
+      var badWord = (item.flags && item.flags.bad) || "Missing";
+      flag.textContent = item.ok ? okWord : badWord;
+      li.appendChild(flag);
+      li.appendChild(document.createTextNode(" \u2014 "));
+
+      /* An outstanding item links to the control that fixes it, so the summary
+         is a way in rather than a list of complaints (SC 3.3.3). */
+      if (item.ok) {
+        li.appendChild(document.createTextNode(item.label));
+      } else {
+        var a = document.createElement("a");
+        a.href = "#" + item.target;
+        a.textContent = item.label;
+        a.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          var target = document.getElementById(item.target);
+          if (target) target.focus();
+        });
+        li.appendChild(a);
+      }
+
+      if (item.clause) li.appendChild(document.createTextNode(" (F1003 " + item.clause + ")"));
+      ul.appendChild(li);
+    });
+    host.appendChild(ul);
+  }
+
+  var noun = words().docNoun;
+  group("Required",
+        "Your " + noun + " is not complete without these. Items citing a clause are obliged " +
+        "by Policy F1003; the rest are Langara practice.", required);
+  group("Recommended",
+        "Not required, but expected on a Langara course " + noun + ".", recommended);
+
+  var auto = document.createElement("p");
+  auto.textContent = "Added automatically: the effective date, the Grades link, the bookstore " +
+    "textbook search, the BC Transfer Guide link, the Langara Student Services and academic " +
+    "accommodation links, the College policy list, the subject-to-change note, and the " +
+    "territorial acknowledgement.";
+  host.appendChild(auto);
+
+  /* The effective date used to be visible on the form, so an author could see
+     what the document would say. With the field gone this line is the only
+     place it appears before generating, which is why the value itself is
+     named and not just the fact that something fills it in. */
+  var dated = document.createElement("p");
+  dated.className = "hint";
+  dated.textContent = "The effective date is the month this document is generated, so it will " +
+    "read " + effectiveDate() + ".";
+  host.appendChild(dated);
+
+  return counts;
+}
+
+/* ------------------------------------------------------------------ *
+ * Assessment table
+ * ------------------------------------------------------------------ */
+
+/* Real label elements with for/id, not aria-label: some checkers require a
+   label element specifically, and this table is where they look first. */
+function addAssessRow(activity, weight, due) {
+  var body = document.getElementById("assessBody");
+  var tr = document.createElement("tr");
+
+  function cell(kind, value, hiddenCell) {
+    var td = document.createElement("td");
+    if (hiddenCell) {
+      td.className = "assess-due";
+
+    }
+    var lab = document.createElement("label");
+    lab.className = "visually-hidden";
+    td.appendChild(lab);
+    var input = document.createElement("input");
+    input.type = "text";
+    input.setAttribute("data-kind", kind);
+    input.value = value || "";
+    td.appendChild(input);
+    tr.appendChild(td);
+  }
+
+  cell("activity", activity);
+  cell("weight", weight);
+  /* The due date cell is always built so a mode switch never loses typing;
+     hiding the cell takes its input out of the tab order and the accessibility
+     tree, which an input inside a hidden ancestor does correctly. */
+  cell("due", due, true);
+
+  var actions = document.createElement("td");
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "removeRow";
+  remove.appendChild(document.createTextNode("Remove"));
+  var sr = document.createElement("span");
+  sr.className = "visually-hidden";
+  remove.appendChild(sr);
+  remove.addEventListener("click", function () { removeAssessRow(tr); });
+  actions.appendChild(remove);
+  tr.appendChild(actions);
+
+  body.appendChild(tr);
+  renumberAssessRows();
   return tr;
 }
 
-document.getElementById("generateBtn").addEventListener("click", generate);
-document.getElementById("downloadBtn").addEventListener("click", download);
-document.getElementById("copyBtn").addEventListener("click", copySource);
-document.getElementById("addRowBtn").addEventListener("click", () => {
-  // Use the highest existing week number, not the row count, so removing a
-  // middle row cannot produce a duplicate.
-  const weeks = Array.from(document.querySelectorAll("#scheduleBody tr"))
-    .map(tr => parseInt(tr.querySelector("input").value.trim(), 10))
-    .filter(n => !isNaN(n));
-  const next = weeks.length ? Math.max.apply(null, weeks) + 1 : 1;
-  const row = addScheduleRow(String(next));
-  row.querySelectorAll("input")[1].focus();
-});
+function removeAssessRow(tr) {
+  var body = document.getElementById("assessBody");
+  var rows = Array.prototype.slice.call(body.rows);
+  var index = rows.indexOf(tr);
+  body.removeChild(tr);
 
-addScheduleRow("1", "Example topic", "Chapter 1");
-addScheduleRow("2");
-addScheduleRow("3");
-addScheduleRow("4");
-</script>
+  /* Never leave the table empty: a table with a header and no rows is a dead
+     end for anyone who removed the last row by mistake. */
+  if (!body.rows.length) addAssessRow("", "", "");
+  renumberAssessRows();
 
-</body>
-</html>
+  /* Focus would otherwise land on the body element. Move it to the nearest
+     surviving remove button, or the Add button if there is none (SC 3.2.2). */
+  var next = body.rows[Math.min(index, body.rows.length - 1)];
+  var target = next ? next.querySelector(".removeRow") : document.getElementById("addAssessBtn");
+  if (target) target.focus();
+  setStatus("Row removed.");
+}
+
+/* Row numbers are part of each label, so they have to be rewritten whenever the
+   set of rows changes. */
+function renumberAssessRows() {
+  var body = document.getElementById("assessBody");
+  Array.prototype.forEach.call(body.rows, function (tr, i) {
+    var n = i + 1;
+    var labels = tr.querySelectorAll("label");
+    var inputs = tr.querySelectorAll("input");
+
+    [["assessActivity", "Assessment activity"],
+     ["assessWeight", "Weight"],
+     ["assessDue", "Due date"]]
+      .forEach(function (pair, j) {
+        if (!inputs[j] || !labels[j]) return;
+        var id = pair[0] + n;
+        inputs[j].id = id;
+        labels[j].setAttribute("for", id);
+        labels[j].textContent = pair[1] + ", row " + n;
+      });
+
+    var sr = tr.querySelector(".removeRow .visually-hidden");
+    if (sr) sr.textContent = " row " + n;
+  });
+  syncWeightTotal();
+}
+
+/* ------------------------------------------------------------------ *
+ * Detailed course schedule (syllabus only)
+ * ------------------------------------------------------------------ */
+
+var SCHEDULE_COLUMNS = [
+  ["schedWeek", "Week"],
+  ["schedTopic", "Topic"],
+  ["schedReadings", "Readings and activities"],
+  ["schedDue", "Activities due"]
+];
+
+function scheduleRows() {
+  var rows = [];
+  var body = document.getElementById("scheduleBody");
+  if (!body) return rows;
+  Array.prototype.forEach.call(body.rows, function (tr) {
+    var cells = Array.prototype.map.call(tr.querySelectorAll("input"), function (i) {
+      return i.value.trim();
+    });
+    /* A week number alone is scaffolding, not content: the seeded rows arrive
+       numbered, so requiring something beyond that stops empty weeks reaching
+       the export. */
+    if (cells.slice(1).some(Boolean)) rows.push(cells);
+  });
+  return rows;
+}
+
+function addScheduleRow(values) {
+  var body = document.getElementById("scheduleBody");
+  var tr = document.createElement("tr");
+  var v = values || [];
+
+  SCHEDULE_COLUMNS.forEach(function (col, i) {
+    var td = document.createElement("td");
+    var lab = document.createElement("label");
+    lab.className = "visually-hidden";
+    td.appendChild(lab);
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = v[i] || "";
+    td.appendChild(input);
+    tr.appendChild(td);
+  });
+
+  var actions = document.createElement("td");
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "removeWeek";
+  remove.appendChild(document.createTextNode("Remove"));
+  var sr = document.createElement("span");
+  sr.className = "visually-hidden";
+  remove.appendChild(sr);
+  remove.addEventListener("click", function () { removeScheduleRow(tr); });
+  actions.appendChild(remove);
+  tr.appendChild(actions);
+
+  body.appendChild(tr);
+  renumberScheduleRows();
+  return tr;
+}
+
+function removeScheduleRow(tr) {
+  var body = document.getElementById("scheduleBody");
+  var rows = Array.prototype.slice.call(body.rows);
+  var index = rows.indexOf(tr);
+  body.removeChild(tr);
+  if (!body.rows.length) addScheduleRow([]);
+  renumberScheduleRows();
+
+  var next = body.rows[Math.min(index, body.rows.length - 1)];
+  var target = next ? next.querySelector(".removeWeek") : document.getElementById("addWeekBtn");
+  if (target) target.focus();
+  setStatus("Week removed.");
+}
+
+function renumberScheduleRows() {
+  var body = document.getElementById("scheduleBody");
+  Array.prototype.forEach.call(body.rows, function (tr, i) {
+    var n = i + 1;
+    var labels = tr.querySelectorAll("label");
+    var inputs = tr.querySelectorAll("input");
+    SCHEDULE_COLUMNS.forEach(function (col, j) {
+      if (!inputs[j] || !labels[j]) return;
+      var id = col[0] + n;
+      inputs[j].id = id;
+      labels[j].setAttribute("for", id);
+      labels[j].textContent = col[1] + " for week " + n;
+    });
+    var sr = tr.querySelector(".removeWeek .visually-hidden");
+    if (sr) sr.textContent = " week " + n;
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Learning outcome rows (list format only)
+ *
+ * Same shape as the assessment and schedule tables - seeded rows, per-row
+ * Remove, delegated Add, renumbered visually-hidden labels, focus moved on
+ * removal - so an instructor who has met one of those tables has met this
+ * one. One text column rather than several, and no due-date style hidden
+ * cell, so the machinery is the same but shorter.
+ * ------------------------------------------------------------------ */
+
+function addOutcomeRow(text) {
+  var body = document.getElementById("outcomeBody");
+  var tr = document.createElement("tr");
+
+  var td = document.createElement("td");
+  var lab = document.createElement("label");
+  lab.className = "visually-hidden";
+  td.appendChild(lab);
+  var input = document.createElement("input");
+  input.type = "text";
+  input.value = text || "";
+  td.appendChild(input);
+  tr.appendChild(td);
+
+  var actions = document.createElement("td");
+  var remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "removeOutcome";
+  remove.appendChild(document.createTextNode("Remove"));
+  var sr = document.createElement("span");
+  sr.className = "visually-hidden";
+  remove.appendChild(sr);
+  remove.addEventListener("click", function () { removeOutcomeRow(tr); });
+  actions.appendChild(remove);
+  tr.appendChild(actions);
+
+  body.appendChild(tr);
+  renumberOutcomeRows();
+  return tr;
+}
+
+function removeOutcomeRow(tr) {
+  var body = document.getElementById("outcomeBody");
+  var rows = Array.prototype.slice.call(body.rows);
+  var index = rows.indexOf(tr);
+  body.removeChild(tr);
+
+  /* Never leave the table empty, for the same reason the other two do not:
+     a header with no rows under it is a dead end for anyone who removed the
+     last row by mistake. It also keeps outcomeText1 a real id, which the
+     completeness check links to. */
+  if (!body.rows.length) addOutcomeRow("");
+  renumberOutcomeRows();
+
+  var next = body.rows[Math.min(index, body.rows.length - 1)];
+  var target = next ? next.querySelector(".removeOutcome")
+                    : document.getElementById("addOutcomeBtn");
+  if (target) target.focus();
+  setStatus("Learning outcome removed.");
+}
+
+function renumberOutcomeRows() {
+  var body = document.getElementById("outcomeBody");
+  Array.prototype.forEach.call(body.rows, function (tr, i) {
+    var n = i + 1;
+    var lab = tr.querySelector("label");
+    var input = tr.querySelector("input");
+    if (lab && input) {
+      var id = "outcomeText" + n;
+      input.id = id;
+      lab.setAttribute("for", id);
+      lab.textContent = "Learning outcome " + n;
+    }
+    var sr = tr.querySelector(".removeOutcome .visually-hidden");
+    if (sr) sr.textContent = " learning outcome " + n;
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Wiring
+ * ------------------------------------------------------------------ */
+
+function setStatus(message) {
+  document.getElementById("status").textContent = message;
+}
+
+/* The second status region, the one beside Download and Copy. Those two
+   buttons now sit below the preview, far enough from the form's own status
+   line that writing their confirmation there would put it off screen. Both
+   regions are role="status", so both are announced; they differ only in where
+   the message is visible. */
+function setExportStatus(message) {
+  document.getElementById("exportStatus").textContent = message;
+}
+
+/* ------------------------------------------------------------------ *
+ * Paste wiring
+ * ------------------------------------------------------------------ */
+
+function pasteNoteId(id) { return id + "PasteNote"; }
+
+/* A note of its own under each field rather than the shared status line
+   beside Generate. Two reasons. The list fields sit well up a long form and
+   that line is at the bottom of it, so the message would be announced and
+   then not be anywhere the author is looking. And a message about a paste is
+   only unambiguous if it is next to the box that was pasted into - one
+   shared line cannot say which of six fields it means without naming it.
+   Both regions are role="status", so both are announced identically. */
+function setPasteNote(id, message) {
+  var el = document.getElementById(pasteNoteId(id));
+  if (el) el.textContent = message;
+}
+
+/* Built empty at start-up rather than on the first paste: a live region has
+   to be in the document before its text changes, or the change is not
+   announced. Generated here rather than written into the markup so it cannot
+   fall out of step with PASTE_FIELDS. */
+function buildPasteNotes() {
+  PASTE_FIELDS.forEach(function (id) {
+    var field = document.getElementById(id);
+    if (!field || document.getElementById(pasteNoteId(id))) return;
+    var note = document.createElement("span");
+    note.className = "hint";
+    note.id = pasteNoteId(id);
+    note.setAttribute("role", "status");
+    field.parentNode.insertBefore(note, field.nextSibling);
+  });
+}
+
+/* insertText rather than assigning to value, so the paste stays on the
+   browser's own undo stack and Ctrl+Z puts back what was there before. It is
+   a deprecated call and it returns false where it is not supported, hence
+   the fallback - which does lose undo, and dispatches the input event the
+   assignment would not otherwise fire. */
+function insertAtCursor(el, text) {
+  el.focus();
+  var done = false;
+  try {
+    done = !!(document.execCommand && document.execCommand("insertText", false, text));
+  } catch (e) {
+    done = false;
+  }
+  if (done) return;
+
+  var start = el.selectionStart;
+  var end = el.selectionEnd;
+  if (typeof start === "number" && typeof end === "number") {
+    el.value = el.value.slice(0, start) + text + el.value.slice(end);
+    el.selectionStart = el.selectionEnd = start + text.length;
+  } else {
+    el.value += text;
+  }
+
+  var ev;
+  try {
+    ev = new Event("input", { bubbles: true });
+  } catch (e2) {
+    ev = document.createEvent("Event");
+    ev.initEvent("input", true, false);
+  }
+  el.dispatchEvent(ev);
+}
+
+function handlePaste(ev) {
+  var el = ev.target;
+  var data = ev.clipboardData || window.clipboardData;
+  /* No readable clipboard, or a flavour with no plain text in it at all - an
+     image, say. Left to the browser, which will do the right thing or
+     nothing. */
+  if (!data) return;
+
+  var raw = "";
+  try {
+    raw = data.getData("text/plain") || data.getData("Text") || "";
+  } catch (e) {
+    return;
+  }
+  if (!raw) return;
+
+  var report = normalizePaste(raw);
+
+  /* Nothing to change: the default paste is allowed to run, which keeps undo
+     behaving natively for the ordinary case. The note is cleared so an
+     earlier one does not sit there describing a paste that is no longer on
+     screen. */
+  if (!report.changed) {
+    setPasteNote(el.id, "");
+    return;
+  }
+
+  ev.preventDefault();
+  insertAtCursor(el, report.text);
+  setPasteNote(el.id, pasteNoteText(report));
+}
+
+function syncCreditUnit() {
+  var ceus = checked("unitCeus");
+  document.getElementById("creditsWrap").hidden = ceus;
+  document.getElementById("ceusWrap").hidden = !ceus;
+}
+
+/* Adds or removes a lead-in sentence, leaving anything typed after it alone.
+
+   The stem is only stripped when it is still the exact opening line, so a
+   department that rewrites the framing sentence keeps its own wording. Adding
+   is equally careful: a box that already opens with the stem is left as it is,
+   so flipping modes repeatedly cannot stack duplicates. */
+/* Which of the two learning-outcome inputs is showing. */
+function syncOutcomeMode() {
+  var list = isOutcomeList();
+  document.getElementById("outcomeListWrap").hidden = !list;
+  document.getElementById("outcomeParagraphWrap").hidden = list;
+}
+
+function syncBranches() {
+  document.getElementById("reqWrap").hidden = !checked("reqYes");
+}
+
+function hoursTotalText() {
+  var hours = enteredHours();
+  if (!hours.length) return "Total hours: not yet entered";
+  if (hours.length === 1) return "Total hours: omitted while only one kind of hour is entered";
+  return "Total hours: " + totalHours();
+}
+
+function syncHoursTotal() {
+  document.getElementById("hoursTotal").textContent = hoursTotalText();
+}
+
+function announceHoursTotal() {
+  document.getElementById("hoursAnnounce").textContent = hoursTotalText();
+}
+
+function generate(announce) {
+  var html = buildHtml();
+  document.getElementById("source").value = html;
+
+  /* The output is a fragment, so the preview iframe gets a document wrapped
+     around it with a declared charset, or it would mis-render em dashes. */
+  var previewDoc = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+    "<title>" + esc(words().previewTitle) + "</title></head><body>" + html + "</body></html>";
+  document.getElementById("preview").setAttribute("srcdoc", previewDoc);
+
+  var counts = renderChecklist();
+
+  if (announce !== false) {
+    if (counts.required) {
+      setStatus(words().generatedStatus + " " + counts.required +
+                " required item" + (counts.required === 1 ? "" : "s") + " still outstanding.");
+      document.getElementById("checklist").focus();
+    } else {
+      setStatus(words().generatedStatus);
+    }
+  }
+  return html;
+}
+
+function fileName() {
+  var base = val("courseTitle").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+  var stem = base || words().fileStem;
+  return stem + ".html";
+}
+
+/* ------------------------------------------------------------------ *
+ * Copy formatted
+ *
+ * Copy HTML puts the raw markup on the clipboard, which is correct for
+ * someone about to paste into a code or source view and useless to anyone
+ * else, since the destination then shows the tags as text instead of
+ * rendering them. This is the other half: a text/html clipboard entry
+ * alongside a text/plain one, which is what a browser already writes on its
+ * own when a person selects rendered page content and presses Ctrl+C - the
+ * same mechanism that lets a paragraph copied out of a webpage keep its
+ * bold and its links when it lands in Word. This button does that without
+ * asking anyone to click into the preview frame and select everything by
+ * hand, which is not a discoverable thing to do and is exactly the trip
+ * into unfamiliar territory this button exists to avoid.
+ *
+ * Built from the HTML string generate() already returns, not read back out
+ * of the preview iframe's own rendered document. Setting srcdoc schedules
+ * an asynchronous navigation, so contentDocument can still be showing the
+ * PREVIOUS render for a tick after generate() runs; the returned string has
+ * no such delay and is exactly what the iframe is about to display.
+ *
+ * DOMParser rather than a detached element's innerHTML: it hands back a
+ * real Document, so .body can be read off it the same way whether it is
+ * given the bare fragment or a whole page. */
+function previewBodyHtml(html) {
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body ? doc.body.innerHTML : "";
+}
+
+function previewBodyText(html) {
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  var text = doc.body ? doc.body.textContent : "";
+  return text.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* Fallback for a browser or context the Async Clipboard API will not run
+   in - most concretely, this file opened straight from disk over a file://
+   address while checking a change, since navigator.clipboard.write() is
+   refused outside a secure context and file: does not count as one.
+
+   A temporary element in the MAIN document, not the preview iframe:
+   building the rich clipboard content off generate()'s own string already
+   avoids the iframe, and selecting the copy in the top document sidesteps
+   every cross-frame selection and focus quirk that would come with
+   selecting inside the iframe instead. Off-screen rather than hidden
+   outright, since a hidden element cannot hold a selection; removed again
+   as soon as the copy command has run, so nothing lingers in the tab order
+   or the accessibility tree. */
+function execCommandCopyHtml(bodyHtml) {
+  var holder = document.createElement("div");
+  holder.style.position = "fixed";
+  holder.style.left = "-9999px";
+  holder.style.top = "0";
+  holder.setAttribute("aria-hidden", "true");
+  holder.innerHTML = bodyHtml;
+  document.body.appendChild(holder);
+
+  var ok = false;
+  try {
+    var range = document.createRange();
+    range.selectNodeContents(holder);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    ok = !!(document.execCommand && document.execCommand("copy"));
+    sel.removeAllRanges();
+  } catch (e) {
+    ok = false;
+  }
+
+  document.body.removeChild(holder);
+  return ok;
+}
+
+function copyFormatted() {
+  var html = generate(false);
+  var bodyHtml = previewBodyHtml(html);
+
+  if (!bodyHtml) {
+    setExportStatus("Nothing to copy yet.");
+    return;
+  }
+
+  var bodyText = previewBodyText(html);
+
+  function onFail() {
+    if (execCommandCopyHtml(bodyHtml)) {
+      setExportStatus("Formatted content copied \u2014 paste into Brightspace or Word.");
+    } else {
+      setExportStatus("Copy failed. Try Copy HTML instead, or select the preview and press Ctrl+C.");
+    }
+  }
+
+  if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+    try {
+      var item = new ClipboardItem({
+        "text/html": new Blob([bodyHtml], { type: "text/html" }),
+        "text/plain": new Blob([bodyText], { type: "text/plain" })
+      });
+      navigator.clipboard.write([item]).then(function () {
+        setExportStatus("Formatted content copied \u2014 paste into Brightspace or Word.");
+      }, onFail);
+      return;
+    } catch (e) {
+      onFail();
+      return;
+    }
+  }
+
+  onFail();
+}
+
+function download() {
+  var html = generate(false);
+  var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = fileName();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  setExportStatus("Downloaded " + fileName() + ".");
+}
+
+function copy() {
+  var html = generate(false);
+  var source = document.getElementById("source");
+
+  function fallback() {
+    /* A closed <details> does not render its content, and unrendered text
+       cannot be selected - so the box is opened before selecting from it. */
+    document.getElementById("sourceDetails").open = true;
+    source.removeAttribute("readonly");
+    source.select();
+    try { document.execCommand("copy"); } catch (e) { /* nothing more to try */ }
+    source.setAttribute("readonly", "readonly");
+    setExportStatus("HTML copied to the clipboard.");
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(html).then(function () {
+      setExportStatus("HTML copied to the clipboard.");
+    }, fallback);
+  } else {
+    fallback();
+  }
+}
+
+function init() {
+  syncCreditUnit();
+  syncBranches();
+  syncHoursTotal();
+
+  buildPasteNotes();
+  PASTE_FIELDS.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener("paste", handlePaste);
+  });
+
+  ["unitCredits", "unitCeus"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", syncCreditUnit);
+  });
+  ["reqYes", "reqNo"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", syncBranches);
+  });
+  /* The checklist is re-rendered here because the format change swaps which
+     item is being tested - "At least one learning outcome" against the rows,
+     or "Learning outcomes" against the box - and a stale item would report on
+     an input that is no longer showing. */
+  ["outcomeList", "outcomeParagraph"].forEach(function (id) {
+    document.getElementById(id).addEventListener("change", function () {
+      syncOutcomeMode();
+      setStatus(isOutcomeList() ? "Learning outcomes set to a list."
+                                : "Learning outcomes set to a paragraph.");
+      renderChecklist();
+    });
+  });
+  ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener("input", syncHoursTotal);
+    el.addEventListener("change", announceHoursTotal);
+  });
+
+  addAssessRow("", "", "");
+  addAssessRow("", "", "");
+  addAssessRow("", "", "");
+
+  for (var w = 1; w <= 3; w++) addScheduleRow([String(w), "", "", ""]);
+
+  addOutcomeRow("");
+  addOutcomeRow("");
+  addOutcomeRow("");
+
+  /* Delegated, so a row added later needs no wiring of its own. */
+  var assessBody = document.getElementById("assessBody");
+  assessBody.addEventListener("input", syncWeightTotal);
+  assessBody.addEventListener("change", announceWeightTotal);
+
+  document.getElementById("addAssessBtn").addEventListener("click", function () {
+    var tr = addAssessRow("", "", "");
+    var first = tr.querySelector("input");
+    if (first) first.focus();
+    setStatus("Row added.");
+  });
+
+  document.getElementById("addOutcomeBtn").addEventListener("click", function () {
+    var tr = addOutcomeRow("");
+    var first = tr.querySelector("input");
+    if (first) first.focus();
+    setStatus("Learning outcome added.");
+  });
+
+  document.getElementById("addWeekBtn").addEventListener("click", function () {
+    var body = document.getElementById("scheduleBody");
+    var tr = addScheduleRow([String(body.rows.length + 1), "", "", ""]);
+    var second = tr.querySelectorAll("input")[1];
+    if (second) second.focus();
+    setStatus("Week added.");
+  });
+
+  document.getElementById("generateBtn").addEventListener("click", function () { generate(true); });
+  document.getElementById("copyFormattedBtn").addEventListener("click", copyFormatted);
+  document.getElementById("downloadBtn").addEventListener("click", download);
+  document.getElementById("copyBtn").addEventListener("click", copy);
+
+  /* Nothing submits anywhere; Enter should not wipe the form. */
+  document.getElementById("outlineForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    generate(true);
+  });
+
+  syncOutcomeMode();
+  markFields();
+  renderChecklist();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+</script></p></body></html>
