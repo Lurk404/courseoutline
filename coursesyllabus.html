@@ -274,12 +274,10 @@
        automatic. A fieldset groups form controls, so one holding nothing but
        explanatory hints would be the wrong element for what was left; the
        "Added automatically" line under the completeness check carries that
-       explanation instead. -->
-<!-- There is no export format choice. The same output pastes into
+       explanation instead. --><!-- There is no export format choice. The same output pastes into
        Brightspace and into Word; the Langara page template is applied by
        Brightspace itself, chosen from its document templates when the file is
-       created, so this tool no longer wraps the output in a copy of it. -->
-<!-- Generate stays with the form it acts on. Download and Copy moved below
+       created, so this tool no longer wraps the output in a copy of it. --><!-- Generate stays with the form it acts on. Download and Copy moved below
        the preview, so the order of the page matches the order of the work:
        fill in, generate, check the result, then take it away. -->
 <p class="actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
@@ -288,14 +286,14 @@
 <div id="checklist" tabindex="-1"></div>
 <h2>Preview</h2>
 <p class="hint">This preview carries no styling of its own, so text appears in whatever font your browser falls back to. The finished document takes its appearance from wherever it ends up — Brightspace or a Word document you paste it into — so this may not be exactly how the content will look once it is placed.</p>
-<iframe id="preview" title="Course syllabus preview" height="600"></iframe>
-<!-- The steps sit here, between the result and the button they start with,
+<iframe id="preview" title="Course syllabus preview" height="600"></iframe> <!-- The steps sit here, between the result and the button they start with,
      because this is the point on the page where they are acted on. -->
 <p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
 <ol aria-labelledby="workflowIntro">
 <li>Choose <strong>Copy formatted</strong>, just below.</li>
 <li>In your course, choose <strong>Upload / Create</strong> &gt; <strong>Create a file</strong>.</li>
-<li>Select a document template.</li>
+<li>Provide a title, such as "Course Syllabus"</li>
+<li>If desired, open the <strong>Select a Document Template</strong> menu to choose a styled template.</li>
 <li>Paste into the editor, then save.</li>
 </ol>
 <p class="hint">Copy formatted puts the finished layout on the clipboard, ready to paste into Brightspace or Word. If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
@@ -317,7 +315,8 @@
 <p><label for="source">Generated HTML (read-only)</label></p>
 <textarea id="source" rows="20" readonly="readonly"></textarea>
 <p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
-</details></main>
+</details>
+</main>
 <p><script>
 "use strict";
 
@@ -880,16 +879,16 @@ function dueKey(s) {
   var m = /^(?:weeks?|wk)\.?\s*(\d{1,2})\b/i.exec(t);
   if (m) return { kind: "week", n: parseInt(m[1], 10) };
 
-  m = /^(\d{4})-(\d{1,2})-(\d{1,2})\b/.exec(t);
+  m = /^(\d{{4}})-(\d{1,2})-(\d{1,2})\b/.exec(t);
   if (m) return dueDate(+m[1], +m[2], +m[3]);
 
   /* A leading weekday is decoration: "Friday, October 15" sorts as Oct 15. */
   var u = t.replace(/^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+/i, "");
 
-  m = /^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{4}))?/i.exec(u);
+  m = /^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{{4}}))?/i.exec(u);
   if (m) return dueDate(m[3] ? +m[3] : null, monthNumber(m[1]), +m[2]);
 
-  m = /^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?(?:,?\s+(\d{4}))?\b/i.exec(u);
+  m = /^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?(?:,?\s+(\d{{4}}))?\b/i.exec(u);
   if (m) return dueDate(m[3] ? +m[3] : null, monthNumber(m[2]), +m[1]);
 
   return null;
