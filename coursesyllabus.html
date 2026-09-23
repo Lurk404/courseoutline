@@ -338,9 +338,9 @@
 <summary>Show HTML source code</summary>
 <p class="hint">If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
 <p class="actions"><button type="button" id="copyBtn">Copy HTML</button></p>
-  <p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
 <p><label for="source">Generated HTML (read-only)</label></p>
 <textarea id="source" rows="20" readonly="readonly"></textarea>
+<p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
 </details>
 </main>
 <p><script>
@@ -1102,29 +1102,58 @@ function announceWeightTotal() {
   if (el) el.textContent = weightTotalText();
 }
 
-/* The one place the export departs from being class-free and style-free.
+/* Table styling - the one place the export carries real presentation.
 
-   Everything else in the fragment leaves presentation to the host page's
-   stylesheet, which is the right default. Table cells are the exception: a host
-   page that styles no cell padding renders these tables tight enough to be hard
-   to read, and there is no class on the fragment for a stylesheet to hook.
+   Everything else in the fragment leaves appearance to wherever it is pasted.
+   Tables cannot: pasted into Brightspace (with or without a document
+   template) or into Word, they arrive with nothing saying how wide to be, so
+   each editor sizes them its own way from the content - which is how they end
+   up far wider than the page. Every rule here is inline, since the fragment
+   carries no stylesheet and no classes.
 
-   Set CELL_STYLE to an empty string and the attributes disappear entirely,
-   handing the tables back to the host stylesheet. Do that once Langara's theme
-   carries a rule for them. */
-var CELL_STYLE = "padding: 0.5rem 0.75rem;";
+   - Width and vertical alignment are given twice: as CSS for browsers, and as
+     the old width and valign attributes for word processors. Tested through
+     LibreOffice's HTML import, which reads HTML much as Word's does: it
+     ignored the CSS width entirely and sized every column from its content,
+     breaking "Week" and "Weight" mid-word; with the attributes, both tables
+     filled the page in their set proportions and rows aligned to the top.
+     The attributes are obsolete in HTML5, which a validator will note, but
+     every browser still reads them and the CSS beside them wins there.
+   - 100% on the table and a percentage on each header cell give every editor
+     the same answer to "how wide": the page, split in fixed proportions. Percentages rather than lengths, so the table follows the
+     column it lands in instead of forcing one.
+   - px rather than rem for the padding: Word's HTML import does not read rem.
+   - overflow-wrap: anywhere on body cells only, so a long address pasted into
+     a cell wraps instead of stretching its column. Not on header cells, whose
+     unbroken words set the narrowest a column can go, so "Week" never breaks.
+   - caption-side and color on the caption: Bootstrap, which the Langara
+     template loads, moves captions below the table and greys them.
+   - #595959 borders are 7:1 on white (SC 1.4.11), and body text on the #f2f2f2
+     header shading stays far above 4.5:1. */
+var TABLE_STYLE   = "width: 100%; border-collapse: collapse;";
+var CAPTION_STYLE = "caption-side: top; text-align: left; font-weight: bold; " +
+                    "color: inherit; padding: 0 0 6px;";
+var CELL_BASE     = "border: 1px solid #595959; padding: 6px 10px; " +
+                    "text-align: left; vertical-align: top;";
+var TH_STYLE      = CELL_BASE + " background-color: #f2f2f2;";
+var TD_STYLE      = CELL_BASE + " overflow-wrap: anywhere;";
 
-function cellStyleAttr() {
-  return CELL_STYLE ? ' style="' + esc(CELL_STYLE) + '"' : "";
+/* Opening lines of an export table: the styled table tag and its caption. */
+function tableStart(caption) {
+  return ['<table width="100%" style="' + esc(TABLE_STYLE) + '">',
+          '<caption style="' + esc(CAPTION_STYLE) + '">' + esc(caption) + "</caption>"];
 }
 
-function th(text) {
-  return '<th scope="col"' + cellStyleAttr() + ">" + esc(text) + "</th>";
+/* width is the column's share of the table, as a percentage string. */
+function th(text, width) {
+  return '<th scope="col" width="' + esc(width) + '" valign="top" style="' +
+         esc(TH_STYLE + " width: " + width + ";") + '">' +
+         esc(text) + "</th>";
 }
 
 /* The content is already escaped and link-parsed, so it is not escaped again. */
 function td(html) {
-  return "<td" + cellStyleAttr() + ">" + html + "</td>";
+  return '<td valign="top" style="' + esc(TD_STYLE) + '">' + html + "</td>";
 }
 
 function heading(level, text) {
@@ -1255,10 +1284,10 @@ function buildHtml() {
   var weeks = scheduleRows();
   var schedBody = [];
   if (weeks.length) {
-    schedBody.push("<table>");
-    schedBody.push("<caption>Week-by-week schedule</caption>");
+    schedBody = schedBody.concat(tableStart("Week-by-week schedule"));
     schedBody.push("<thead>");
-    schedBody.push("<tr>" + th("Week") + th("Topic") + th("Readings and activities") + "</tr>");
+    schedBody.push("<tr>" + th("Week", "15%") + th("Topic", "30%") +
+                   th("Readings and activities", "55%") + "</tr>");
     schedBody.push("</thead>");
     schedBody.push("<tbody>");
     weeks.forEach(function (r) {
@@ -1275,11 +1304,10 @@ function buildHtml() {
   var rows = sortByDue(assessRows());
   var assessBody = [];
   if (rows.length) {
-    assessBody.push("<table>");
-    assessBody.push("<caption>Means of assessment and weighting</caption>");
+    assessBody = assessBody.concat(tableStart("Means of assessment and weighting"));
     assessBody.push("<thead>");
-    assessBody.push("<tr>" + th("Assessment activity") + th("Weight") +
-                    th("Due date") + "</tr>");
+    assessBody.push("<tr>" + th("Assessment activity", "55%") + th("Weight", "15%") +
+                    th("Due date", "30%") + "</tr>");
     assessBody.push("</thead>");
     assessBody.push("<tbody>");
     rows.forEach(function (r) {
