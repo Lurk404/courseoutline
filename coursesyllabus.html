@@ -10,8 +10,8 @@
      the formatting instructions apart from the form, and the red on
      validation errors, which repeats what the error text already says.
      Beyond those, what the form was asked for: the % sign beside each
-     weight box, the year beside the semester, and schedule boxes that start
-     one line tall and grow as lines are added. */
+     weight box, and schedule boxes that start one line tall and grow as
+     lines are added. */
 
   body {
     max-width: 90%;
@@ -60,11 +60,6 @@
 
   label { display: inline-block; margin-bottom: 0.15rem; }
   .field { margin: 0 0 1rem; }
-
-  /* Semester and year side by side, wrapping one above the other when there
-     is not room for both, so the pair never forces sideways scrolling. */
-  .field-pair { display: flex; flex-wrap: wrap; gap: 0 1rem; }
-  .field-pair > .field { flex: 1 1 12rem; }
   /* display: block so that a field carrying more than one hint stacks them
      and the top margin actually applies - on an inline span it is ignored. */
   .hint { display: block; font-size: 0.875rem; color: #4a4a4a; margin: 0.2rem 0 0; }
@@ -181,14 +176,7 @@
 </fieldset><fieldset><legend>Credits</legend>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCeus" value="ceus"> <label for="unitCeus">CEUs</label></div>
-<p class="field" id="creditsWrap"><label for="credits">Credits (required)</label><select id="credits" aria-required="true">
-<option value="">Choose one</option>
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="6">6</option>
-</select></p>
+<p class="field" id="creditsWrap"><label for="credits">Credits (required)</label> <input type="number" id="credits" step="0.5" min="0" aria-required="true" placeholder="e.g. 3"></p>
 <p class="field" id="ceusWrap" hidden=""><label for="ceus">CEUs (required)</label> <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="e.g. 3.5"></p>
 </fieldset><fieldset><legend>Contact hours (at least one required)</legend>
 <p class="hint">Enter these as <strong>hours per week</strong>. A field left blank or set to <code>0</code> is left out of the document, and a total appears only once two kinds of hour are entered.</p>
@@ -201,23 +189,7 @@
          author wants and what a screen reader user does not: a live region tied
          to keystrokes interrupts constantly. The announcement is therefore split
          off and fires once per field, when the field is left. --> <span class="visually-hidden" id="hoursAnnounce" role="status"></span></fieldset><fieldset><legend>Course details</legend>
-<!-- Semester from a fixed list, so it is always spelled the College's way;
-     year typed, and filled in with the current one at load. They go out
-     joined as one line, "Fall 2026", as the single box used to produce.
-     The spring note is an empty live region until Spring is chosen: a
-     region has to be in the document before its text changes, or the change
-     is not announced. -->
-<p id="yearSemesterLabel">Year and semester</p>
-<span class="hint" id="yearSemesterHint">Which offering of the course this syllabus describes.</span>
-<div class="field-pair" id="yearSemesterWrap" role="group" aria-labelledby="yearSemesterLabel">
-<p class="field"><label for="semester">Semester (required)</label><select id="semester" aria-describedby="yearSemesterHint" aria-required="true">
-<option value="">Choose one</option>
-<option value="Fall">Fall</option>
-<option value="Spring">Spring</option>
-<option value="Summer">Summer</option>
-</select></p>
-<p class="field"><label for="year">Year (required)</label> <input type="text" id="year" inputmode="numeric" autocomplete="off" aria-describedby="springNote" aria-required="true"> <span class="hint" id="springNote" role="status"></span></p>
-</div>
+<p class="field" id="yearSemesterWrap"><label for="yearSemester">Year and semester (required)</label> <input type="text" id="yearSemester" aria-required="true" placeholder="e.g. Fall 2026"></p>
 <p class="field"><label for="mode">Course format (required)</label><select id="mode" aria-required="true">
 <option value="">Choose one</option>
 <option value="In-person">In-person</option>
@@ -241,13 +213,9 @@
 </fieldset><fieldset><legend><label for="courseDescription">Calendar course description (required)</label></legend>
 <p class="field"><span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
 </fieldset><fieldset><legend>Learning outcomes</legend>
-<p id="outcomeFormatQuestion">Are the course learning outcomes a list or a paragraph?</p>
-<div role="radiogroup" aria-labelledby="outcomeFormatQuestion">
-<div class="radio-row"><input type="radio" name="outcomeFormat" id="outcomeList" value="list" checked="checked"> <label for="outcomeList">A list</label></div>
-<div class="radio-row"><input type="radio" name="outcomeFormat" id="outcomeParagraph" value="paragraph"> <label for="outcomeParagraph">A paragraph</label></div>
-</div>
-<div id="outcomeListWrap">
 <p class="hint">One outcome per field.</p>
+<!-- Quotes OUTCOME_STEM in the script word for word; change the two together. -->
+<p class="hint">The sentence <strong>Upon successful completion of this course, students will be able to:</strong> is added above the list automatically.</p>
 <!-- No .table-scroll wrapper here, unlike the assessment and schedule
            tables. That wrapper exists to keep a wide table from widening the
            page, and carries tabindex="0" so the scrollable region is keyboard
@@ -264,8 +232,6 @@
 <tbody id="outcomeBody"></tbody>
 </table>
 <p><button type="button" id="addOutcomeBtn">Add learning outcome</button></p>
-</div>
-<p class="field" id="outcomeParagraphWrap" hidden=""><label for="learningOutcomes">Learning outcomes (required)</label> <textarea id="learningOutcomes" rows="7" aria-required="true">Upon successful completion of this course, students will be able to</textarea></p>
 </fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (required)</legend>
 <div class="table-scroll" tabindex="0">
 <table id="scheduleTable"><caption>Week-by-week schedule</caption>
@@ -472,16 +438,10 @@ function effectiveDate(now) {
   return MONTH_NAMES[d.getMonth()] + " " + d.getFullYear();
 }
 
-/* The year the Year box arrives filled with. Same duck-typing and the same
-   test hook as effectiveDate(). */
-function currentYear(now) {
-  var d = (now && typeof now.getFullYear === "function") ? now : new Date();
-  return String(d.getFullYear());
-}
-
-/* Lead-in sentences seeded into the form. These are values the instructor
-   writes after, not placeholder attributes, so they carry into the export. */
-var OUTCOME_STEM = "Upon successful completion of this course, students will be able to";
+/* The sentence that introduces the learning outcomes list in the export.
+   The form's note above the outcome rows quotes it word for word, so change
+   the two together. */
+var OUTCOME_STEM = "Upon successful completion of this course, students will be able to:";
 
 /* ------------------------------------------------------------------ *
  * Wording
@@ -710,12 +670,11 @@ function cellBlocks(s) {
  * it happens, announced, and undoable.
  *
  * Wired to the textareas only. Every one of them is read through blocks(),
- * so "- " means something in all six.
+ * so "- " means something in every one of them.
  * ------------------------------------------------------------------ */
 
 /* The textareas whose contents reach blocks(). */
-var PASTE_FIELDS = ["courseDescription", "learningOutcomes",
-                    "textbook", "gradingNotes", "deptPolicies"];
+var PASTE_FIELDS = ["courseDescription", "textbook", "gradingNotes", "deptPolicies"];
 
 /* Glyphs a bullet arrives as - every shape a real paste produces, not just
    the common ones.
@@ -1040,18 +999,11 @@ function formatDue(s) {
 }
 
 /* ------------------------------------------------------------------ *
- * Learning outcomes format
+ * Learning outcomes
  *
- * F1003 3.2(d) asks for the outcomes, not for a shape to write them in, so
- * both forms satisfy it. A list is the overwhelmingly common case and is the
- * default; the paragraph box is kept for departments whose approved outcomes
- * are written as prose, or who reword the lead-in sentence.
+ * F1003 3.2(d). Always a list: one row per outcome, introduced by
+ * OUTCOME_STEM.
  * ------------------------------------------------------------------ */
-
-function isOutcomeList() {
-  var el = document.getElementById("outcomeList");
-  return !!(el && el.checked);
-}
 
 function outcomeRows() {
   var rows = [];
@@ -1065,19 +1017,11 @@ function outcomeRows() {
   return rows;
 }
 
-/* List mode emits the lead-in as its own paragraph and the rows as a single
-   list, which is byte-for-byte what the paragraph box produces when someone
-   types the stem on line one and dashes below it. The two modes are different
-   ways of filling the same output, not two different outputs.
-
-   The stem is the constant here rather than an editable value, so a
-   department that has reworded its own framing sentence has to use the
-   paragraph mode to keep that wording. inline() on each row, so link syntax
-   works in an outcome the way it does everywhere else; esc() on the stem,
-   which is ours and contains no link syntax to parse. */
+/* The lead-in as its own paragraph, then the rows as a single list.
+   inline() on each row, so link syntax works in an outcome the way it does
+   everywhere else; esc() on the stem, which is ours and contains no link
+   syntax to parse. */
 function learningOutcomesBody() {
-  if (!isOutcomeList()) return blocks(val("learningOutcomes"));
-
   var rows = outcomeRows();
   if (!rows.length) return [];
 
@@ -1252,9 +1196,7 @@ function buildHtml() {
   /* Course facts, in the order they are asked for on the form. */
   L = L.concat(statBand());
 
-  /* Semester then year, the order the single box was always filled in. */
-  L = L.concat(labelled("Year and semester",
-    [val("semester"), val("year")].filter(Boolean).join(" ")));
+  L = L.concat(labelled("Year and semester", val("yearSemester")));
   /* The template calls this Course Format; the option list is delivery mode,
      which is how most departments fill it in. If a department uses it for an
      hours breakdown instead, the contact-hours fields above already carry
@@ -1420,22 +1362,11 @@ function buildHtml() {
  * to it with aria-describedby and marked aria-invalid (SC 3.3.1, 3.3.3).
  *
  * aria-required rather than the native required attribute, and novalidate
- * on the form: the outcomes box ships seeded with a lead-in sentence, so a
- * browser would call it filled in while it is substantively blank, and its
- * own bubbles would appear one at a time in wording this file cannot set.
+ * on the form: the browser's own bubbles would appear one at a time in
+ * wording this file cannot set, and a rule over a group - contact hours, or
+ * at least one outcome row - is not something one required attribute can
+ * express.
  * ------------------------------------------------------------------ */
-
-function normalizeText(s) {
-  return String(s).replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-/* True when the paragraph box holds something beyond the lead-in sentence it
-   ships with. A seeded box is not blank, so a plain truthiness test would
-   pass it before the instructor has written a word. */
-function hasOutcomeParagraph() {
-  var v = val("learningOutcomes");
-  return !!v && normalizeText(v) !== normalizeText(OUTCOME_STEM);
-}
 
 /* The browser's own reading of type="email" where it offers one, so the form
    and the browser never disagree about an address; a plain shape test where
@@ -1478,8 +1409,12 @@ function collectErrors() {
     if (badNumber("ceus")) add("ceus", "CEUs must be a number, like 3.5");
     else if (!val("ceus")) add("ceus", "Enter the number of CEUs");
     else if (!(Number(val("ceus")) > 0)) add("ceus", "CEUs must be greater than 0");
-  } else if (!val("credits")) {
-    add("credits", "Choose the number of credits");
+  } else {
+    /* The same three checks as CEUs, since the two boxes are now the same
+       kind of field. */
+    if (badNumber("credits")) add("credits", "Credits must be a number, like 3");
+    else if (!val("credits")) add("credits", "Enter the number of credits");
+    else if (!(Number(val("credits")) > 0)) add("credits", "Credits must be greater than 0");
   }
 
   /* Contact hours are a group rule, since a course need not have all three
@@ -1508,9 +1443,7 @@ function collectErrors() {
     });
   }
 
-  if (!val("semester")) add("semester", "Choose the semester");
-  if (!val("year")) add("year", "Enter the year");
-  else if (!/^\d{4}$/.test(val("year"))) add("year", "Enter the year as four digits, like 2026");
+  if (!val("yearSemester")) add("yearSemester", "Enter the year and semester");
   if (!val("mode")) add("mode", "Choose the course format");
   if (checked("reqYes") && !val("reqDetail")) add("reqDetail", "Enter the pre/corequisites, or choose No");
 
@@ -1525,15 +1458,11 @@ function collectErrors() {
 
   if (!val("courseDescription")) add("courseDescription", "Enter the calendar course description");
 
-  if (isOutcomeList()) {
-    if (!outcomeRows().length) {
-      add("outcomeText1", "Enter at least one learning outcome", {
-        id: "outcomesError",
-        before: document.getElementById("outcomeTable")
-      });
-    }
-  } else if (!hasOutcomeParagraph()) {
-    add("learningOutcomes", "Enter the learning outcomes");
+  if (!outcomeRows().length) {
+    add("outcomeText1", "Enter at least one learning outcome", {
+      id: "outcomesError",
+      before: document.getElementById("outcomeTable")
+    });
   }
 
   /* The link goes to the first Topic box rather than Week, which arrives
@@ -1963,7 +1892,7 @@ function renumberScheduleRows() {
 }
 
 /* ------------------------------------------------------------------ *
- * Learning outcome rows (list format only)
+ * Learning outcome rows
  *
  * Same shape as the assessment and schedule tables - seeded rows, per-row
  * Remove, delegated Add, renumbered visually-hidden labels, focus moved on
@@ -2069,7 +1998,7 @@ function pasteNoteId(id) { return id + "PasteNote"; }
    that line is at the bottom of it, so the message would be announced and
    then not be anywhere the author is looking. And a message about a paste is
    only unambiguous if it is next to the box that was pasted into - one
-   shared line cannot say which of six fields it means without naming it.
+   shared line cannot say which field it means without naming it.
    Both regions are role="status", so both are announced identically. */
 function setPasteNote(id, message) {
   var el = document.getElementById(pasteNoteId(id));
@@ -2162,35 +2091,6 @@ function syncCreditUnit() {
   var ceus = checked("unitCeus");
   document.getElementById("creditsWrap").hidden = ceus;
   document.getElementById("ceusWrap").hidden = !ceus;
-}
-
-/* Adds or removes a lead-in sentence, leaving anything typed after it alone.
-
-   The stem is only stripped when it is still the exact opening line, so a
-   department that rewrites the framing sentence keeps its own wording. Adding
-   is equally careful: a box that already opens with the stem is left as it is,
-   so flipping modes repeatedly cannot stack duplicates. */
-/* Which of the two learning-outcome inputs is showing. */
-function syncOutcomeMode() {
-  var list = isOutcomeList();
-  document.getElementById("outcomeListWrap").hidden = !list;
-  document.getElementById("outcomeParagraphWrap").hidden = list;
-}
-
-/* Spring begins in January, so a syllabus for it is often written in the
-   autumn before, when the year filled in at load is the wrong one. Flagged,
-   not changed: the box keeps whatever year is in it, and the note stays for
-   as long as Spring is chosen. */
-function syncSpringNote() {
-  var note = document.getElementById("springNote");
-  if (!note) return;
-  note.textContent = "";
-  if (val("semester") !== "Spring") return;
-  var lead = document.createElement("strong");
-  lead.textContent = "Check the year.";
-  note.appendChild(lead);
-  note.appendChild(document.createTextNode(" Spring semester begins in January, so a " +
-    "syllabus prepared in the fall is usually for the following year."));
 }
 
 function syncBranches() {
@@ -2408,13 +2308,6 @@ function init() {
   syncBranches();
   syncHoursTotal();
 
-  /* Only when empty, so a browser that restores form state on reload keeps
-     the year the author had typed. */
-  var yearEl = document.getElementById("year");
-  if (!yearEl.value) yearEl.value = currentYear();
-  document.getElementById("semester").addEventListener("change", syncSpringNote);
-  syncSpringNote();
-
   buildPasteNotes();
   PASTE_FIELDS.forEach(function (id) {
     var el = document.getElementById(id);
@@ -2426,13 +2319,6 @@ function init() {
   });
   ["reqYes", "reqNo"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", syncBranches);
-  });
-  ["outcomeList", "outcomeParagraph"].forEach(function (id) {
-    document.getElementById(id).addEventListener("change", function () {
-      syncOutcomeMode();
-      setStatus(isOutcomeList() ? "Learning outcomes set to a list."
-                                : "Learning outcomes set to a paragraph.");
-    });
   });
   ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
     var el = document.getElementById(id);
@@ -2513,8 +2399,6 @@ function init() {
      time this looks at it. */
   form.addEventListener("input", refreshErrors);
   form.addEventListener("change", refreshErrors);
-
-  syncOutcomeMode();
 }
 
 if (document.readyState === "loading") {
