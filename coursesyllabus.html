@@ -8,7 +8,9 @@
      alone cannot meet: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus
      Visible, 2.5.8 Target Size. Two exceptions: .help-box, whose shading sets
      the formatting instructions apart from the form, and the red on
-     validation errors, which repeats what the error text already says. */
+     validation errors, which repeats what the error text already says.
+     Beyond those, two side-by-side layouts the form was asked for: the %
+     sign beside each weight box, and the year beside the semester. */
 
   body {
     max-width: 90%;
@@ -57,6 +59,11 @@
 
   label { display: inline-block; margin-bottom: 0.15rem; }
   .field { margin: 0 0 1rem; }
+
+  /* Semester and year side by side, wrapping one above the other when there
+     is not room for both, so the pair never forces sideways scrolling. */
+  .field-pair { display: flex; flex-wrap: wrap; gap: 0 1rem; }
+  .field-pair > .field { flex: 1 1 12rem; }
   /* display: block so that a field carrying more than one hint stacks them
      and the top margin actually applies - on an inline span it is ignored. */
   .hint { display: block; font-size: 0.875rem; color: #4a4a4a; margin: 0.2rem 0 0; }
@@ -91,10 +98,16 @@
      reachable, which a scrollable area otherwise is not. */
   .table-scroll { overflow-x: auto; }
 
-  /* Three columns plus the row actions. Wide enough that the cells do not
-     crush together, narrow enough to stay inside .table-scroll on a phone. */
+  /* Three columns plus the row actions, in both tables. Wide enough that the
+     cells do not crush together, narrow enough to stay inside .table-scroll
+     on a phone. */
   #assessTable { min-width: 36rem; }
-  #scheduleTable { min-width: 46rem; }
+  #scheduleTable { min-width: 36rem; }
+
+  /* The weight box with its % sign beside it. min-width: 0 lets the box give
+     up width to the sign rather than pushing it out of the cell. */
+  .suffix-wrap { display: flex; align-items: center; gap: 0.35rem; }
+  .suffix-wrap input { min-width: 0; }
 
   table { border-collapse: collapse; width: 100%; }
   caption { text-align: left; font-weight: bold; padding-bottom: 0.35rem; }
@@ -181,7 +194,23 @@
          author wants and what a screen reader user does not: a live region tied
          to keystrokes interrupts constantly. The announcement is therefore split
          off and fires once per field, when the field is left. --> <span class="visually-hidden" id="hoursAnnounce" role="status"></span></fieldset><fieldset><legend>Course details</legend>
-<p class="field" id="yearSemesterWrap"><label for="yearSemester">Year and semester (required)</label> <span class="hint" id="yearSemesterHint">Which offering of the course this syllabus describes.</span> <input type="text" id="yearSemester" aria-describedby="yearSemesterHint" aria-required="true" placeholder="e.g. Fall 2026"></p>
+<!-- Semester from a fixed list, so it is always spelled the College's way;
+     year typed, and filled in with the current one at load. They go out
+     joined as one line, "Fall 2026", as the single box used to produce.
+     The spring note is an empty live region until Spring is chosen: a
+     region has to be in the document before its text changes, or the change
+     is not announced. -->
+<p id="yearSemesterLabel">Year and semester</p>
+<span class="hint" id="yearSemesterHint">Which offering of the course this syllabus describes.</span>
+<div class="field-pair" id="yearSemesterWrap" role="group" aria-labelledby="yearSemesterLabel">
+<p class="field"><label for="semester">Semester (required)</label><select id="semester" aria-describedby="yearSemesterHint" aria-required="true">
+<option value="">Choose one</option>
+<option value="Fall">Fall</option>
+<option value="Spring">Spring</option>
+<option value="Summer">Summer</option>
+</select></p>
+<p class="field"><label for="year">Year (required)</label> <input type="text" id="year" inputmode="numeric" autocomplete="off" aria-describedby="springNote" aria-required="true"> <span class="hint" id="springNote" role="status"></span></p>
+</div>
 <p class="field"><label for="mode">Course format (required)</label><select id="mode" aria-required="true">
 <option value="">Choose one</option>
 <option value="In-person">In-person</option>
@@ -238,7 +267,6 @@
 <th scope="col">Week</th>
 <th scope="col">Topic</th>
 <th scope="col">Readings and activities</th>
-<th scope="col">Activities due</th>
 <th scope="col"><span class="visually-hidden">Actions</span></th>
 </tr>
 </thead>
@@ -273,8 +301,13 @@
 <p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to the end of this section automatically.</p>
 <!-- The notice is a FIPPA disclosure attached to the resource, so it
          belongs in the section where the resource is named. It appears
-         verbatim in Langara's own Course Outline template. -->
-<div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacy"> <label for="privacy">This course uses an online resource hosted outside Canada for graded work — add the privacy notice</label></div>
+         verbatim in Langara's own Course Outline template.
+
+         Opt-out: the notice goes out unless the instructor affirms it does
+         not apply. Leaving a box untouched is the easy mistake to make, so
+         it errs toward disclosing. -->
+<div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacyOptOut" aria-describedby="privacyOptOutHint"> <label for="privacyOptOut">I affirm that no online resources used in this course are hosted outside of Canada</label></div>
+<p class="hint" id="privacyOptOutHint">Unless this box is checked, the privacy notice for online resources hosted outside Canada is added to this section.</p>
 </fieldset><fieldset><legend><label for="deptPolicies">Departmental and course guidelines</label></legend>
 <p class="field"><span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></p>
 </fieldset><!-- The Versioning fieldset is gone. Its one field, the effective date, is
@@ -430,6 +463,13 @@ function effectiveDate(now) {
      from outside it - and would silently fall back to the wall clock. */
   var d = (now && typeof now.getMonth === "function") ? now : new Date();
   return MONTH_NAMES[d.getMonth()] + " " + d.getFullYear();
+}
+
+/* The year the Year box arrives filled with. Same duck-typing and the same
+   test hook as effectiveDate(). */
+function currentYear(now) {
+  var d = (now && typeof now.getFullYear === "function") ? now : new Date();
+  return String(d.getFullYear());
 }
 
 /* Lead-in sentences seeded into the form. These are values the instructor
@@ -591,6 +631,48 @@ function blocks(s) {
     }
   });
 
+  closeList();
+  return out;
+}
+
+/* blocks() for a table cell, where the readings column takes more than one
+   line. Plain lines stay one run, broken with <br> - the soft return the
+   author typed, not a new paragraph, which inside a cell would open a gap
+   between lines. List syntax still works, as the help box promises for every
+   text box. Blank lines are dropped: a cell has no paragraphs for them to
+   separate. Returns one string, since it fills a single td. */
+function cellBlocks(s) {
+  var out = "";
+  var run = [];
+  var list = null;
+
+  function flushRun() {
+    if (run.length) { out += run.join("<br>"); run = []; }
+  }
+  function closeList() {
+    if (list) { out += "</" + list + ">"; list = null; }
+  }
+
+  String(s == null ? "" : s).split(/\r?\n/).forEach(function (raw) {
+    var line = raw.trim();
+    if (!line) return;
+
+    var ul = /^[-*]\s+(.*)$/.exec(line);
+    var ol = /^\d+[.)]\s+(.*)$/.exec(line);
+    var item = ul || ol;
+
+    if (item) {
+      var kind = ul ? "ul" : "ol";
+      flushRun();
+      if (list !== kind) { closeList(); out += "<" + kind + ">"; list = kind; }
+      out += "<li>" + inline(item[1]) + "</li>";
+    } else {
+      closeList();
+      run.push(inline(line));
+    }
+  });
+
+  flushRun();
   closeList();
   return out;
 }
@@ -861,7 +943,12 @@ function assessRows() {
  * Output only: the form keeps the rows in the order they were typed, so
  * nobody's table rearranges itself under them while they work.
  *
- * Due dates are free text, so this reads the two shapes people actually use
+ * The due date is a date picker, so in practice every value arrives as ISO
+ * (2026-10-15) and the sort always applies. The free-text shapes below are
+ * still read, so the ordering keeps working if the field ever goes back to
+ * taking text.
+ *
+ * Written for free text, this reads the two shapes people actually use
  * - "Week 6" and a month-and-day like "Oct 15", "Friday, October 15" or
  * "15 October 2026" (ISO 2026-10-15 too) - and sorts only when it is sure.
  * If any due date is in neither shape ("TBA", "Final exam period"), or weeks
@@ -935,6 +1022,16 @@ function sortByDue(rows) {
   }).map(function (it) { return it.row; });
 }
 
+/* The picker's ISO value, written out in words for the export. MONTH_NAMES
+   rather than toLocaleDateString, for the reason given where it is defined.
+   Anything not in ISO shape goes out as it came rather than being dropped. */
+function formatDue(s) {
+  var t = String(s == null ? "" : s).trim();
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (!m || +m[2] < 1 || +m[2] > 12) return t;
+  return MONTH_NAMES[+m[2] - 1] + " " + (+m[3]) + ", " + m[1];
+}
+
 /* ------------------------------------------------------------------ *
  * Learning outcomes format
  *
@@ -990,19 +1087,36 @@ function learningOutcomesBody() {
 /* ------------------------------------------------------------------ *
  * Running weight total (syllabus only)
  *
- * The weight column is free text, because a weight is not always a number -
- * "Pass/Fail" and "ungraded" are real answers. So the total is read out of
- * whatever numbers it can find and says plainly how many entries it could not
- * count, rather than silently reporting a total that is quietly wrong.
+ * A weight is a number of percent. The form shows a % sign beside each box
+ * and the export adds one to each figure, so the author types the number
+ * alone. A % typed anyway, out of habit or in a paste, is taken off first,
+ * so it is never doubled.
+ *
+ * The total runs live, before Generate has checked anything, so it still
+ * says plainly how many entries it could not count rather than silently
+ * reporting a total that is quietly wrong. Generate then refuses those
+ * entries with a message at the box.
  * ------------------------------------------------------------------ */
+
+function weightFigure(s) {
+  return String(s == null ? "" : s).trim().replace(/\s*%$/, "");
+}
+
+function isWeightNumber(s) {
+  return /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(weightFigure(s));
+}
+
+function formatWeight(s) {
+  var f = weightFigure(s);
+  return f ? f + "%" : "";
+}
 
 function weightNumbers() {
   var nums = [];
   var skipped = 0;
   assessRows().forEach(function (r) {
     if (!r[1]) return;
-    var m = /-?\d+(?:\.\d+)?/.exec(r[1]);
-    if (m) nums.push(parseFloat(m[0]));
+    if (isWeightNumber(r[1])) nums.push(parseFloat(weightFigure(r[1])));
     else skipped++;
   });
   return { nums: nums, skipped: skipped };
@@ -1021,8 +1135,8 @@ function weightTotalText() {
   if (w.skipped) {
     text += " (" + w.skipped + " entr" + (w.skipped === 1 ? "y" : "ies") + " without a number not counted)";
   }
-  /* Flagged, never blocked: a weight is free text ("Pass/Fail" is a real
-     answer), so a total that is off is a warning, not an error. */
+  /* Flagged, never blocked: a total other than 100 can be deliberate - bonus
+     marks, say - so it is a warning, not an error. */
   if (sum !== 100) text += " \u2014 does not add up to 100%";
   return text;
 }
@@ -1131,7 +1245,9 @@ function buildHtml() {
   /* Course facts, in the order they are asked for on the form. */
   L = L.concat(statBand());
 
-  L = L.concat(labelled("Year and semester", val("yearSemester")));
+  /* Semester then year, the order the single box was always filled in. */
+  L = L.concat(labelled("Year and semester",
+    [val("semester"), val("year")].filter(Boolean).join(" ")));
   /* The template calls this Course Format; the option list is delivery mode,
      which is how most departments fill it in. If a department uses it for an
      hours breakdown instead, the contact-hours fields above already carry
@@ -1183,22 +1299,22 @@ function buildHtml() {
   L = L.concat(section(2, "Course description", blocks(val("courseDescription"))));
   L = L.concat(section(2, "Learning outcomes", learningOutcomesBody()));
 
-  /* Detailed course schedule, F1003 3.4(d). The template's own table is Week /
-     Topic / Reading; the fourth column is kept because 3.4(d) names deadlines
-     as well as the sequence of topics. */
+  /* Detailed course schedule, F1003 3.4(d). Week / Topic / Readings, the
+     template's own three columns. 3.4(d) also names deadlines: the due dates
+     in the assessment table carry those, and anything else due in a week can
+     go on its own line in the readings cell. */
   var weeks = scheduleRows();
   var schedBody = [];
   if (weeks.length) {
     schedBody.push("<table>");
     schedBody.push("<caption>Week-by-week schedule</caption>");
     schedBody.push("<thead>");
-    schedBody.push("<tr>" + th("Week") + th("Topic") + th("Readings and activities") +
-                   th("Activities due") + "</tr>");
+    schedBody.push("<tr>" + th("Week") + th("Topic") + th("Readings and activities") + "</tr>");
     schedBody.push("</thead>");
     schedBody.push("<tbody>");
     weeks.forEach(function (r) {
       schedBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
-                     td(inline(r[2])) + td(inline(r[3])) + "</tr>");
+                     td(cellBlocks(r[2])) + "</tr>");
     });
     schedBody.push("</tbody>");
     schedBody.push("</table>");
@@ -1218,8 +1334,8 @@ function buildHtml() {
     assessBody.push("</thead>");
     assessBody.push("<tbody>");
     rows.forEach(function (r) {
-      assessBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
-                      td(inline(r[2])) + "</tr>");
+      assessBody.push("<tr>" + td(inline(r[0])) + td(esc(formatWeight(r[1]))) +
+                      td(esc(formatDue(r[2]))) + "</tr>");
     });
     assessBody.push("</tbody>");
     assessBody.push("</table>");
@@ -1236,10 +1352,12 @@ function buildHtml() {
   L = L.concat(section(2, "Assessment and grading", assessBody));
 
   /* Course materials. The privacy notice belongs with the resource that
-     triggers it, and the bookstore search always closes the section. */
+     triggers it, and goes out unless the instructor has affirmed that no
+     resource is hosted outside Canada. The bookstore search always closes
+     the section. */
   var textbookBody = [];
   textbookBody = textbookBody.concat(blocks(val("textbook")));
-  if (checked("privacy")) {
+  if (!checked("privacyOptOut")) {
     textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
   }
   textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
@@ -1383,7 +1501,9 @@ function collectErrors() {
     });
   }
 
-  if (!val("yearSemester")) add("yearSemester", "Enter the year and semester");
+  if (!val("semester")) add("semester", "Choose the semester");
+  if (!val("year")) add("year", "Enter the year");
+  else if (!/^\d{4}$/.test(val("year"))) add("year", "Enter the year as four digits, like 2026");
   if (!val("mode")) add("mode", "Choose the course format");
   if (checked("reqYes") && !val("reqDetail")) add("reqDetail", "Enter the pre/corequisites, or choose No");
 
@@ -1426,11 +1546,25 @@ function collectErrors() {
     var activity = inputs[0] ? inputs[0].value.trim() : "";
     var weight = inputs[1] ? inputs[1].value.trim() : "";
     var due = inputs[2] ? inputs[2].value.trim() : "";
-    if (!(activity || weight || due)) return;
+    /* A date typed only partway into the picker reports an empty value, the
+       same as a box left blank. badInput is how the browser tells the two
+       apart, so a half-typed date is caught rather than quietly dropped. */
+    var dueBad = !!(inputs[2] && inputs[2].validity && inputs[2].validity.badInput);
+    if (!(activity || weight || due || dueBad)) return;
     usedRows++;
     var n = i + 1;
+    /* The weight box shares a wrapper with its % sign, so its message goes in
+       front of the wrapper. In front of the box it would land inside the flex
+       row, beside the box rather than above it. */
+    var weightOpts = { before: inputs[1] ? inputs[1].parentNode : null };
     if (!activity) add("assessActivity" + n, "Enter the activity for assessment row " + n);
-    if (!weight) add("assessWeight" + n, "Enter the weight for assessment row " + n);
+    if (!weight) {
+      add("assessWeight" + n, "Enter the weight for assessment row " + n, weightOpts);
+    } else if (!isWeightNumber(weight)) {
+      add("assessWeight" + n, "Enter the weight for assessment row " + n +
+          " as a number, like 20", weightOpts);
+    }
+    if (dueBad) add("assessDue" + n, "Enter a complete due date for assessment row " + n + ", or clear it");
   });
   if (!usedRows) {
     add("assessActivity1", "Enter at least one assessment and its weight", {
@@ -1605,10 +1739,30 @@ function addAssessRow(activity, weight, due) {
     lab.className = "visually-hidden";
     td.appendChild(lab);
     var input = document.createElement("input");
-    input.type = "text";
+    /* The due date is the browser's own date picker. max caps the year at
+       four digits, which some browsers otherwise let run to six. */
+    input.type = kind === "due" ? "date" : "text";
+    if (kind === "due") input.max = "9999-12-31";
     input.setAttribute("data-kind", kind);
     input.value = value || "";
-    td.appendChild(input);
+
+    if (kind === "weight") {
+      /* Text rather than type="number", so a pasted "20%" is accepted (and
+         its sign taken off) instead of silently refused; inputmode still
+         brings up the number pad on a phone. The visible % is hidden from
+         assistive technology because the label already says "in percent". */
+      input.setAttribute("inputmode", "decimal");
+      var wrap = document.createElement("span");
+      wrap.className = "suffix-wrap";
+      wrap.appendChild(input);
+      var sign = document.createElement("span");
+      sign.setAttribute("aria-hidden", "true");
+      sign.textContent = "%";
+      wrap.appendChild(sign);
+      td.appendChild(wrap);
+    } else {
+      td.appendChild(input);
+    }
     tr.appendChild(td);
   }
 
@@ -1666,7 +1820,7 @@ function renumberAssessRows() {
     var inputs = tr.querySelectorAll("input");
 
     [["assessActivity", "Assessment activity"],
-     ["assessWeight", "Weight"],
+     ["assessWeight", "Weight in percent"],
      ["assessDue", "Due date"]]
       .forEach(function (pair, j) {
         if (!inputs[j] || !labels[j]) return;
@@ -1686,11 +1840,14 @@ function renumberAssessRows() {
  * Detailed course schedule (syllabus only)
  * ------------------------------------------------------------------ */
 
+/* true marks the one column that takes more than one line. Readings and
+   activities is where a second line is wanted, so it is a textarea, and Enter
+   there starts a new line. The other two stay single-line, where Enter
+   generates, as it does everywhere else on the form. */
 var SCHEDULE_COLUMNS = [
   ["schedWeek", "Week"],
   ["schedTopic", "Topic"],
-  ["schedReadings", "Readings and activities"],
-  ["schedDue", "Activities due"]
+  ["schedReadings", "Readings and activities", true]
 ];
 
 function scheduleRows() {
@@ -1698,7 +1855,7 @@ function scheduleRows() {
   var body = document.getElementById("scheduleBody");
   if (!body) return rows;
   Array.prototype.forEach.call(body.rows, function (tr) {
-    var cells = Array.prototype.map.call(tr.querySelectorAll("input"), function (i) {
+    var cells = Array.prototype.map.call(tr.querySelectorAll("input, textarea"), function (i) {
       return i.value.trim();
     });
     /* A week number alone is scaffolding, not content: the seeded rows arrive
@@ -1719,8 +1876,9 @@ function addScheduleRow(values) {
     var lab = document.createElement("label");
     lab.className = "visually-hidden";
     td.appendChild(lab);
-    var input = document.createElement("input");
-    input.type = "text";
+    var input = document.createElement(col[2] ? "textarea" : "input");
+    if (col[2]) input.rows = 2;
+    else input.type = "text";
     input.value = v[i] || "";
     td.appendChild(input);
     tr.appendChild(td);
@@ -1763,7 +1921,7 @@ function renumberScheduleRows() {
   Array.prototype.forEach.call(body.rows, function (tr, i) {
     var n = i + 1;
     var labels = tr.querySelectorAll("label");
-    var inputs = tr.querySelectorAll("input");
+    var inputs = tr.querySelectorAll("input, textarea");
     SCHEDULE_COLUMNS.forEach(function (col, j) {
       if (!inputs[j] || !labels[j]) return;
       var id = col[0] + n;
@@ -1991,6 +2149,22 @@ function syncOutcomeMode() {
   document.getElementById("outcomeParagraphWrap").hidden = list;
 }
 
+/* Spring begins in January, so a syllabus for it is often written in the
+   autumn before, when the year filled in at load is the wrong one. Flagged,
+   not changed: the box keeps whatever year is in it, and the note stays for
+   as long as Spring is chosen. */
+function syncSpringNote() {
+  var note = document.getElementById("springNote");
+  if (!note) return;
+  note.textContent = "";
+  if (val("semester") !== "Spring") return;
+  var lead = document.createElement("strong");
+  lead.textContent = "Check the year.";
+  note.appendChild(lead);
+  note.appendChild(document.createTextNode(" Spring semester begins in January, so a " +
+    "syllabus prepared in the fall is usually for the following year."));
+}
+
 function syncBranches() {
   document.getElementById("reqWrap").hidden = !checked("reqYes");
 }
@@ -2206,6 +2380,13 @@ function init() {
   syncBranches();
   syncHoursTotal();
 
+  /* Only when empty, so a browser that restores form state on reload keeps
+     the year the author had typed. */
+  var yearEl = document.getElementById("year");
+  if (!yearEl.value) yearEl.value = currentYear();
+  document.getElementById("semester").addEventListener("change", syncSpringNote);
+  syncSpringNote();
+
   buildPasteNotes();
   PASTE_FIELDS.forEach(function (id) {
     var el = document.getElementById(id);
@@ -2235,7 +2416,7 @@ function init() {
   addAssessRow("", "", "");
   addAssessRow("", "", "");
 
-  for (var w = 1; w <= 3; w++) addScheduleRow([String(w), "", "", ""]);
+  for (var w = 1; w <= 3; w++) addScheduleRow([String(w), "", ""]);
 
   addOutcomeRow("");
   addOutcomeRow("");
@@ -2262,8 +2443,8 @@ function init() {
 
   document.getElementById("addWeekBtn").addEventListener("click", function () {
     var body = document.getElementById("scheduleBody");
-    var tr = addScheduleRow([String(body.rows.length + 1), "", "", ""]);
-    var second = tr.querySelectorAll("input")[1];
+    var tr = addScheduleRow([String(body.rows.length + 1), "", ""]);
+    var second = tr.querySelectorAll("input, textarea")[1];
     if (second) second.focus();
     setStatus("Week added.");
   });
