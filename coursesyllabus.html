@@ -2252,6 +2252,22 @@ function execCommandCopyHtml(bodyHtml) {
   return ok;
 }
 
+/* Brightspace's editor is TinyMCE (8.0.2 in D2L's December 2025 release).
+   In Chrome, Edge and Safari, TinyMCE deletes every style attribute from
+   HTML pasted in from outside the editor (paste_remove_styles_if_webkit, on
+   by default), which takes the tables' borders, shading and widths with it.
+   It skips that step for content it recognises as copied from another
+   TinyMCE editor, which it marks with this comment. Leading the clipboard
+   HTML with it asks Brightspace to treat the paste as internal. TinyMCE
+   still runs its security filtering on internal pastes, and deletes the
+   marker before inserting anything.
+
+   This leans on TinyMCE's source (its InternalHtml module), not a
+   documented option. If a later version drops the marker, pasting falls
+   back to what it did before - styles stripped - so the risk is losing the
+   benefit, not breaking the paste. Word ignores HTML comments. */
+var TINYMCE_INTERNAL_MARK = "<!-- x-tinymce/html -->";
+
 function copyFormatted() {
   var html = generate(false, "copy");
   if (html === null) return;
@@ -2263,9 +2279,10 @@ function copyFormatted() {
   }
 
   var bodyText = previewBodyText(html);
+  var clipHtml = TINYMCE_INTERNAL_MARK + bodyHtml;
 
   function onFail() {
-    if (execCommandCopyHtml(bodyHtml)) {
+    if (execCommandCopyHtml(clipHtml)) {
       setExportStatus("Formatted content copied \u2014 paste into Brightspace or Word.");
     } else {
       setExportStatus("Copy failed. Try Copy HTML instead, or select the preview and press Ctrl+C.");
@@ -2275,7 +2292,7 @@ function copyFormatted() {
   if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
     try {
       var item = new ClipboardItem({
-        "text/html": new Blob([bodyHtml], { type: "text/html" }),
+        "text/html": new Blob([clipHtml], { type: "text/html" }),
         "text/plain": new Blob([bodyText], { type: "text/plain" })
       });
       navigator.clipboard.write([item]).then(function () {
