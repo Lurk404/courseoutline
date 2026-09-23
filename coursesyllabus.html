@@ -2225,12 +2225,21 @@ function previewBodyText(html) {
    selecting inside the iframe instead. Off-screen rather than hidden
    outright, since a hidden element cannot hold a selection; removed again
    as soon as the copy command has run, so nothing lingers in the tab order
-   or the accessibility tree. */
+   or the accessibility tree.
+
+   Now the last resort, after copyViaCopyEvent() and the Async Clipboard
+   API. Copying a selection makes the browser write the content as laid out
+   on this page - computed styles, pixel widths and all - and drops HTML
+   comments, so the TinyMCE marker never survives it. Measured on Edge: with
+   no width of its own, this holder let a 100%-wide table lay out at over
+   4,000px, which Brightspace then kept. The fixed width gives any measured
+   figure a page's width instead. */
 function execCommandCopyHtml(bodyHtml) {
   var holder = document.createElement("div");
   holder.style.position = "fixed";
   holder.style.left = "-9999px";
   holder.style.top = "0";
+  holder.style.width = "48rem";
   holder.setAttribute("aria-hidden", "true");
   holder.innerHTML = bodyHtml;
   document.body.appendChild(holder);
@@ -2257,8 +2266,10 @@ function execCommandCopyHtml(bodyHtml) {
    HTML pasted in from outside the editor (paste_remove_styles_if_webkit, on
    by default), which takes the tables' borders, shading and widths with it.
    It skips that step for content it recognises as copied from another
-   TinyMCE editor, which it marks with this comment. Leading the clipboard
-   HTML with it asks Brightspace to treat the paste as internal. TinyMCE
+   TinyMCE editor, which it marks with this comment (and with a private
+   x-tinymce/html clipboard entry, which copyViaCopyEvent() also writes).
+   Leading the clipboard HTML with it asks Brightspace to treat the paste as
+   internal. TinyMCE
    still runs its security filtering on internal pastes, and deletes the
    marker before inserting anything.
 
@@ -2267,6 +2278,50 @@ function execCommandCopyHtml(bodyHtml) {
    back to what it did before - styles stripped - so the risk is losing the
    benefit, not breaking the paste. Word ignores HTML comments. */
 var TINYMCE_INTERNAL_MARK = "<!-- x-tinymce/html -->";
+
+/* Writes the clipboard from inside the browser's own copy event, the way
+   TinyMCE writes its own copies (its setHtml5Clipboard): the HTML as a
+   string, plain text beside it, and TinyMCE's private x-tinymce/html entry.
+
+   This is the first choice because nothing is rendered or measured - the
+   clipboard gets the markup exactly as generated, marker included. The
+   other two routes cannot promise that: copying a selection records the
+   content as laid out on this page, and Chrome and Edge re-serialise HTML
+   written through the Async Clipboard API.
+
+   execCommand("copy") is deprecated but still what fires the event on
+   request in every current browser. False when no event arrived (Safari
+   can decline with nothing selected) or the data could not be set; the
+   caller then moves on to the next route. */
+var lastCopyRoute = "";
+
+function copyViaCopyEvent(html, text) {
+  var written = false;
+  function onCopy(ev) {
+    var data = ev.clipboardData;
+    if (!data) return;
+    try {
+      data.clearData();
+      data.setData("text/html", html);
+      data.setData("text/plain", text);
+    } catch (e) {
+      return;
+    }
+    /* Separate, so a browser that refuses a non-standard type still gets
+       the two that matter. */
+    try { data.setData("x-tinymce/html", html); } catch (e2) { /* optional */ }
+    written = true;
+    ev.preventDefault();
+  }
+  document.addEventListener("copy", onCopy, true);
+  try {
+    if (document.execCommand) document.execCommand("copy");
+  } catch (e) {
+    written = false;
+  }
+  document.removeEventListener("copy", onCopy, true);
+  return written;
+}
 
 function copyFormatted() {
   var html = generate(false, "copy");
@@ -2280,11 +2335,21 @@ function copyFormatted() {
 
   var bodyText = previewBodyText(html);
   var clipHtml = TINYMCE_INTERNAL_MARK + bodyHtml;
+  var copied = "Formatted content copied \u2014 paste into Brightspace or Word.";
+
+  /* Three routes, best first; see copyViaCopyEvent() for why this order. */
+  if (copyViaCopyEvent(clipHtml, bodyText)) {
+    lastCopyRoute = "event";
+    setExportStatus(copied);
+    return;
+  }
 
   function onFail() {
     if (execCommandCopyHtml(clipHtml)) {
-      setExportStatus("Formatted content copied \u2014 paste into Brightspace or Word.");
+      lastCopyRoute = "selection";
+      setExportStatus(copied);
     } else {
+      lastCopyRoute = "";
       setExportStatus("Copy failed. Try Copy HTML instead, or select the preview and press Ctrl+C.");
     }
   }
@@ -2296,7 +2361,8 @@ function copyFormatted() {
         "text/plain": new Blob([bodyText], { type: "text/plain" })
       });
       navigator.clipboard.write([item]).then(function () {
-        setExportStatus("Formatted content copied \u2014 paste into Brightspace or Word.");
+        lastCopyRoute = "async";
+        setExportStatus(copied);
       }, onFail);
       return;
     } catch (e) {
