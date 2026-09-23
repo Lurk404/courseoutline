@@ -9,8 +9,9 @@
      Visible, 2.5.8 Target Size. Two exceptions: .help-box, whose shading sets
      the formatting instructions apart from the form, and the red on
      validation errors, which repeats what the error text already says.
-     Beyond those, two side-by-side layouts the form was asked for: the %
-     sign beside each weight box, and the year beside the semester. */
+     Beyond those, what the form was asked for: the % sign beside each
+     weight box, the year beside the semester, and schedule boxes that start
+     one line tall and grow as lines are added. */
 
   body {
     max-width: 90%;
@@ -103,6 +104,12 @@
      on a phone. */
   #assessTable { min-width: 36rem; }
   #scheduleTable { min-width: 36rem; }
+
+  /* Schedule boxes start one line tall and grow with their content (see
+     fitHeight). Hidden overflow stops a scrollbar appearing for the instant
+     before a refit, which would narrow the box and make it measure taller
+     than it needs. No resize handle: the next keystroke would undo a drag. */
+  #scheduleTable textarea { overflow-y: hidden; resize: none; }
 
   /* The weight box with its % sign beside it. min-width: 0 lets the box give
      up width to the sign rather than pushing it out of the cell. */
@@ -635,8 +642,8 @@ function blocks(s) {
   return out;
 }
 
-/* blocks() for a table cell, where the readings column takes more than one
-   line. Plain lines stay one run, broken with <br> - the soft return the
+/* blocks() for a table cell, where the topic and readings columns take more
+   than one line. Plain lines stay one run, broken with <br> - the soft return the
    author typed, not a new paragraph, which inside a cell would open a gap
    between lines. List syntax still works, as the help box promises for every
    text box. Blank lines are dropped: a cell has no paragraphs for them to
@@ -1313,7 +1320,7 @@ function buildHtml() {
     schedBody.push("</thead>");
     schedBody.push("<tbody>");
     weeks.forEach(function (r) {
-      schedBody.push("<tr>" + td(inline(r[0])) + td(inline(r[1])) +
+      schedBody.push("<tr>" + td(inline(r[0])) + td(cellBlocks(r[1])) +
                      td(cellBlocks(r[2])) + "</tr>");
     });
     schedBody.push("</tbody>");
@@ -1840,15 +1847,36 @@ function renumberAssessRows() {
  * Detailed course schedule (syllabus only)
  * ------------------------------------------------------------------ */
 
-/* true marks the one column that takes more than one line. Readings and
-   activities is where a second line is wanted, so it is a textarea, and Enter
-   there starts a new line. The other two stay single-line, where Enter
-   generates, as it does everywhere else on the form. */
+/* true marks the columns that take more than one line. Topic and Readings
+   and activities are textareas, where Enter starts a new line; both start one
+   line tall and grow as lines are added (fitHeight). Week stays a single-line
+   input, where Enter generates, as it does everywhere else on the form. */
 var SCHEDULE_COLUMNS = [
   ["schedWeek", "Week"],
-  ["schedTopic", "Topic"],
+  ["schedTopic", "Topic", true],
   ["schedReadings", "Readings and activities", true]
 ];
+
+/* Grows a schedule box to fit what is in it, and shrinks it back when lines
+   are taken out, so an empty or one-line box stays one line tall. Measured
+   from height: auto, so the box can shrink as well as grow. The border is
+   added back because box-sizing: border-box counts it in the height and
+   scrollHeight does not. A box with no layout (scrollHeight 0) is left at
+   its natural height rather than collapsed to nothing. */
+function fitHeight(el) {
+  el.style.height = "auto";
+  if (!el.scrollHeight) {
+    el.style.height = "";
+    return;
+  }
+  el.style.height = (el.scrollHeight + el.offsetHeight - el.clientHeight) + "px";
+}
+
+function fitScheduleBoxes() {
+  var body = document.getElementById("scheduleBody");
+  if (!body) return;
+  Array.prototype.forEach.call(body.querySelectorAll("textarea"), fitHeight);
+}
 
 function scheduleRows() {
   var rows = [];
@@ -1877,7 +1905,7 @@ function addScheduleRow(values) {
     lab.className = "visually-hidden";
     td.appendChild(lab);
     var input = document.createElement(col[2] ? "textarea" : "input");
-    if (col[2]) input.rows = 2;
+    if (col[2]) input.rows = 1;
     else input.type = "text";
     input.value = v[i] || "";
     td.appendChild(input);
@@ -2421,6 +2449,23 @@ function init() {
   addOutcomeRow("");
   addOutcomeRow("");
   addOutcomeRow("");
+
+  /* Delegated, so a week added later needs no wiring of its own. A
+     narrower window, or larger text, wraps the same words onto more lines,
+     so every box is refitted when the window changes size - once per frame
+     however many resize events arrive. */
+  document.getElementById("scheduleBody").addEventListener("input", function (ev) {
+    if (ev.target.tagName === "TEXTAREA") fitHeight(ev.target);
+  });
+  var refitPending = false;
+  window.addEventListener("resize", function () {
+    if (refitPending) return;
+    refitPending = true;
+    window.requestAnimationFrame(function () {
+      refitPending = false;
+      fitScheduleBoxes();
+    });
+  });
 
   /* Delegated, so a row added later needs no wiring of its own. */
   var assessBody = document.getElementById("assessBody");
