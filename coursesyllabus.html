@@ -6,8 +6,9 @@
 <style>
   /* Minimal CSS. Present only to satisfy accessibility criteria that markup
      alone cannot meet: 1.4.10 Reflow, 1.4.11 Non-text Contrast, 2.4.7 Focus
-     Visible, 2.5.8 Target Size. The one exception is .help-box, whose shading
-     sets the formatting instructions apart from the form. */
+     Visible, 2.5.8 Target Size. Two exceptions: .help-box, whose shading sets
+     the formatting instructions apart from the form, and the red on
+     validation errors, which repeats what the error text already says. */
 
   body {
     max-width: 90%;
@@ -118,14 +119,22 @@
     white-space: nowrap;
   }
 
-  #checklist ul { list-style: none; padding: 0; margin: 0.35rem 0 0; }
-  #checklist li { margin: 0.2rem 0; }
-  #checklist h3 { font-size: 1rem; margin: 1rem 0 0; }
-  /* Focus moves here after a generate that leaves items outstanding.
+  /* Validation. The message text is what identifies an error (SC 3.3.1),
+     with "Error:" spoken ahead of it, so colour is never the only signal
+     (SC 1.4.1). #b00020 is 7:1 on white, clearing 4.5:1 for the text and 3:1
+     for the borders. The control rules name their elements so they match the
+     specificity of input[type="text"] above and, coming later, win. */
+  .error-message { display: block; color: #b00020; font-weight: bold; margin: 0.2rem 0; }
+  input[aria-invalid="true"],
+  select[aria-invalid="true"],
+  textarea[aria-invalid="true"] { border: 2px solid #b00020; }
+  .error-summary { border: 3px solid #b00020; padding: 0.75rem 1rem; margin: 0 0 1rem; }
+  .error-summary h2 { font-size: 1.25rem; margin: 0 0 0.5rem; }
+  .error-summary ul { margin: 0; padding-left: 1.25rem; }
+  /* Focus moves here when Generate, Copy or Download finds a problem.
      Programmatic focus does not always trigger :focus-visible, so :focus is
      matched too, guaranteeing a visible indicator (SC 2.4.7). */
-  #checklist:focus { outline: 3px solid #0b5fff; outline-offset: 2px; }
-  .flag { font-weight: bold; }
+  #errorSummary:focus { outline: 3px solid #0b5fff; outline-offset: 2px; }
 
   iframe { width: 100%; border: 1px solid #595959; }
 
@@ -147,7 +156,7 @@
 <p><strong>To add a link,</strong> put the wording in square brackets and the address in round brackets straight after it, with no space between:</p>
 <p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
 </div>
-<form id="outlineForm"><fieldset><legend>Course identification</legend>
+<form id="outlineForm" novalidate><fieldset><legend>Course identification</legend>
 <p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
 </fieldset><fieldset><legend>Credits</legend>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
@@ -172,8 +181,8 @@
          author wants and what a screen reader user does not: a live region tied
          to keystrokes interrupts constantly. The announcement is therefore split
          off and fires once per field, when the field is left. --> <span class="visually-hidden" id="hoursAnnounce" role="status"></span></fieldset><fieldset><legend>Course details</legend>
-<p class="field" id="yearSemesterWrap"><label for="yearSemester">Year and semester</label> <span class="hint" id="yearSemesterHint">Which offering of the course this syllabus describes.</span> <input type="text" id="yearSemester" aria-describedby="yearSemesterHint" placeholder="e.g. Fall 2026"></p>
-<p class="field"><label for="mode">Course format</label><select id="mode">
+<p class="field" id="yearSemesterWrap"><label for="yearSemester">Year and semester (required)</label> <span class="hint" id="yearSemesterHint">Which offering of the course this syllabus describes.</span> <input type="text" id="yearSemester" aria-describedby="yearSemesterHint" aria-required="true" placeholder="e.g. Fall 2026"></p>
+<p class="field"><label for="mode">Course format (required)</label><select id="mode" aria-required="true">
 <option value="">Choose one</option>
 <option value="In-person">In-person</option>
 <option value="Mixed mode">Mixed mode</option>
@@ -185,16 +194,16 @@
 <div class="radio-row"><input type="radio" name="req" id="reqNo" value="no" checked="checked"> <label for="reqNo">No</label></div>
 <div class="radio-row"><input type="radio" name="req" id="reqYes" value="yes"> <label for="reqYes">Yes</label></div>
 </div>
-<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites</label> <span class="hint" id="reqDetailHint">Link syntax works here too, so a named course can point at its own page.</span> <input type="text" id="reqDetail" aria-describedby="reqDetailHint" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."></p>
+<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites (required)</label> <span class="hint" id="reqDetailHint">Link syntax works here too, so a named course can point at its own page.</span> <input type="text" id="reqDetail" aria-describedby="reqDetailHint" aria-required="true" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."></p>
 </fieldset><fieldset id="instructorFieldset"><legend>Instructor</legend>
 <p class="hint">A syllabus names the instructor and how to reach them. Answer office hours explicitly, even if the answer is that there are none.</p>
-<p class="field"><label for="instructors">Instructor name(s)</label> <input type="text" id="instructors" autocomplete="name"></p>
-<p class="field"><label for="office">Office</label> <input type="text" id="office" placeholder="e.g. A322b"></p>
-<p class="field"><label for="phone">Phone</label> <input type="tel" id="phone" autocomplete="tel" placeholder="e.g. 604 323 5511"></p>
-<p class="field"><label for="email">Email</label> <input type="email" id="email" autocomplete="email"></p>
-<p class="field"><label for="officeHours">Office hours</label> <input type="text" id="officeHours" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment"></p>
-</fieldset><fieldset><legend>Course description</legend>
-<p class="field"><label for="courseDescription">Calendar course description (required)</label> <span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
+<p class="field"><label for="instructors">Instructor name(s) (required)</label> <input type="text" id="instructors" autocomplete="name" aria-required="true"></p>
+<p class="field"><label for="office">Office (required)</label> <input type="text" id="office" aria-required="true" placeholder="e.g. A322b"></p>
+<p class="field"><label for="phone">Phone (required)</label> <input type="tel" id="phone" autocomplete="tel" aria-required="true" placeholder="e.g. 604 323 5511"></p>
+<p class="field"><label for="email">Email (required)</label> <input type="email" id="email" autocomplete="email" aria-required="true"></p>
+<p class="field"><label for="officeHours">Office hours (required)</label> <input type="text" id="officeHours" aria-required="true" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment"></p>
+</fieldset><fieldset><legend><label for="courseDescription">Calendar course description (required)</label></legend>
+<p class="field"><span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
 </fieldset><fieldset><legend>Learning outcomes</legend>
 <p id="outcomeFormatQuestion">Are the course learning outcomes a list or a paragraph?</p>
 <div role="radiogroup" aria-labelledby="outcomeFormatQuestion">
@@ -221,7 +230,7 @@
 <p><button type="button" id="addOutcomeBtn">Add learning outcome</button></p>
 </div>
 <p class="field" id="outcomeParagraphWrap" hidden=""><label for="learningOutcomes">Learning outcomes (required)</label> <textarea id="learningOutcomes" rows="7" aria-required="true">Upon successful completion of this course, students will be able to</textarea></p>
-</fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (at least one week required)</legend>
+</fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (required)</legend>
 <div class="table-scroll" tabindex="0">
 <table id="scheduleTable"><caption>Week-by-week schedule</caption>
 <thead>
@@ -239,7 +248,7 @@
 <p><button type="button" id="addWeekBtn">Add week</button></p>
 </fieldset><fieldset><legend>Assessment and grading</legend>
 <div class="table-scroll" tabindex="0">
-<table id="assessTable"><caption id="assessCaption">Means of assessment and weighting (at least one required)</caption>
+<table id="assessTable"><caption id="assessCaption">Means of assessment and weighting (required)</caption>
 <thead>
 <tr>
 <th scope="col">Assessment activity</th>
@@ -259,31 +268,37 @@
 <p><button type="button" id="addAssessBtn">Add assessment row</button></p>
 <p class="field" id="gradingWrap"><label for="gradingNotes">Grading guidelines</label> <span class="hint" id="gradingNotesHint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></p>
 <p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
-</fieldset><fieldset><legend>Course materials and textbooks</legend>
-<p class="field"><label for="textbook">Course materials and textbooks (required)</label> <span class="hint" id="textbookHint">One per line, each starting with <code>-</code>.</span> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></p>
+</fieldset><fieldset><legend><label for="textbook">Course materials and textbooks (required)</label></legend>
+<p class="field"><span class="hint" id="textbookHint">One per line, each starting with <code>-</code>.</span> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></p>
 <p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to the end of this section automatically.</p>
 <!-- The notice is a FIPPA disclosure attached to the resource, so it
          belongs in the section where the resource is named. It appears
          verbatim in Langara's own Course Outline template. -->
 <div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacy"> <label for="privacy">This course uses an online resource hosted outside Canada for graded work — add the privacy notice</label></div>
-</fieldset><fieldset><legend>Departmental and course guidelines</legend>
-<p class="field"><label for="deptPolicies">Departmental and course guidelines</label> <span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></p>
+</fieldset><fieldset><legend><label for="deptPolicies">Departmental and course guidelines</label></legend>
+<p class="field"><span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></p>
 </fieldset><!-- The Versioning fieldset is gone. Its one field, the effective date, is
        now filled in from the clock at generate time, and the rest of the
        section (the subject-to-change note, the archive link) was already
        automatic. A fieldset groups form controls, so one holding nothing but
-       explanatory hints would be the wrong element for what was left; the
-       "Added automatically" line under the completeness check carries that
-       explanation instead. --><!-- There is no export format choice. The same output pastes into
+       explanatory hints would be the wrong element for what was left. The
+       preview shows the date the document will carry. --><!-- There is no export format choice. The same output pastes into
        Brightspace and into Word; the Langara page template is applied by
        Brightspace itself, chosen from its document templates when the file is
        created, so this tool no longer wraps the output in a copy of it. --><!-- Generate stays with the form it acts on. Download and Copy moved below
        the preview, so the order of the page matches the order of the work:
        fill in, generate, check the result, then take it away. -->
+<!-- Filled in and shown only when Generate, Copy or Download finds a field
+     that is not complete. Focus moves here, so the heading, which carries the
+     count, is what a screen reader announces, and each item links to the
+     field it names (SC 3.3.1, 3.3.3). Directly above Generate, where the
+     result of pressing it is expected. -->
+<div id="errorSummary" class="error-summary" role="group" aria-labelledby="errorSummaryHeading" tabindex="-1" hidden="">
+<h2 id="errorSummaryHeading"></h2>
+<ul id="errorList"></ul>
+</div>
 <p class="actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
 </form><hr>
-<h2 id="checklistHeading">Completeness check</h2>
-<div id="checklist" tabindex="-1"></div>
 <h2>Preview</h2>
 <p class="hint">This preview carries no styling of its own, so text appears in whatever font your browser falls back to. The finished document takes its appearance from wherever it ends up — Brightspace or a Word document you paste it into — so this may not be exactly how the content will look once it is placed.</p>
 <iframe id="preview" title="Course syllabus preview" height="600"></iframe> <!-- The steps sit here, between the result and the button they start with,
@@ -296,22 +311,27 @@
 <li>If desired, open the <strong>Select a Document Template</strong> menu to choose a styled template.</li>
 <li>Paste into the editor, then save.</li>
 </ol>
-<p class="hint">Copy formatted puts the finished layout on the clipboard, ready to paste into Brightspace or Word. If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
+<p class="hint">Copy formatted puts the finished layout on the clipboard, ready to paste into Brightspace or Word.</p>
 <!-- These act on the generated document rather than on the form, so they sit
      with the generated document. All call generate(false) first, so none
      depends on Generate having been pressed. Their own status region, rather
      than the form's: a confirmation that renders a screen away from the
      button that caused it is a confirmation nobody sees.
 
-     Copy formatted first, as the path almost everyone takes; Copy HTML second,
-     as its fallback. The raw markup and the file download are for the few who
-     want them, so they sit closed in the details element below. -->
-<p class="actions"><button type="button" id="copyFormattedBtn">Copy formatted</button> <button type="button" id="copyBtn">Copy HTML</button> <span id="exportStatus" role="status"></span></p>
+     Copy formatted is the path almost everyone takes, so it is the one button
+     out here. Copy HTML is its fallback and sits with the markup it copies, in
+     the details element below, alongside the file download. The sentence
+     saying when to reach for it opens that element, so it is read before the
+     button. Copy HTML still reports to this status region, which is only a
+     line or two above it once the element is open. -->
+<p class="actions"><button type="button" id="copyFormattedBtn">Copy formatted</button> <span id="exportStatus" role="status"></span></p>
 <!-- "Show" rather than "Click to see": the summary is operated by keyboard
      and touch as often as by mouse, and a screen reader already announces it
      as expandable. -->
 <details id="sourceDetails">
 <summary>Show HTML source code</summary>
+<p class="hint">If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
+<p class="actions"><button type="button" id="copyBtn">Copy HTML</button></p>
 <p><label for="source">Generated HTML (read-only)</label></p>
 <textarea id="source" rows="20" readonly="readonly"></textarea>
 <p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
@@ -429,17 +449,11 @@ var WORDING = {
   fileStem: "course-syllabus",
   generatedStatus: "Syllabus generated.",
   materialsHeading: "Textbooks and course materials",
-  /* F1003 3.4(b)(c) ask a syllabus for the SPECIFIC materials and
-     assessments, against 3.2(e)(f)'s "typical" for an outline of record. */
-  materialsItem: "Specific textbooks and course materials",
-  materialsClause: "3.4(b)",
-  assessClause: "3.4(c)",
   /* A syllabus can carry the instructor's own grading guidelines just above
      this line, so the link is named for what it actually is rather than
      repeating the phrase and reading as a contradiction. */
   gradesNote: "for the College's grade scale and notations",
-  previewTitle: "Course syllabus preview",
-  docNoun: "syllabus"
+  previewTitle: "Course syllabus preview"
 };
 
 function words() {
@@ -614,9 +628,8 @@ function blocks(s) {
 var PASTE_FIELDS = ["courseDescription", "learningOutcomes",
                     "textbook", "gradingNotes", "deptPolicies"];
 
-/* Glyphs a bullet arrives as. Wider than the set OUTCOME_MARKER watches for,
-   because that one only has to recognise that a marker is present, while
-   this one has to catch every shape a real paste produces.
+/* Glyphs a bullet arrives as - every shape a real paste produces, not just
+   the common ones.
 
    The \uf0xx entries are not Unicode bullets at all - they are Symbol and
    Wingdings glyphs sitting in the private use area, which is what Word
@@ -879,16 +892,16 @@ function dueKey(s) {
   var m = /^(?:weeks?|wk)\.?\s*(\d{1,2})\b/i.exec(t);
   if (m) return { kind: "week", n: parseInt(m[1], 10) };
 
-  m = /^(\d{{4}})-(\d{1,2})-(\d{1,2})\b/.exec(t);
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})\b/.exec(t);
   if (m) return dueDate(+m[1], +m[2], +m[3]);
 
   /* A leading weekday is decoration: "Friday, October 15" sorts as Oct 15. */
   var u = t.replace(/^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?,?\s+/i, "");
 
-  m = /^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{{4}}))?/i.exec(u);
+  m = /^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b(?:,?\s+(\d{4}))?/i.exec(u);
   if (m) return dueDate(m[3] ? +m[3] : null, monthNumber(m[1]), +m[2]);
 
-  m = /^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?(?:,?\s+(\d{{4}}))?\b/i.exec(u);
+  m = /^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?(?:,?\s+(\d{4}))?\b/i.exec(u);
   if (m) return dueDate(m[3] ? +m[3] : null, monthNumber(m[2]), +m[1]);
 
   return null;
@@ -934,39 +947,6 @@ function sortByDue(rows) {
 function isOutcomeList() {
   var el = document.getElementById("outcomeList");
   return !!(el && el.checked);
-}
-
-/* Rows whose text opens with something the author probably meant as a bullet.
-
-   The set is wider than what blocks() actually parses, on purpose: this is a
-   warning, not a parser. A paste out of Word or an existing outline arrives
-   carrying "\u2022", an en or em dash, or "1.", and every one of those lands in the
-   output as a literal character inside the bullet. All of them are worth
-   flagging even though only "-" and "*" would have meant anything in a
-   textarea.
-
-   The numeric branch requires whitespace after the marker so that an outcome
-   opening "1.5 hours of ..." is not mistaken for a numbered list item; the
-   bullet branch does not, since "-Analyze" is still a stray dash. */
-var OUTCOME_MARKER = /^\s*(?:[-*\u2022\u2013\u2014]\s*|\d+[.)]\s+)/;
-
-function markedOutcomeRows() {
-  var out = [];
-  var body = document.getElementById("outcomeBody");
-  if (!body) return out;
-  Array.prototype.forEach.call(body.rows, function (tr, i) {
-    var input = tr.querySelector("input");
-    var v = input ? input.value.trim() : "";
-    if (v && OUTCOME_MARKER.test(v)) out.push(i + 1);
-  });
-  return out;
-}
-
-/* "2", "2 and 4", "2, 4, and 5". */
-function joinNumbers(nums) {
-  if (nums.length === 1) return String(nums[0]);
-  if (nums.length === 2) return nums[0] + " and " + nums[1];
-  return nums.slice(0, -1).join(", ") + ", and " + nums[nums.length - 1];
 }
 
 function outcomeRows() {
@@ -1041,7 +1021,8 @@ function weightTotalText() {
   if (w.skipped) {
     text += " (" + w.skipped + " entr" + (w.skipped === 1 ? "y" : "ies") + " without a number not counted)";
   }
-  /* Flagged, never blocked - the same rule the completeness check follows. */
+  /* Flagged, never blocked: a weight is free text ("Pass/Fail" is a real
+     answer), so a total that is off is a warning, not an error. */
   if (sum !== 100) text += " \u2014 does not add up to 100%";
   return text;
 }
@@ -1302,275 +1283,306 @@ function buildHtml() {
 }
 
 /* ------------------------------------------------------------------ *
- * Completeness tiers
+ * Validation
  *
- * Two separate things get conflated when a form is "required": what Policy
- * F1003 obliges a syllabus to carry, and what Langara wants on top of that.
- * Keeping them apart means an instructor who challenges a flagged field gets a
- * straight answer about which it is. Neither tier blocks anything - Generate,
- * Copy and Download always work on a part-finished syllabus, because these
- * get drafted over days and the preview is how people check progress.
+ * Every field is required except the grading guidelines and the
+ * departmental guidelines. Generate, Copy and Download all check first and
+ * produce nothing until the form passes, so an incomplete syllabus never
+ * reaches the preview, the clipboard or a file.
+ *
+ * A failure is reported in two places: a summary above Generate, which takes
+ * focus and links to each problem, and a message at the field itself, tied
+ * to it with aria-describedby and marked aria-invalid (SC 3.3.1, 3.3.3).
+ *
+ * aria-required rather than the native required attribute, and novalidate
+ * on the form: the outcomes box ships seeded with a lead-in sentence, so a
+ * browser would call it filled in while it is substantively blank, and its
+ * own bubbles would appear one at a time in wording this file cannot set.
  * ------------------------------------------------------------------ */
-
-/* A syllabus carries every outline obligation and adds its own, because
-   F1003 3.4 says a syllabus contains what an outline contains plus the
-   section-level detail. One document type, so one map. */
-var MARKERS = {
-  courseTitle: "required",
-  credits: "required",
-  ceus: "required",
-  yearSemester: "required",
-  mode: "required",
-  instructors: "required",
-  office: "required",
-  phone: "required",
-  email: "required",
-  /* F1003 3.4(a) qualifies office hours with "if applicable"; Langara asks for
-     an explicit answer instead, so a blank is never left ambiguous. */
-  officeHours: "required",
-  courseDescription: "required",
-  learningOutcomes: "required",
-  textbook: "required"
-};
-
-/* Every field the map can name. Kept as its own list rather than derived from
-   the keys, so a field can be cleared of a marker as well as given one. */
-var MARKED_FIELDS = ["courseTitle", "credits", "ceus", "yearSemester", "mode",
-  "instructors", "office", "phone", "email", "officeHours",
-  "courseDescription", "learningOutcomes", "textbook"];
-
-function markerMap() {
-  return MARKERS;
-}
-
-/* Markers are written into the labels as words rather than an asterisk, which
-   needs a key to decode. They move with the mode, so they are applied in script
-   rather than baked into the markup.
-
-   aria-required rather than the native required attribute: the outcomes box
-   ships seeded with a lead-in sentence, so a browser would consider it
-   satisfied while it is substantively blank. Native constraint validation
-   would report the wrong answer, and nothing here submits a form anyway. */
-function markFields() {
-  var map = markerMap();
-  MARKED_FIELDS.forEach(function (id) {
-    var lab = document.querySelector('label[for="' + id + '"]');
-    var el = document.getElementById(id);
-    var marker = map[id];
-    if (lab) {
-      var base = lab.textContent.replace(/\s*\((required|recommended)\)\s*$/, "");
-      lab.textContent = marker ? base + " (" + marker + ")" : base;
-    }
-    if (el) {
-      if (marker === "required") el.setAttribute("aria-required", "true");
-      else el.removeAttribute("aria-required");
-    }
-  });
-}
 
 function normalizeText(s) {
   return String(s).replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-/* Which lead-in, if any, a field is still carrying - so a box holding only
-   its lead-in can be told from one the instructor has written in. The
-   outcomes box is the only field that ships with one; a syllabus states its
-   section's actual texts, so the textbook box seeds empty. */
-function stemFor(id) {
-  return id === "learningOutcomes" ? OUTCOME_STEM : null;
+/* True when the paragraph box holds something beyond the lead-in sentence it
+   ships with. A seeded box is not blank, so a plain truthiness test would
+   pass it before the instructor has written a word. */
+function hasOutcomeParagraph() {
+  var v = val("learningOutcomes");
+  return !!v && normalizeText(v) !== normalizeText(OUTCOME_STEM);
 }
 
-/* True when a field holds something beyond the lead-in sentence it ships with.
-   A seeded field is not blank, so a plain truthiness test would report it as
-   complete before the instructor has written a word. */
-function hasContentBeyond(id) {
-  var v = val(id);
-  if (!v) return false;
-  var stem = stemFor(id);
-  if (!stem) return true;
-  return normalizeText(v) !== normalizeText(stem);
+/* The browser's own reading of type="email" where it offers one, so the form
+   and the browser never disagree about an address; a plain shape test where
+   it does not. */
+function emailLooksValid(el) {
+  if (el.validity && typeof el.validity.typeMismatch === "boolean") return !el.validity.typeMismatch;
+  return /^[^\s@]+@[^\s@]+$/.test(String(el.value).trim());
 }
 
-function checklistItems() {
-  var items = [];
-  var W = words();
-  var map = markerMap();
-
-  /* flags is an optional { ok: "...", bad: "..." } override for the two words
-     the checklist stamps on an item. Every completeness item wants the
-     defaults; the outcome marker check is not a completeness item - nothing is
-     missing - so "Missing" would be a false statement about it. */
-  function add(tier, label, ok, clause, target, flags) {
-    items.push({ tier: tier, label: label, ok: ok, clause: clause || null,
-                 target: target, flags: flags || null });
-  }
-  function tierOf(id) {
-    return map[id] === "required" ? "required" : "recommended";
-  }
-
-  /* Listed in form order, so the summary reads as a walk through the page. */
-  add("required", "Course code, number, and title", !!val("courseTitle"), "3.2(a)", "courseTitle");
-  add("required", creditLabel(), !!creditValue(), "3.2(b)",
-      creditUnit() === "ceus" ? "ceus" : "credits");
-  /* 3.2(b) requires contact hours, but a course need not have all three kinds,
-     so this is a group rule: any one of the three satisfies it. */
-  add("required", "Contact hours (lecture, lab, or seminar)", enteredHours().length > 0, "3.2(b)", "lectureHours");
-  add(tierOf("yearSemester"), "Year and semester", !!val("yearSemester"), null, "yearSemester");
-  add(tierOf("mode"), "Course format", !!val("mode"), null, "mode");
-
-  add("required", "Instructor name(s)", !!val("instructors"), "3.4(a)", "instructors");
-  add("required", "Office", !!val("office"), null, "office");
-  add("required", "Phone", !!val("phone"), null, "phone");
-  add("required", "Email", !!val("email"), "3.4(a)", "email");
-  add("required", "Office hours", !!val("officeHours"), null, "officeHours");
-
-  add("required", "Calendar course description", !!val("courseDescription"), "3.2(c)", "courseDescription");
-
-  /* Which control can satisfy this depends on the chosen format, so both the
-     test and the link target move with it. The list item targets the first
-     text field rather than the Add button, because with three rows already
-     seeded the field is what the author needs to reach, not another row. */
-  if (isOutcomeList()) {
-    add("required", "At least one learning outcome", outcomeRows().length > 0, "3.2(d)", "outcomeText1");
-
-    /* Reported, never corrected. In list mode a field becomes one <li> whole,
-       so a leading "-", bullet or "1." is not parsed away the way it is in a
-       textarea: it survives into the output as a literal character sitting
-       inside the bullet. Stripping it would be quietly editing what someone
-       typed, which is the thing this file does not do - so this says what is
-       wrong, links to the field, and leaves the decision alone.
-
-       Added only when it fires. An item permanently reading "Clear - no
-       markers found" is noise in a list whose job is naming what is left. */
-    var marked = markedOutcomeRows();
-    if (marked.length) {
-      var plural = marked.length > 1;
-      add("recommended",
-          "Learning outcome" + (plural ? "s " : " ") + joinNumbers(marked) +
-          (plural ? " begin" : " begins") + " with a list marker, which will appear inside " +
-          "the bullet rather than making one",
-          false, null, "outcomeText" + marked[0], { bad: "Check" });
-    }
-  } else {
-    add("required", "Learning outcomes", hasContentBeyond("learningOutcomes"), "3.2(d)", "learningOutcomes");
-  }
-
-  add("required", "At least one scheduled week", scheduleRows().length > 0, "3.4(d)", "addWeekBtn");
-
-  add("required", "At least one assessment activity", assessRows().length > 0, W.assessClause, "addAssessBtn");
-  add("required", W.materialsItem, hasContentBeyond("textbook"), W.materialsClause, "textbook");
-  /* The effective date was listed here while it was a field someone could
-     leave blank. It is generated now, so it can never be outstanding, and an
-     item that is permanently "Included" is noise in a list whose job is to
-     say what is left to do. It moves to the "Added automatically" line at the
-     foot of the check instead. Note that it never carried a clause citation:
-     it was Langara practice rather than an F1003 obligation, so nothing
-     policy-cited leaves the required tier with it. */
-
-  return items;
+/* A number box holding something that is not a number reports an empty
+   value, which would otherwise read as "left blank" and get the wrong
+   message. badInput is how the browser says what really happened. */
+function badNumber(id) {
+  var el = document.getElementById(id);
+  return !!(el && el.validity && el.validity.badInput);
 }
 
-function renderChecklist() {
-  var host = document.getElementById("checklist");
-  host.textContent = "";
+/* One entry per problem, in form order, so the summary reads as a walk down
+   the page. target is the control a summary link focuses; the message is
+   placed in front of `before` (the target itself unless given) and tied to
+   every control in `fields` (the target alone unless given). Messages say
+   what to do, not just what is wrong (SC 3.3.3). */
+function collectErrors() {
+  var errors = [];
 
-  var items = checklistItems();
-  var required = items.filter(function (i) { return i.tier === "required"; });
-  var recommended = items.filter(function (i) { return i.tier === "recommended"; });
-
-  var counts = {
-    required: required.filter(function (i) { return !i.ok; }).length,
-    recommended: recommended.filter(function (i) { return !i.ok; }).length
-  };
-
-  var intro = document.createElement("p");
-  if (!counts.required && !counts.recommended) {
-    intro.textContent = "Everything is filled in.";
-  } else {
-    var bits = [];
-    if (counts.required) {
-      bits.push(counts.required + " required item" + (counts.required === 1 ? "" : "s"));
-    }
-    if (counts.recommended) {
-      bits.push(counts.recommended + " recommended item" + (counts.recommended === 1 ? "" : "s"));
-    }
-    intro.textContent = bits.join(" and ") + " outstanding. Nothing is blocked \u2014 " +
-      "you can still generate, copy and download.";
-  }
-  host.appendChild(intro);
-
-  function group(title, note, list) {
-    if (!list.length) return;
-
-    var h = document.createElement("h3");
-    h.textContent = title;
-    host.appendChild(h);
-
-    var p = document.createElement("p");
-    p.className = "hint";
-    p.textContent = note;
-    host.appendChild(p);
-
-    var ul = document.createElement("ul");
-    list.forEach(function (item) {
-      var li = document.createElement("li");
-
-      var flag = document.createElement("span");
-      flag.className = "flag";
-      /* Words, not colour or icons alone \u2014 SC 1.4.1. */
-      var okWord = (item.flags && item.flags.ok) || "Included";
-      var badWord = (item.flags && item.flags.bad) || "Missing";
-      flag.textContent = item.ok ? okWord : badWord;
-      li.appendChild(flag);
-      li.appendChild(document.createTextNode(" \u2014 "));
-
-      /* An outstanding item links to the control that fixes it, so the summary
-         is a way in rather than a list of complaints (SC 3.3.3). */
-      if (item.ok) {
-        li.appendChild(document.createTextNode(item.label));
-      } else {
-        var a = document.createElement("a");
-        a.href = "#" + item.target;
-        a.textContent = item.label;
-        a.addEventListener("click", function (ev) {
-          ev.preventDefault();
-          var target = document.getElementById(item.target);
-          if (target) target.focus();
-        });
-        li.appendChild(a);
-      }
-
-      if (item.clause) li.appendChild(document.createTextNode(" (F1003 " + item.clause + ")"));
-      ul.appendChild(li);
+  function add(target, message, opts) {
+    opts = opts || {};
+    errors.push({
+      target: target,
+      message: message,
+      id: opts.id || target + "Error",
+      before: opts.before || document.getElementById(target),
+      fields: opts.fields || [target]
     });
-    host.appendChild(ul);
   }
 
-  var noun = words().docNoun;
-  group("Required",
-        "Your " + noun + " is not complete without these. Items citing a clause are obliged " +
-        "by Policy F1003; the rest are Langara practice.", required);
-  group("Recommended",
-        "Not required, but expected on a Langara course " + noun + ".", recommended);
+  if (!val("courseTitle")) add("courseTitle", "Enter the course code, number, and title");
 
-  var auto = document.createElement("p");
-  auto.textContent = "Added automatically: the effective date, the Grades link, the bookstore " +
-    "textbook search, the BC Transfer Guide link, the Langara Student Services and academic " +
-    "accommodation links, the College policy list, the subject-to-change note, and the " +
-    "territorial acknowledgement.";
-  host.appendChild(auto);
+  if (creditUnit() === "ceus") {
+    if (badNumber("ceus")) add("ceus", "CEUs must be a number, like 3.5");
+    else if (!val("ceus")) add("ceus", "Enter the number of CEUs");
+    else if (!(Number(val("ceus")) > 0)) add("ceus", "CEUs must be greater than 0");
+  } else if (!val("credits")) {
+    add("credits", "Choose the number of credits");
+  }
 
-  /* The effective date used to be visible on the form, so an author could see
-     what the document would say. With the field gone this line is the only
-     place it appears before generating, which is why the value itself is
-     named and not just the fact that something fills it in. */
-  var dated = document.createElement("p");
-  dated.className = "hint";
-  dated.textContent = "The effective date is the month this document is generated, so it will " +
-    "read " + effectiveDate() + ".";
-  host.appendChild(dated);
+  /* Contact hours are a group rule, since a course need not have all three
+     kinds: one message covers the group, unless a particular box holds
+     something that is not an hour count, in which case that box is the
+     problem and the group message would only repeat it. */
+  var hourFields = [["lectureHours", "Lecture hours"],
+                    ["labHours", "Lab hours"],
+                    ["seminarHours", "Seminar hours"]];
+  var hourFaults = 0;
+  hourFields.forEach(function (pair) {
+    var raw = val(pair[0]);
+    if (badNumber(pair[0])) {
+      add(pair[0], pair[1] + " must be a number, like 3");
+      hourFaults++;
+    } else if (raw !== "" && !(Number(raw) >= 0)) {
+      add(pair[0], pair[1] + " must be 0 or more");
+      hourFaults++;
+    }
+  });
+  if (!hourFaults && !enteredHours().length) {
+    add("lectureHours", "Enter the hours for at least one of lecture, lab, or seminar", {
+      id: "hoursError",
+      before: document.getElementById("lectureHours").parentNode,
+      fields: hourFields.map(function (pair) { return pair[0]; })
+    });
+  }
 
-  return counts;
+  if (!val("yearSemester")) add("yearSemester", "Enter the year and semester");
+  if (!val("mode")) add("mode", "Choose the course format");
+  if (checked("reqYes") && !val("reqDetail")) add("reqDetail", "Enter the pre/corequisites, or choose No");
+
+  if (!val("instructors")) add("instructors", "Enter the instructor's name");
+  if (!val("office")) add("office", "Enter the office location");
+  if (!val("phone")) add("phone", "Enter a phone number");
+  if (!val("email")) add("email", "Enter an email address");
+  else if (!emailLooksValid(document.getElementById("email"))) {
+    add("email", "Enter an email address in the format name@langara.ca");
+  }
+  if (!val("officeHours")) add("officeHours", "Enter the office hours, or say there are none");
+
+  if (!val("courseDescription")) add("courseDescription", "Enter the calendar course description");
+
+  if (isOutcomeList()) {
+    if (!outcomeRows().length) {
+      add("outcomeText1", "Enter at least one learning outcome", {
+        id: "outcomesError",
+        before: document.getElementById("outcomeTable")
+      });
+    }
+  } else if (!hasOutcomeParagraph()) {
+    add("learningOutcomes", "Enter the learning outcomes");
+  }
+
+  /* The link goes to the first Topic box rather than Week, which arrives
+     already numbered. */
+  if (!scheduleRows().length) {
+    add("schedTopic1", "Enter the schedule for at least one week", {
+      id: "scheduleError",
+      before: document.getElementById("scheduleTable").parentNode
+    });
+  }
+
+  /* A weight with nothing to weigh, or an activity with no weight, is half an
+     assessment. The due date stays optional, since participation has none. */
+  var usedRows = 0;
+  Array.prototype.forEach.call(document.getElementById("assessBody").rows, function (tr, i) {
+    var inputs = tr.querySelectorAll("input");
+    var activity = inputs[0] ? inputs[0].value.trim() : "";
+    var weight = inputs[1] ? inputs[1].value.trim() : "";
+    var due = inputs[2] ? inputs[2].value.trim() : "";
+    if (!(activity || weight || due)) return;
+    usedRows++;
+    var n = i + 1;
+    if (!activity) add("assessActivity" + n, "Enter the activity for assessment row " + n);
+    if (!weight) add("assessWeight" + n, "Enter the weight for assessment row " + n);
+  });
+  if (!usedRows) {
+    add("assessActivity1", "Enter at least one assessment and its weight", {
+      id: "assessError",
+      before: document.getElementById("assessTable").parentNode
+    });
+  }
+
+  if (!val("textbook")) add("textbook", "Enter the course materials and textbooks");
+
+  return errors;
+}
+
+/* What is on screen: the ids of the problems shown, a signature of their
+   wording so an edit that changes nothing does not redraw them, and the
+   action that raised them, which the summary heading names. */
+var shownErrorIds = null;
+var shownSignature = "";
+var shownAction = "generate";
+
+var ACTION_PHRASES = {
+  generate: "generate the syllabus",
+  copy: "copy the syllabus",
+  download: "download the syllabus"
+};
+
+function errorSignature(errors) {
+  return errors.map(function (e) { return e.id + ":" + e.message; }).join("|");
+}
+
+/* Takes back exactly what showFieldErrors added. data-error-ref records the
+   ids put into each aria-describedby, so the hint ids that were there first
+   are left alone. */
+function clearFieldErrors() {
+  Array.prototype.slice.call(document.querySelectorAll(".error-message")).forEach(function (el) {
+    el.parentNode.removeChild(el);
+  });
+  Array.prototype.slice.call(document.querySelectorAll("[data-error-ref]")).forEach(function (el) {
+    var added = el.getAttribute("data-error-ref").split(" ");
+    var kept = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(function (t) {
+      return t && added.indexOf(t) === -1;
+    });
+    if (kept.length) el.setAttribute("aria-describedby", kept.join(" "));
+    else el.removeAttribute("aria-describedby");
+    el.removeAttribute("data-error-ref");
+    el.removeAttribute("aria-invalid");
+  });
+}
+
+function showFieldErrors(errors) {
+  clearFieldErrors();
+  errors.forEach(function (e) {
+    if (!e.before || !e.before.parentNode) return;
+
+    var msg = document.createElement("span");
+    msg.className = "error-message";
+    msg.id = e.id;
+    var lead = document.createElement("span");
+    lead.className = "visually-hidden";
+    lead.textContent = "Error: ";
+    msg.appendChild(lead);
+    msg.appendChild(document.createTextNode(e.message));
+    e.before.parentNode.insertBefore(msg, e.before);
+
+    e.fields.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.setAttribute("aria-invalid", "true");
+      var ref = el.getAttribute("data-error-ref");
+      el.setAttribute("data-error-ref", ref ? ref + " " + e.id : e.id);
+      /* First, so the problem is heard before the hint describing the field. */
+      var described = el.getAttribute("aria-describedby");
+      el.setAttribute("aria-describedby", described ? e.id + " " + described : e.id);
+    });
+  });
+}
+
+/* Brings the field's label into view before focusing it, so the author lands
+   seeing what the field is and what is wrong with it rather than a bare box
+   at the top edge of the window. For a group, or a table cell whose label is
+   visually hidden, the message sits above the control and is used instead. */
+function focusField(e) {
+  var el = document.getElementById(e.target);
+  if (!el) return;
+  var label = document.querySelector('label[for="' + e.target + '"]');
+  if (label && label.classList.contains("visually-hidden")) label = null;
+  var msg = document.getElementById(e.id);
+  var top = label || msg || el;
+  if (label && msg && (msg.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+    top = msg;
+  }
+  if (typeof top.scrollIntoView === "function") top.scrollIntoView();
+  el.focus({ preventScroll: true });
+}
+
+function showSummary(errors, action) {
+  var box = document.getElementById("errorSummary");
+  var list = document.getElementById("errorList");
+  list.textContent = "";
+  if (!errors.length) {
+    box.hidden = true;
+    return;
+  }
+
+  var n = errors.length;
+  document.getElementById("errorSummaryHeading").textContent =
+    "Fix " + n + " field" + (n === 1 ? "" : "s") + " to " + ACTION_PHRASES[action];
+
+  errors.forEach(function (e) {
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + e.target;
+    a.textContent = e.message;
+    a.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      focusField(e);
+    });
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+  box.hidden = false;
+}
+
+function renderErrors(errors, action) {
+  showFieldErrors(errors);
+  showSummary(errors, action);
+  shownErrorIds = errors.length ? errors.map(function (e) { return e.id; }) : null;
+  shownSignature = errorSignature(errors);
+  shownAction = action;
+}
+
+/* The full check, run by Generate, Copy and Download. True when the form
+   passes. On a failure the summary takes focus, so what is announced is the
+   thing that explains it; the status lines are left to clearOutput(). */
+function validate(action) {
+  var errors = collectErrors();
+  renderErrors(errors, action);
+  if (errors.length) document.getElementById("errorSummary").focus();
+  return !errors.length;
+}
+
+/* Runs on every edit while problems are on screen, and only ever takes them
+   away: a field loses its message as soon as it is fixed, but one the author
+   has not reached yet is not newly flagged while they type elsewhere. The
+   next Generate reports everything again. Nothing here moves focus or speaks,
+   since the author is in the middle of typing. */
+function refreshErrors() {
+  if (!shownErrorIds) return;
+  var keep = shownErrorIds;
+  var errors = collectErrors().filter(function (e) { return keep.indexOf(e.id) !== -1; });
+  if (errorSignature(errors) === shownSignature) return;
+  renderErrors(errors, shownAction);
 }
 
 /* ------------------------------------------------------------------ *
@@ -1634,6 +1646,7 @@ function removeAssessRow(tr) {
      end for anyone who removed the last row by mistake. */
   if (!body.rows.length) addAssessRow("", "", "");
   renumberAssessRows();
+  refreshErrors();
 
   /* Focus would otherwise land on the body element. Move it to the nearest
      surviving remove button, or the Add button if there is none (SC 3.2.2). */
@@ -1737,6 +1750,7 @@ function removeScheduleRow(tr) {
   body.removeChild(tr);
   if (!body.rows.length) addScheduleRow([]);
   renumberScheduleRows();
+  refreshErrors();
 
   var next = body.rows[Math.min(index, body.rows.length - 1)];
   var target = next ? next.querySelector(".removeWeek") : document.getElementById("addWeekBtn");
@@ -1812,9 +1826,10 @@ function removeOutcomeRow(tr) {
   /* Never leave the table empty, for the same reason the other two do not:
      a header with no rows under it is a dead end for anyone who removed the
      last row by mistake. It also keeps outcomeText1 a real id, which the
-     completeness check links to. */
+     error summary links to. */
   if (!body.rows.length) addOutcomeRow("");
   renumberOutcomeRows();
+  refreshErrors();
 
   var next = body.rows[Math.min(index, body.rows.length - 1)];
   var target = next ? next.querySelector(".removeOutcome")
@@ -1995,7 +2010,14 @@ function announceHoursTotal() {
   document.getElementById("hoursAnnounce").textContent = hoursTotalText();
 }
 
-function generate(announce) {
+/* Nothing is built until the form passes. action names what was pressed, so
+   the error summary can say what the fixes are for. */
+function generate(announce, action) {
+  if (!validate(action || "generate")) {
+    clearOutput();
+    return null;
+  }
+
   var html = buildHtml();
   document.getElementById("source").value = html;
 
@@ -2005,18 +2027,19 @@ function generate(announce) {
     "<title>" + esc(words().previewTitle) + "</title></head><body>" + html + "</body></html>";
   document.getElementById("preview").setAttribute("srcdoc", previewDoc);
 
-  var counts = renderChecklist();
-
-  if (announce !== false) {
-    if (counts.required) {
-      setStatus(words().generatedStatus + " " + counts.required +
-                " required item" + (counts.required === 1 ? "" : "s") + " still outstanding.");
-      document.getElementById("checklist").focus();
-    } else {
-      setStatus(words().generatedStatus);
-    }
-  }
+  if (announce !== false) setStatus(words().generatedStatus);
   return html;
+}
+
+/* A preview or source box still showing an earlier result while the form now
+   fails would be a document the form no longer describes, so both are
+   emptied, along with both status lines, which could otherwise still be
+   saying something was generated or copied. */
+function clearOutput() {
+  document.getElementById("source").value = "";
+  document.getElementById("preview").removeAttribute("srcdoc");
+  setStatus("");
+  setExportStatus("");
 }
 
 function fileName() {
@@ -2100,7 +2123,8 @@ function execCommandCopyHtml(bodyHtml) {
 }
 
 function copyFormatted() {
-  var html = generate(false);
+  var html = generate(false, "copy");
+  if (html === null) return;
   var bodyHtml = previewBodyHtml(html);
 
   if (!bodyHtml) {
@@ -2138,7 +2162,8 @@ function copyFormatted() {
 }
 
 function download() {
-  var html = generate(false);
+  var html = generate(false, "download");
+  if (html === null) return;
   var blob = new Blob([html], { type: "text/html;charset=utf-8" });
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
@@ -2152,7 +2177,8 @@ function download() {
 }
 
 function copy() {
-  var html = generate(false);
+  var html = generate(false, "copy");
+  if (html === null) return;
   var source = document.getElementById("source");
 
   function fallback() {
@@ -2192,16 +2218,11 @@ function init() {
   ["reqYes", "reqNo"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", syncBranches);
   });
-  /* The checklist is re-rendered here because the format change swaps which
-     item is being tested - "At least one learning outcome" against the rows,
-     or "Learning outcomes" against the box - and a stale item would report on
-     an input that is no longer showing. */
   ["outcomeList", "outcomeParagraph"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", function () {
       syncOutcomeMode();
       setStatus(isOutcomeList() ? "Learning outcomes set to a list."
                                 : "Learning outcomes set to a paragraph.");
-      renderChecklist();
     });
   });
   ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
@@ -2252,15 +2273,22 @@ function init() {
   document.getElementById("downloadBtn").addEventListener("click", download);
   document.getElementById("copyBtn").addEventListener("click", copy);
 
-  /* Nothing submits anywhere; Enter should not wipe the form. */
-  document.getElementById("outlineForm").addEventListener("submit", function (ev) {
+  /* Nothing submits anywhere; Enter should not wipe the form. novalidate on
+     the form keeps the browser's own bubbles out of it, so generate() is the
+     one thing that checks. */
+  var form = document.getElementById("outlineForm");
+  form.addEventListener("submit", function (ev) {
     ev.preventDefault();
     generate(true);
   });
 
+  /* Delegated, so rows added later are covered. The per-control listeners
+     above run first, so a branch has already been shown or hidden by the
+     time this looks at it. */
+  form.addEventListener("input", refreshErrors);
+  form.addEventListener("change", refreshErrors);
+
   syncOutcomeMode();
-  markFields();
-  renderChecklist();
 }
 
 if (document.readyState === "loading") {
