@@ -270,8 +270,9 @@
 <p class="field" id="gradingWrap"><label for="gradingNotes">Grading guidelines</label> <span class="hint" id="gradingNotesHint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></p>
 <p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
 </fieldset><fieldset><legend><label for="textbook">Course materials and textbooks (required)</label></legend>
+<div class="radio-row" id="zeroCostWrap"><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has <a href="https://langara.libguides.com/open-education/what-is-open-education" target="_blank" rel="noopener noreferrer">zero textbook cost</a></label></div>
 <p class="field"><span class="hint" id="textbookHint">One per line, each starting with <code>-</code>.</span> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></p>
-<p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to the end of this section automatically.</p>
+<p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to this section automatically.</p>
 <!-- The notice is a FIPPA disclosure attached to the resource, so it
          belongs in the section where the resource is named. It appears
          verbatim in Langara's own Course Outline template.
@@ -456,6 +457,7 @@ var WORDING = {
   fileStem: "course-syllabus",
   generatedStatus: "Syllabus generated.",
   materialsHeading: "Textbooks and course materials",
+  zeroCost: "This course has zero textbook cost.",
   /* A syllabus can carry the instructor's own grading guidelines just above
      this line, so the link is named for what it actually is rather than
      repeating the phrase and reading as a contradiction. */
@@ -1328,16 +1330,20 @@ function buildHtml() {
   assessBody.push("<p>See " + link(GRADES_URL, GRADES_LABEL) + " " + esc(W.gradesNote) + ".</p>");
   L = L.concat(section(2, "Assessment and grading", assessBody));
 
-  /* Course materials. The privacy notice belongs with the resource that
-     triggers it, and goes out unless the instructor has affirmed that no
-     resource is hosted outside Canada. The bookstore search always closes
-     the section. */
+  /* Course materials. The zero-cost statement, when the instructor has
+     ticked it, leads the section, ahead of the list it qualifies. The
+     bookstore search follows the list. The privacy notice belongs with the
+     resource that triggers it, and closes the section unless the instructor
+     has affirmed that no resource is hosted outside Canada. */
   var textbookBody = [];
+  if (checked("zeroCost")) {
+    textbookBody.push("<p>" + esc(W.zeroCost) + "</p>");
+  }
   textbookBody = textbookBody.concat(blocks(val("textbook")));
+  textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
   if (!checked("privacyOptOut")) {
     textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
   }
-  textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
   L = L.concat(section(2, W.materialsHeading, textbookBody));
 
   /* College policies before departmental ones: the College's obligations frame
