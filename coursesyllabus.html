@@ -307,18 +307,17 @@
 <p class="actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
 </form><hr>
 <h2>Preview</h2>
-<p class="hint">The finished syllabus may not look exactly like this preview. Text here has no font of its own, so it appears in your browser's default; once pasted into Brightspace or Word, it takes that editor's font. Tables keep their borders and shading wherever they go.</p>
+<p class="hint">The finished syllabus may not look exactly like this preview. Use the preview to review your syllabus content.</p>
   <iframe id="preview" title="Course syllabus preview" height="600"></iframe> <!-- The steps sit here, between the result and the button they start with,
      because this is the point on the page where they are acted on. -->
 <p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
 <ol aria-labelledby="workflowIntro">
-<li>Choose <strong>Copy formatted</strong>, just below.</li>
+<li>Choose <strong>Copy syllabus</strong>, just below.</li>
 <li>In your course, choose <strong>Upload / Create</strong> &gt; <strong>Create a file</strong>.</li>
 <li>Provide a title, such as "Course Syllabus"</li>
 <li>If desired, open the <strong>Select a Document Template</strong> menu to choose a styled template.</li>
 <li>Paste into the editor, then save.</li>
 </ol>
-<p class="hint">Copy formatted puts the finished layout on the clipboard, ready to paste into Brightspace or Word.</p>
 <!-- These act on the generated document rather than on the form, so they sit
      with the generated document. All call generate(false) first, so none
      depends on Generate having been pressed. Their own status region, rather
@@ -331,12 +330,12 @@
      saying when to reach for it opens that element, so it is read before the
      button. Copy HTML still reports to this status region, which is only a
      line or two above it once the element is open. -->
-<p class="actions"><button type="button" id="copyFormattedBtn">Copy formatted</button> <span id="exportStatus" role="status"></span></p>
+<p class="actions"><button type="button" id="copyFormattedBtn">Copy syllabus</button> <span id="exportStatus" role="status"></span></p>
 <!-- "Show" rather than "Click to see": the summary is operated by keyboard
      and touch as often as by mouse, and a screen reader already announces it
      as expandable. -->
 <details id="sourceDetails">
-<summary>Show HTML source code</summary>
+<summary>Show HTML source code (advanced users)</summary>
 <p class="hint">If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
 <p class="actions"><button type="button" id="copyBtn">Copy HTML</button></p>
 <p><label for="source">Generated HTML (read-only)</label></p>
