@@ -1059,6 +1059,16 @@ function isWeightNumber(s) {
   return /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(weightFigure(s));
 }
 
+/* Exam-type rows are exempt from the due-date requirement below: a final
+ * exam's date is normally set by the Registrar after the outline is written,
+ * not by the instructor. Matched on the word "exam"/"exams" alone (not bare
+ * "final"), so "Final Exam"/"Final Exams"/"Midterm Exam" are exempt but
+ * "Final Project"/"Final Paper" - which do have an instructor-set date -
+ * still require one. */
+function isExamActivity(s) {
+  return /\bexams?\b/i.test(String(s == null ? "" : s));
+}
+
 function formatWeight(s) {
   var f = weightFigure(s);
   return f ? f + "%" : "";
@@ -1509,7 +1519,9 @@ function collectErrors() {
   }
 
   /* A weight with nothing to weigh, or an activity with no weight, is half an
-     assessment. The due date stays optional, since participation has none. */
+     assessment. The due date is required, since a schedule with gaps in it
+     is not one - except for an exam-type row, whose date is normally set by
+     the Registrar after the outline is written, not by the instructor. */
   var usedRows = 0;
   Array.prototype.forEach.call(document.getElementById("assessBody").rows, function (tr, i) {
     var inputs = tr.querySelectorAll("input");
@@ -1523,6 +1535,7 @@ function collectErrors() {
     if (!(activity || weight || due || dueBad)) return;
     usedRows++;
     var n = i + 1;
+    var examRow = isExamActivity(activity);
     /* The weight box shares a wrapper with its % sign, so its message goes in
        front of the wrapper. In front of the box it would land inside the flex
        row, beside the box rather than above it. */
@@ -1534,7 +1547,12 @@ function collectErrors() {
       add("assessWeight" + n, "Enter the weight for assessment row " + n +
           " as a number, like 20", weightOpts);
     }
-    if (dueBad) add("assessDue" + n, "Enter a complete due date for assessment row " + n + ", or clear it");
+    if (dueBad) {
+      add("assessDue" + n, "Enter a complete due date for assessment row " + n +
+          (examRow ? ", or clear it" : ""));
+    } else if (!due && !examRow) {
+      add("assessDue" + n, "Enter a due date for assessment row " + n);
+    }
   });
   if (!usedRows) {
     add("assessActivity1", "Enter at least one assessment and its weight", {
@@ -2158,9 +2176,19 @@ function generate(announce, action) {
   document.getElementById("source").value = html;
 
   /* The output is a fragment, so the preview iframe gets a document wrapped
-     around it with a declared charset, or it would mis-render em dashes. */
+     around it with a declared charset, or it would mis-render em dashes.
+     The lock style/script below live only in this wrapper, never in html
+     itself, so Copy HTML/Download still hand over the plain fragment
+     untouched. Selection is disabled because copying straight out of the
+     rendered preview carries odd formatting; a screen reader reads the DOM
+     regardless of user-select, so this does not affect accessibility. */
+  var previewLock = "<style>html,body{-webkit-user-select:none;" +
+    "-moz-user-select:none;-ms-user-select:none;user-select:none;}</style>" +
+    "<script>document.addEventListener('copy',function(e){e.preventDefault();" +
+    "if(e.clipboardData)e.clipboardData.setData('text/plain','');});<\/script>";
   var previewDoc = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
-    "<title>" + esc(words().previewTitle) + "</title></head><body>" + html + "</body></html>";
+    "<title>" + esc(words().previewTitle) + "</title>" + previewLock +
+    "</head><body>" + html + "</body></html>";
   document.getElementById("preview").setAttribute("srcdoc", previewDoc);
 
   if (announce !== false) setStatus(words().generatedStatus);
