@@ -1364,7 +1364,9 @@ function buildHtml() {
   L = L.concat(section(2, W.materialsHeading, textbookBody));
 
   /* College policies before departmental ones: the College's obligations frame
-     the department's, not the other way round. */
+     the department's, not the other way round. Student support sits between
+     them, so the departmental guidelines are the last of the policy material
+     before the versioning block. */
   var policyBody = ["<p>Students are responsible for reading the College policies that govern " +
                     "their studies, including:</p>", "<ul>"];
   POLICY_LINKS.forEach(function (p) {
@@ -1374,14 +1376,14 @@ function buildHtml() {
   policyBody.push("<p>The full list is at " + link(POLICY_INDEX_URL, POLICY_INDEX_LABEL) + ".</p>");
   L = L.concat(section(2, "College policies", policyBody));
 
-  L = L.concat(section(2, "Departmental and course guidelines", blocks(val("deptPolicies"))));
-
   L = L.concat(section(2, "Student support", [
     "<p>Langara offers academic and personal supports to students. See " +
       link(SUPPORT_URL, SUPPORT_LABEL) + ".</p>",
     "<p>Students who require academic accommodation should consult " +
       link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
   ]));
+
+  L = L.concat(section(2, "Departmental and course guidelines", blocks(val("deptPolicies"))));
 
   /* Always present now that it is generated rather than typed, so there is no
      blank case left to guard against. esc() rather than inline(): the string
