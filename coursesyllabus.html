@@ -1150,6 +1150,13 @@ var CELL_BASE     = "border: 1px solid #595959; padding: 6px 10px; " +
 var TH_STYLE      = CELL_BASE + " background-color: #f2f2f2;";
 var TD_STYLE      = CELL_BASE + " overflow-wrap: anywhere;";
 
+/* The rule that sets the territorial acknowledgement apart from the document
+   above it. Every property is spelled out because the hosts restyle a bare
+   <hr>: Bootstrap, which the Langara template loads, gives it its own margin
+   and a translucent border, and Brightspace gives it its own again. Same
+   #595959 as the table borders; height: 0 so only the border-top draws. */
+var HR_STYLE      = "border: 0; border-top: 1px solid #595959; height: 0; margin: 1.5rem 0;";
+
 /* Opening lines of an export table: the styled table tag and its caption. */
 function tableStart(caption) {
   return ['<table width="100%" style="' + esc(TABLE_STYLE) + '">',
@@ -1387,7 +1394,11 @@ function buildHtml() {
   }
   L = L.concat(section(2, "Versioning", versionBody));
 
-  /* Closes the document, as it closes the College's own template. */
+  /* Closes the document, as it closes the College's own template, set off
+     from the versioning block by a horizontal rule. */
+  L.push("");
+  L.push('<hr style="' + esc(HR_STYLE) + '">');
+  L.push("");
   L.push("<p>" + esc(ACKNOWLEDGEMENT) + "</p>");
 
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
