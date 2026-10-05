@@ -139,10 +139,12 @@
      (SC 1.4.1). #b00020 is 7:1 on white, clearing 4.5:1 for the text and 3:1
      for the borders. The control rules name their elements so they match the
      specificity of input[type="text"] above and, coming later, win. */
-  .error-message { display: block; color: #b00020; font-weight: bold; margin: 0.2rem 0; }
+  .error-message, .rich-link-error { display: block; color: #b00020; font-weight: bold; margin: 0.2rem 0; }
   input[aria-invalid="true"],
   select[aria-invalid="true"],
-  textarea[aria-invalid="true"] { border: 2px solid #b00020; }
+  textarea[aria-invalid="true"],
+  .rich-editor[aria-invalid="true"],
+  .rich-link input[aria-invalid="true"] { border: 2px solid #b00020; }
   .error-summary { border: 3px solid #b00020; padding: 0.75rem 1rem; margin: 0 0 1rem; }
   .error-summary h2 { font-size: 1.25rem; margin: 0 0 0.5rem; }
   .error-summary ul { margin: 0; padding-left: 1.25rem; }
@@ -162,14 +164,46 @@
   .help-box p { margin: 0 0 0.5rem; }
   .help-box p:last-child { margin-bottom: 0; }
   .help-box code { background: #ffffff; }
+
+  /* The rich boxes: course materials, grading guidelines, departmental
+     guidelines. A contenteditable div has none of a textarea's own border,
+     height or padding, so the same ones are given to it here. The toolbar
+     wraps for Reflow. A pressed button gets a thicker border as well as the
+     shading, so its state is not carried by colour alone (SC 1.4.1); the
+     padding gives back the pixel each side the border takes, so the button
+     does not change size when it is pressed. */
+  .rich-toolbar { display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0 0 0.25rem; }
+  .rich-toolbar button { min-width: 2.75rem; }
+  .rich-toolbar button[data-cmd="bold"] { font-weight: bold; }
+  .rich-toolbar button[data-cmd="italic"] { font-style: italic; }
+  .rich-toolbar button[aria-pressed="true"],
+  .rich-toolbar button[aria-expanded="true"] {
+    background: #d9d9d9;
+    border-width: 2px;
+    padding: calc(0.4rem - 1px) calc(0.9rem - 1px);
+  }
+  .rich-link { background: #f2f2f2; border: 1px solid #595959; padding: 0.5rem 0.75rem; margin: 0 0 0.25rem; }
+  .rich-link .field { margin: 0 0 0.5rem; }
+  .rich-editor {
+    min-height: 8rem;
+    padding: 0.4rem;
+    border: 1px solid #595959;
+    box-sizing: border-box;
+    overflow: auto;
+    resize: vertical;
+    overflow-wrap: anywhere;
+  }
+  .rich-editor p, .rich-editor ul, .rich-editor ol { margin: 0 0 0.5rem; }
+  .rich-editor > :last-child { margin-bottom: 0; }
 </style>
 </head><body><main>
 <h1>Course Syllabus Builder</h1>
 <p>Fill in the fields, then choose <strong>Generate syllabus</strong>.</p>
 <div class="help-box">
-<p><strong>In any text box:</strong> lines starting with <code>-</code> or <code>*</code> become a bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become paragraphs.</p>
-<p><strong>To add a link,</strong> put the wording in square brackets and the address in round brackets straight after it, with no space between:</p>
+<p><strong>In text boxes without a toolbar:</strong> lines starting with <code>-</code> or <code>*</code> become a bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become paragraphs.</p>
+<p><strong>To add a link in those boxes,</strong> put the wording in square brackets and the address in round brackets straight after it, with no space between:</p>
 <p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
+<p>Boxes with a toolbar take bold, italics, lists and links from its buttons. Pasted lists and links are kept.</p>
 </div>
 <form id="outlineForm" novalidate><fieldset><legend>Course identification</legend>
 <p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
@@ -268,11 +302,11 @@
 <p class="hint" id="weightTotal">Total weight: not yet entered</p>
 <span class="visually-hidden" id="weightAnnounce" role="status"></span>
 <p><button type="button" id="addAssessBtn">Add assessment row</button></p>
-<p class="field" id="gradingWrap"><label for="gradingNotes">Grading guidelines</label> <span class="hint" id="gradingNotesHint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></p>
+<div class="field" id="gradingWrap"><label for="gradingNotes">Grading guidelines</label> <span class="hint" id="gradingNotesHint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></div>
 <p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
 </fieldset><fieldset><legend><label for="textbook">Course materials and textbooks (required)</label></legend>
 <div class="radio-row" id="zeroCostWrap"><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has <a href="https://langara.libguides.com/open-education/what-is-open-education" target="_blank" rel="noopener noreferrer">zero textbook cost</a></label></div>
-<p class="field"><span class="hint" id="textbookHint">One per line, each starting with <code>-</code>.</span> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></p>
+<div class="field"><span class="hint" id="textbookHint">Use a bulleted list, one item for each textbook or resource.</span> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></div>
 <p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to this section automatically.</p>
 <!-- The notice is a FIPPA disclosure attached to the resource, so it
          belongs in the section where the resource is named. It appears
@@ -284,7 +318,7 @@
 <div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacyOptOut" aria-describedby="privacyOptOutHint"> <label for="privacyOptOut">I affirm that no online resources used in this course are hosted outside of Canada</label></div>
 <p class="hint" id="privacyOptOutHint">Unless this box is checked, the privacy notice for online resources hosted outside Canada is added to this section.</p>
 </fieldset><fieldset><legend><label for="deptPolicies">Departmental and course guidelines</label></legend>
-<p class="field"><span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></p>
+<div class="field"><span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></div>
 </fieldset><!-- The Versioning fieldset is gone. Its one field, the effective date, is
        now filled in from the clock at generate time, and the rest of the
        section (the subject-to-change note, the archive link) was already
@@ -676,6 +710,9 @@ function cellBlocks(s) {
  * ------------------------------------------------------------------ */
 
 /* The textareas whose contents reach blocks(). */
+/* The three rich boxes are listed here too. They start as textareas and the
+   script swaps each for an editor with its own paste handling; if that swap
+   never happens, they are still textareas and still covered. */
 var PASTE_FIELDS = ["courseDescription", "textbook", "gradingNotes", "deptPolicies"];
 
 /* Glyphs a bullet arrives as - every shape a real paste produces, not just
@@ -839,6 +876,8 @@ function pasteNoteText(r) {
 
 function val(id) {
   var el = document.getElementById(id);
+  /* A rich editor is a div and has no value of its own. */
+  if (el && el.getAttribute && el.getAttribute("data-rich")) return String(el.textContent).trim();
   return el ? String(el.value).trim() : "";
 }
 
@@ -1339,7 +1378,7 @@ function buildHtml() {
   /* The instructor's own grading guidelines sit between the table and the link
      to the College's scale - F1003 3.2(g). The heading goes out only with
      content under it: an empty h3 is a heading for nothing. */
-  var grading = blocks(val("gradingNotes"));
+  var grading = fieldBlocks("gradingNotes");
   if (grading.length) {
     assessBody.push(heading(3, "Grading guidelines"));
     assessBody = assessBody.concat(grading);
@@ -1356,7 +1395,7 @@ function buildHtml() {
   if (checked("zeroCost")) {
     textbookBody.push("<p>" + esc(W.zeroCost) + "</p>");
   }
-  textbookBody = textbookBody.concat(blocks(val("textbook")));
+  textbookBody = textbookBody.concat(fieldBlocks("textbook"));
   textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
   if (!checked("privacyOptOut")) {
     textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
@@ -1383,7 +1422,7 @@ function buildHtml() {
       link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
   ]));
 
-  L = L.concat(section(2, "Departmental and course guidelines", blocks(val("deptPolicies"))));
+  L = L.concat(section(2, "Departmental and course guidelines", fieldBlocks("deptPolicies")));
 
   /* Always present now that it is generated rather than typed, so there is no
      blank case left to guard against. esc() rather than inline(): the string
@@ -1574,7 +1613,14 @@ function collectErrors() {
     });
   }
 
-  if (!val("textbook")) add("textbook", "Enter the course materials and textbooks");
+  /* The message goes above the toolbar, not between it and the editor, so
+     it is in front of the whole control. Where the editor was never built,
+     the textarea is the control and takes it as before. */
+  if (!fieldFilled("textbook")) {
+    add("textbook", "Enter the course materials and textbooks", {
+      before: document.getElementById("textbookRich") || document.getElementById("textbook")
+    });
+  }
 
   return errors;
 }
@@ -1650,7 +1696,7 @@ function showFieldErrors(errors) {
 function focusField(e) {
   var el = document.getElementById(e.target);
   if (!el) return;
-  var label = document.querySelector('label[for="' + e.target + '"]');
+  var label = document.querySelector('label[for="' + e.target + '"], label[data-for="' + e.target + '"]');
   if (label && label.classList.contains("visually-hidden")) label = null;
   var msg = document.getElementById(e.id);
   var top = label || msg || el;
@@ -2152,6 +2198,930 @@ function handlePaste(ev) {
   setPasteNote(el.id, pasteNoteText(report));
 }
 
+/* ------------------------------------------------------------------ *
+ * Rich text fields
+ *
+ * Course materials, grading guidelines and departmental guidelines are the
+ * three boxes where plain lines run out: a textbook title that is a link, a
+ * title in italics, a list item with a link inside it. Each becomes a small
+ * editor with bold, italic, bulleted and numbered lists, and links - and
+ * nothing else, so the output cannot drift from the look of the template.
+ *
+ * Progressive: the three boxes are textareas in the markup, and the script
+ * swaps each for an editor at start-up. If that never runs, the textarea is
+ * still there and still works through blocks(), exactly as before.
+ *
+ * The editor keeps the id the textarea had, so the error summary, aria-
+ * invalid and focus handling reach it with no special cases.
+ *
+ * The one rule that matters: what is in the editor is never trusted. Both
+ * the pasted text and the editor's own markup go through richClean(), which
+ * rebuilds the content from an allow-list (p, ul, ol, li, strong, em, a, br)
+ * and keeps nothing else - no styles, classes, fonts, colours or scripts. The
+ * same function runs on a paste, so what the editor shows is what the export
+ * will carry, and again at generate time, so nothing the browser's own
+ * editing added along the way reaches the export either.
+ *
+ * Flag, don't fix: whatever richClean() has to remove or reshape on a paste
+ * (images, tables, headings, links it will not keep) is counted and reported
+ * in the note under the box.
+ * ------------------------------------------------------------------ */
+
+var RICH_FIELDS = ["textbook", "gradingNotes", "deptPolicies"];
+
+/* Tags dropped along with everything inside them. */
+var RICH_DROP = /^(?:script|style|head|title|meta|link|noscript|template|svg|canvas|iframe|object|embed|video|audio|form|button|select|textarea|input|map)$/;
+
+/* Tags that start a new line of content rather than sit inside one. */
+var RICH_BLOCK = /^(?:p|div|section|article|header|footer|main|aside|nav|blockquote|pre|address|figure|figcaption|details|summary|dl|dt|dd|fieldset|center|h[1-6]|ul|ol|li|table|thead|tbody|tfoot|tr|td|th|caption|hr)$/;
+
+function richFmt() {
+  return { bold: false, italic: false, link: false };
+}
+
+function richIsBlock(node) {
+  return node.nodeType === 1 && RICH_BLOCK.test(node.nodeName.toLowerCase());
+}
+
+function richHasBlockChild(node) {
+  for (var n = node.firstChild; n; n = n.nextSibling) {
+    if (richIsBlock(n)) return true;
+  }
+  return false;
+}
+
+/* Text node to safe markup: invisible characters out, every kind of space
+   made a plain one, runs of space made one - the way a browser would render
+   it. */
+function richText(s) {
+  return esc(String(s == null ? "" : s)
+    .replace(/[\u00ad\u200b\ufeff]/g, "")
+    .replace(/[\u00a0\u2000-\u200a\u202f\u205f\u3000]/g, " ")
+    .replace(/\s+/g, " "));
+}
+
+/* An address a link in this box may carry: http, https or mailto. Narrower
+   than safeUrl(), which also lets a relative path through - fine for typed
+   link syntax, where the author sees the address, but a relative path pasted
+   from a web page points nowhere once it lands in Brightspace. */
+function richHref(raw) {
+  var s = safeUrl(raw);
+  return (s && /^(?:https?|mailto):/i.test(s)) ? s : null;
+}
+
+function richHasText(s) {
+  return /\S/.test(String(s).replace(/<[^>]*>/g, ""));
+}
+
+/* One pass for whitespace that leaves tags (and so attribute values) alone,
+   then the edges: no space or line break at the start or end, and no space
+   either side of a break. */
+function richTrim(s) {
+  return String(s)
+    .replace(/(<[^>]*>)|\s+/g, function (m, tag) { return tag || " "; })
+    .replace(/ ?<br> ?/g, "<br>")
+    .replace(/^(?: |<br>)+|(?: |<br>)+$/g, "");
+}
+
+function richStyle(node, prop) {
+  var s = node.getAttribute && node.getAttribute("style");
+  if (!s) return "";
+  var m = new RegExp("(?:^|;)\\s*" + prop + "\\s*:\\s*([^;]+)", "i").exec(s);
+  return m ? m[1].trim().toLowerCase() : "";
+}
+
+/* b and strong are bold unless the style says otherwise: Google Docs wraps
+   everything it copies in <b style="font-weight:normal">, which is not bold.
+   Any other element is bold only if its style says so, which is how Docs and
+   Word write the real thing. */
+function richIsBold(node, tag) {
+  var w = richStyle(node, "font-weight");
+  if (tag === "b" || tag === "strong") return !(w && /^(?:normal|lighter|[1-5]00)$/.test(w));
+  return /^(?:bold|bolder|[6-9]00)$/.test(w);
+}
+
+function richIsItalic(node, tag) {
+  var s = richStyle(node, "font-style");
+  if (tag === "i" || tag === "em") return s !== "normal";
+  return s === "italic" || s === "oblique";
+}
+
+/* Word writes a list as ordinary paragraphs. Each carries an mso-list style
+   giving its level, and its bullet or number sits in a span styled
+   mso-list:Ignore. Returns the level, or 0 for a paragraph that is not one. */
+function richWordLevel(node) {
+  var s = node.getAttribute("style") || "";
+  if (!/mso-list\s*:\s*(?!none|ignore)/i.test(s)) return 0;
+  var m = /level(\d+)/i.exec(s);
+  return m ? parseInt(m[1], 10) : 1;
+}
+
+function richIsWordMarker(node) {
+  return /mso-list\s*:\s*ignore/i.test(node.getAttribute("style") || "");
+}
+
+function richWordMarkerText(p) {
+  var spans = p.getElementsByTagName("span");
+  for (var i = 0; i < spans.length; i++) {
+    if (richIsWordMarker(spans[i])) return spans[i].textContent;
+  }
+  return null;
+}
+
+/* Inline content: text, bold, italic, links, line breaks. ctx.notes counts
+   what is removed. fmt records what is already open, so bold inside bold
+   does not nest. */
+function richInlineNodes(parent, ctx, fmt) {
+  var s = "";
+  for (var n = parent.firstChild; n; n = n.nextSibling) s += richInline(n, ctx, fmt);
+  return s;
+}
+
+function richInline(node, ctx, fmt) {
+  if (node.nodeType === 3) return richText(node.nodeValue);
+  if (node.nodeType !== 1) return "";
+
+  var tag = node.nodeName.toLowerCase();
+  if (RICH_DROP.test(tag)) return "";
+  if (tag === "img") { ctx.notes.images++; return ""; }
+  if (tag === "br") return "<br>";
+  if (richIsWordMarker(node)) return "";
+
+  /* A block-level element met in the middle of inline content - a table
+     cell holding paragraphs, say - is flattened, with a space either side
+     so its words do not run into its neighbours'. */
+  if (richIsBlock(node)) return " " + richInlineNodes(node, ctx, fmt) + " ";
+
+  var f = { bold: fmt.bold, italic: fmt.italic, link: fmt.link };
+  var open = "";
+  var close = "";
+
+  if (!f.bold && richIsBold(node, tag)) {
+    open += "<strong>";
+    close = "</strong>" + close;
+    f.bold = true;
+  }
+  if (!f.italic && richIsItalic(node, tag)) {
+    open += "<em>";
+    close = "</em>" + close;
+    f.italic = true;
+  }
+  if (tag === "a" && !f.link) {
+    var raw = node.getAttribute("href");
+    /* An anchor with no href is a bookmark, not a link, and loses nothing. */
+    if (raw !== null) {
+      var href = richHref(raw);
+      if (href) {
+        open += '<a href="' + esc(href) + '"' + LINK_ATTRS + ">";
+        close = "</a>" + close;
+        f.link = true;
+      } else {
+        ctx.notes.links++;
+      }
+    }
+  }
+
+  var inner = richInlineNodes(node, ctx, f);
+  /* No wrapper around nothing: a bold run holding only a space would
+     otherwise leave an empty <strong> in the export. */
+  if (!open || !richHasText(inner)) return inner;
+  return open + inner + close;
+}
+
+/* A run of inline markup as paragraph content. Empty gives nothing. */
+function richParagraph(run) {
+  var t = richTrim(run);
+  return richHasText(t) ? "<p>" + t + "</p>" : "";
+}
+
+/* The content of one list item: its own text, any paragraphs inside it
+   (Google Docs puts one in every item) joined by line breaks, then any list
+   nested inside it. */
+function richLi(li, ctx) {
+  var parts = [];
+  var nested = "";
+  var run = "";
+
+  function flush() {
+    var t = richTrim(run);
+    if (richHasText(t)) parts.push(t);
+    run = "";
+  }
+
+  for (var n = li.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 1) {
+      var tag = n.nodeName.toLowerCase();
+      if (tag === "ul" || tag === "ol") { flush(); nested += richList(n, ctx); continue; }
+      if (richIsBlock(n)) {
+        flush();
+        run = richInlineNodes(n, ctx, richFmt());
+        flush();
+        continue;
+      }
+    }
+    run += richInline(n, ctx, richFmt());
+  }
+  flush();
+  return parts.join("<br>") + nested;
+}
+
+function richList(el, ctx) {
+  var tag = el.nodeName.toLowerCase();
+  var items = [];
+
+  for (var n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3) {
+      var t = richTrim(richText(n.nodeValue));
+      if (richHasText(t)) items.push(t);
+      continue;
+    }
+    if (n.nodeType !== 1) continue;
+    var nt = n.nodeName.toLowerCase();
+    if (RICH_DROP.test(nt)) continue;
+    if (nt === "li") {
+      items.push(richLi(n, ctx));
+    } else if (nt === "ul" || nt === "ol") {
+      /* A list sitting directly inside a list is invalid, but Word and some
+         editors write it. It belongs to the item before it. */
+      var sub = richList(n, ctx);
+      if (sub) {
+        if (items.length) items[items.length - 1] += sub;
+        else items.push(sub);
+      }
+    } else {
+      items.push(richTrim(richInline(n, ctx, richFmt())));
+    }
+  }
+
+  items = items.filter(richHasText);
+  if (!items.length) return "";
+  return "<" + tag + ">" + items.map(function (i) { return "<li>" + i + "</li>"; }).join("") +
+         "</" + tag + ">";
+}
+
+/* The list a run of Word list paragraphs makes, nested by level. */
+function richWordList(items) {
+  var out = "";
+  var stack = [];
+
+  items.forEach(function (it) {
+    while (stack.length && stack[stack.length - 1].level > it.level) {
+      out += "</li></" + stack.pop().type + ">";
+    }
+    var top = stack.length ? stack[stack.length - 1] : null;
+    if (top && top.level === it.level) {
+      out += "</li>";
+      if (top.type !== it.type) {
+        out += "</" + top.type + ">";
+        stack.pop();
+        top = null;
+      }
+    }
+    if (!top || top.level < it.level) {
+      out += "<" + it.type + ">";
+      stack.push({ type: it.type, level: it.level });
+    }
+    out += "<li>" + it.html;
+  });
+  while (stack.length) out += "</li></" + stack.pop().type + ">";
+  return out;
+}
+
+function richBlocksOf(parent, ctx) {
+  var out = [];
+  var run = "";
+  var items = null;
+
+  function flushRun() {
+    var p = richParagraph(run);
+    if (p) out.push(p);
+    run = "";
+  }
+  function flushItems() {
+    if (items) { out.push(richWordList(items)); items = null; }
+  }
+
+  for (var n = parent.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3) {
+      /* Space between two Word list paragraphs must not end the list. */
+      if (items && !/\S/.test(n.nodeValue)) continue;
+      flushItems();
+      run += richText(n.nodeValue);
+      continue;
+    }
+    if (n.nodeType !== 1) continue;
+
+    var tag = n.nodeName.toLowerCase();
+    if (RICH_DROP.test(tag)) continue;
+
+    if (!richIsBlock(n)) {
+      flushItems();
+      run += richInline(n, ctx, richFmt());
+      continue;
+    }
+
+    var level = richWordLevel(n);
+    var marker = level ? richWordMarkerText(n) : null;
+    if (marker !== null) {
+      flushRun();
+      var mk = marker.replace(/\s+/g, "");
+      var type = /^\(?(?:\d+|[a-z]|[ivxlcdm]+)[.)]$/i.test(mk) ? "ol" : "ul";
+      var html = richTrim(richInlineNodes(n, ctx, richFmt()));
+      if (richHasText(html)) {
+        (items = items || []).push({ level: level, type: type, html: html });
+        ctx.notes.bullets++;
+      }
+      continue;
+    }
+
+    flushRun();
+    flushItems();
+
+    if (tag === "ul" || tag === "ol") {
+      var list = richList(n, ctx);
+      if (list) out.push(list);
+    } else if (tag === "table") {
+      ctx.notes.tables++;
+      Array.prototype.forEach.call(n.rows || [], function (tr) {
+        var cells = Array.prototype.map.call(tr.cells, function (c) {
+          return richTrim(richInlineNodes(c, ctx, richFmt()).replace(/<br>/g, " "));
+        }).filter(richHasText);
+        if (cells.length) out.push("<p>" + cells.join(" | ") + "</p>");
+      });
+    } else if (/^h[1-6]$/.test(tag)) {
+      ctx.notes.headings++;
+      /* Bold already open, so a heading's own bold does not nest. */
+      var h = richTrim(richInlineNodes(n, ctx, { bold: true, italic: false, link: false }));
+      if (richHasText(h)) out.push("<p><strong>" + h + "</strong></p>");
+    } else if (tag === "hr") {
+      continue;
+    } else if (richHasBlockChild(n)) {
+      Array.prototype.push.apply(out, richBlocksOf(n, ctx));
+    } else {
+      run = richInlineNodes(n, ctx, richFmt());
+      flushRun();
+    }
+  }
+  flushRun();
+  flushItems();
+  return out;
+}
+
+/* Rebuilds markup into the allow-list. Returns the clean markup, one block
+   to a line, and counts of what was removed or reshaped. DOMParser rather
+   than innerHTML on a live element: the parsed document is inert, so nothing
+   in a paste can load or run while it is being read. */
+function richCleanOnce(input) {
+  var notes = { bullets: 0, images: 0, tables: 0, headings: 0, links: 0 };
+  var doc = new DOMParser().parseFromString(String(input == null ? "" : input), "text/html");
+  var found = doc.body ? richBlocksOf(doc.body, { notes: notes }) : [];
+  var html = found.join("\n")
+    .replace(/<\/strong><strong>/g, "")
+    .replace(/<\/em><em>/g, "")
+    .replace(/<(ul|ol)>/g, "<$1>\n")
+    .replace(/<\/(ul|ol)>/g, "\n</$1>")
+    .replace(/<\/li><li>/g, "</li>\n<li>")
+    .replace(/<\/(ul|ol)>\n?<(ul|ol)>/g, "</$1>\n<$2>");
+  return { html: html, notes: notes };
+}
+
+/* Joining neighbouring bold or italic runs can leave two spaces side by side
+   where the end of one met the start of the next, and that is only visible
+   to a second pass. Cleaning the output again until it stops changing means
+   what a paste puts in the editor and what Generate later reads back out of
+   it are the same markup. The counts come from the first pass, which is the
+   only one that sees the original; the passes after it see clean markup. */
+function richClean(input) {
+  var r = richCleanOnce(input);
+  for (var i = 0; i < 4; i++) {
+    var again = richCleanOnce(r.html);
+    if (again.html === r.html) break;
+    r.html = again.html;
+  }
+  return r;
+}
+
+/* What the rest of the page asks of a field, whether it is an editor or, if
+   the script that builds them did not run, the textarea it started as. */
+function fieldBlocks(id) {
+  var el = document.getElementById(id);
+  if (el && el.getAttribute("data-rich")) {
+    var html = richClean(el.innerHTML).html;
+    return html ? [html] : [];
+  }
+  return blocks(val(id));
+}
+
+function fieldFilled(id) {
+  return fieldBlocks(id).length > 0;
+}
+
+function richPlural(n, one, many) {
+  return n + " " + (n === 1 ? one : many);
+}
+
+function richNoteBits(n) {
+  var bits = [];
+  if (n.bullets) bits.push("Converted " + richPlural(n.bullets, "pasted list item", "pasted list items") + " to list format.");
+  if (n.tables) bits.push("Turned " + richPlural(n.tables, "table", "tables") + " into lines of text.");
+  if (n.headings) bits.push("Turned " + richPlural(n.headings, "heading", "headings") + " into bold text.");
+  if (n.images) bits.push("Left out " + richPlural(n.images, "image", "images") + ".");
+  if (n.links) bits.push("Removed " + richPlural(n.links, "link", "links") + " whose address is not a web or email address.");
+  return bits;
+}
+
+function richFireInput(ed) {
+  var ev;
+  try {
+    ev = new Event("input", { bubbles: true });
+  } catch (e) {
+    ev = document.createEvent("Event");
+    ev.initEvent("input", true, false);
+  }
+  ed.dispatchEvent(ev);
+}
+
+/* insertHTML rather than editing the DOM directly, so the paste stays on the
+   browser's undo stack. A single paragraph goes in as its inner markup, so it
+   joins the line it lands in the way an ordinary paste does instead of
+   starting a new one. Where insertHTML is missing or refuses, the same
+   markup is put in through a Range, which loses undo and nothing else. */
+function richInsert(ed, html) {
+  var single = /^<p>((?:(?!<\/?p>)[\s\S])*)<\/p>$/.exec(html);
+  var payload = single ? single[1] : html;
+
+  ed.focus();
+  var done = false;
+  try {
+    done = !!(document.execCommand && document.execCommand("insertHTML", false, payload));
+  } catch (e) {
+    done = false;
+  }
+  if (done) return;
+
+  var sel = window.getSelection ? window.getSelection() : null;
+  var range = (sel && sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer))
+    ? sel.getRangeAt(0) : null;
+  if (!range) {
+    range = document.createRange();
+    range.selectNodeContents(ed);
+    range.collapse(false);
+  }
+  range.deleteContents();
+  var frag = range.createContextualFragment(payload);
+  var last = frag.lastChild;
+  range.insertNode(frag);
+  if (last && sel) {
+    range.setStartAfter(last);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+  richFireInput(ed);
+}
+
+/* HTML where the clipboard has it - Word, Docs and web pages all do - and
+   plain text through the same clean-up the textareas use where it does not.
+   Always taken over from the browser: its own paste would carry fonts,
+   colours and whatever else the source had into a box that will not export
+   them, and would put an image in if that is what was copied. */
+function handleRichPaste(ev) {
+  var ed = ev.currentTarget || ev.target;
+  var id = ed.id;
+  var data = ev.clipboardData || window.clipboardData;
+  if (!data) return;
+
+  var html = "";
+  var text = "";
+  try {
+    html = data.getData("text/html") || "";
+    text = data.getData("text/plain") || data.getData("Text") || "";
+  } catch (e) {
+    return;
+  }
+  ev.preventDefault();
+
+  var out = "";
+  var bits = [];
+  if (html) {
+    var r = richClean(html);
+    if (r.html) {
+      out = r.html;
+      bits = richNoteBits(r.notes);
+    }
+  }
+  if (!out && text) {
+    var n = normalizePaste(text);
+    out = blocks(n.text).join("");
+    if (n.changed) bits.push(pasteNoteText(n));
+  }
+  if (!out) {
+    setPasteNote(id, "Nothing was pasted. Only text, lists and links can be pasted here.");
+    return;
+  }
+  richInsert(ed, out);
+  setPasteNote(id, bits.join(" "));
+}
+
+var RICH_BUTTONS = [
+  ["bold", "Bold"],
+  ["italic", "Italic"],
+  ["insertUnorderedList", "Bulleted list"],
+  ["insertOrderedList", "Numbered list"],
+  ["link", "Link"]
+];
+
+function richEl(tag, props, text) {
+  var el = document.createElement(tag);
+  Object.keys(props || {}).forEach(function (k) { el.setAttribute(k, props[k]); });
+  if (text) el.textContent = text;
+  return el;
+}
+
+/* Swaps the textarea with this id for an editor. */
+function buildRichEditor(id) {
+  var ta = document.getElementById(id);
+  if (!ta || ta.tagName !== "TEXTAREA" || !ta.parentNode) return null;
+
+  var holder = ta.parentNode;
+  var labelEl = document.querySelector('label[for="' + id + '"]');
+  var labelText = labelEl ? labelEl.textContent.replace(/\s*\(required\)\s*$/i, "").trim() : "this box";
+
+  var wrap = richEl("div", { id: id + "Rich", "class": "rich" });
+
+  /* The toolbar. One tab stop, arrow keys between the buttons: the pattern
+     for a toolbar, so six controls are not six stops on the way past. */
+  var bar = richEl("div", {
+    "class": "rich-toolbar",
+    role: "toolbar",
+    "aria-label": "Formatting for " + labelText,
+    "aria-controls": id
+  });
+  var buttons = RICH_BUTTONS.map(function (def, i) {
+    var b = richEl("button", { type: "button", "data-cmd": def[0], tabindex: i === 0 ? "0" : "-1" }, def[1]);
+    if (def[0] === "link") {
+      b.setAttribute("aria-expanded", "false");
+      b.setAttribute("aria-controls", id + "Link");
+    } else {
+      b.setAttribute("aria-pressed", "false");
+    }
+    bar.appendChild(b);
+    return b;
+  });
+  var linkBtn = buttons[buttons.length - 1];
+
+  /* The link panel. Opens in place rather than as a prompt() box, which
+     cannot be labelled, styled or reached by every assistive technology. */
+  var panel = richEl("div", { "class": "rich-link", id: id + "Link", role: "group", "aria-label": "Link" });
+  panel.hidden = true;
+  var textWrap = richEl("div", { "class": "field" });
+  textWrap.appendChild(richEl("label", { "for": id + "LinkText" }, "Link text"));
+  textWrap.appendChild(document.createTextNode(" "));
+  var textInput = richEl("input", { type: "text", id: id + "LinkText", autocomplete: "off" });
+  textWrap.appendChild(textInput);
+  var urlWrap = richEl("div", { "class": "field" });
+  urlWrap.appendChild(richEl("label", { "for": id + "LinkUrl" }, "Link address"));
+  urlWrap.appendChild(document.createTextNode(" "));
+  var urlInput = richEl("input", { type: "url", id: id + "LinkUrl", autocomplete: "off", placeholder: "https://" });
+  urlWrap.appendChild(urlInput);
+  var panelActions = richEl("div", { "class": "actions" });
+  var applyBtn = richEl("button", { type: "button" }, "Apply link");
+  var cancelBtn = richEl("button", { type: "button" }, "Cancel");
+  var removeBtn = richEl("button", { type: "button" }, "Remove link");
+  removeBtn.hidden = true;
+  panelActions.appendChild(applyBtn);
+  panelActions.appendChild(cancelBtn);
+  panelActions.appendChild(removeBtn);
+  panel.appendChild(textWrap);
+  panel.appendChild(urlWrap);
+  panel.appendChild(panelActions);
+
+  /* The editor. */
+  var ed = richEl("div", {
+    id: id,
+    "class": "rich-editor",
+    contenteditable: "true",
+    role: "textbox",
+    "aria-multiline": "true",
+    "data-rich": "true"
+  });
+  /* A label element cannot name a div by for/id, so the editor points back
+     at it instead. The label keeps working for the mouse: clicking it still
+     lands in the box. data-for lets focusField() find it as before. */
+  if (labelEl) {
+    if (!labelEl.id) labelEl.id = id + "Label";
+    ed.setAttribute("aria-labelledby", labelEl.id);
+    labelEl.removeAttribute("for");
+    labelEl.setAttribute("data-for", id);
+  }
+  ["aria-describedby", "aria-required"].forEach(function (a) {
+    if (ta.hasAttribute(a)) ed.setAttribute(a, ta.getAttribute(a));
+  });
+  ed.innerHTML = ta.value.trim() ? blocks(ta.value).join("") : "<p><br></p>";
+
+  wrap.appendChild(bar);
+  wrap.appendChild(panel);
+  wrap.appendChild(ed);
+
+  /* The paste note, with the id setPasteNote() already looks for, and a
+     second live region for the toolbar. Kept apart so "Bold on." is spoken
+     but is not left sitting under the box as if it were a paste warning. */
+  var pasteNote = richEl("span", { "class": "hint", id: pasteNoteId(id), role: "status" });
+  var barNote = richEl("span", { "class": "visually-hidden", id: id + "BarNote", role: "status" });
+
+  holder.insertBefore(wrap, ta);
+  holder.insertBefore(pasteNote, ta);
+  holder.insertBefore(barNote, ta);
+  holder.removeChild(ta);
+
+  /* ---- selection ---- */
+
+  var lastRange = null;
+  var savedRange = null;
+  var linkTarget = null;
+  var pointer = false;
+
+  function rangeInside() {
+    var sel = window.getSelection ? window.getSelection() : null;
+    if (sel && sel.rangeCount) {
+      var r = sel.getRangeAt(0);
+      if (ed.contains(r.commonAncestorContainer)) return r;
+    }
+    return null;
+  }
+
+  function syncBar() {
+    buttons.forEach(function (b) {
+      var cmd = b.getAttribute("data-cmd");
+      if (cmd === "link") return;
+      var on = false;
+      try { on = !!document.queryCommandState(cmd); } catch (e) { on = false; }
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function remember() {
+    var r = rangeInside();
+    if (r) {
+      lastRange = r.cloneRange();
+      syncBar();
+    }
+  }
+
+  function restore() {
+    try { ed.focus({ preventScroll: true }); } catch (e) { ed.focus(); }
+    if (lastRange && window.getSelection) {
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(lastRange);
+    }
+  }
+
+  function announce(msg) {
+    barNote.textContent = "";
+    window.setTimeout(function () { barNote.textContent = msg; }, 50);
+  }
+
+  document.addEventListener("selectionchange", remember);
+  ed.addEventListener("keyup", remember);
+  ed.addEventListener("mouseup", remember);
+
+  /* Arriving by keyboard, from the toolbar say, puts the caret back where it
+     was. Arriving by mouse leaves it where the click put it. */
+  ed.addEventListener("mousedown", function () { pointer = true; });
+  ed.addEventListener("focus", function () {
+    if (!pointer && lastRange && window.getSelection) {
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(lastRange);
+    }
+    pointer = false;
+  });
+
+  if (labelEl) labelEl.addEventListener("click", function () { restore(); });
+
+  ed.addEventListener("paste", handleRichPaste);
+  /* Dropped content would bypass the clean-up above, so it is refused, and
+     the note says what to do instead. */
+  ed.addEventListener("drop", function (ev) {
+    ev.preventDefault();
+    setPasteNote(id, "Dropping content here is not supported. Paste it instead.");
+  });
+
+  /* ---- toolbar ---- */
+
+  function run(cmd) {
+    restore();
+    var ok = false;
+    try { ok = !!(document.execCommand && document.execCommand(cmd, false, null)); } catch (e) { ok = false; }
+    if (!ok) {
+      setPasteNote(id, "Formatting is not available in this browser.");
+      return;
+    }
+    remember();
+    var on = false;
+    try { on = !!document.queryCommandState(cmd); } catch (e2) { on = false; }
+    var label = RICH_BUTTONS.filter(function (d) { return d[0] === cmd; })[0][1];
+    announce(label + (on ? " on." : " off."));
+  }
+
+  /* A mouse press on a toolbar button must not take focus out of the editor,
+     or the selection the button is about to act on goes with it. */
+  bar.addEventListener("mousedown", function (ev) {
+    if (ev.target.closest && ev.target.closest("button")) ev.preventDefault();
+  });
+  bar.addEventListener("click", function (ev) {
+    var b = ev.target.closest ? ev.target.closest("button") : null;
+    if (!b) return;
+    var cmd = b.getAttribute("data-cmd");
+    if (cmd === "link") {
+      if (panel.hidden) openLink(); else closeLink(true);
+    } else {
+      run(cmd);
+    }
+  });
+  bar.addEventListener("focusin", function (ev) {
+    var i = buttons.indexOf(ev.target);
+    if (i < 0) return;
+    buttons.forEach(function (b, k) { b.tabIndex = k === i ? 0 : -1; });
+  });
+  bar.addEventListener("keydown", function (ev) {
+    var i = buttons.indexOf(document.activeElement);
+    if (i < 0) return;
+    var j = -1;
+    if (ev.key === "ArrowRight") j = (i + 1) % buttons.length;
+    else if (ev.key === "ArrowLeft") j = (i + buttons.length - 1) % buttons.length;
+    else if (ev.key === "Home") j = 0;
+    else if (ev.key === "End") j = buttons.length - 1;
+    if (j < 0) return;
+    ev.preventDefault();
+    buttons[j].focus();
+  });
+
+  /* ---- link panel ---- */
+
+  function anchorAt(range) {
+    for (var n = range ? range.startContainer : null; n && n !== ed; n = n.parentNode) {
+      if (n.nodeType === 1 && n.nodeName.toLowerCase() === "a") return n;
+    }
+    return null;
+  }
+
+  /* The message goes in front of the box it is about, as every other error on
+     the form does, and is tied to it by aria-describedby. It is not given the
+     error-message class, which clearFieldErrors() sweeps away wholesale. */
+  function clearLinkError() {
+    Array.prototype.slice.call(panel.querySelectorAll(".rich-link-error")).forEach(function (el) {
+      el.parentNode.removeChild(el);
+    });
+    [textInput, urlInput].forEach(function (el) {
+      el.removeAttribute("aria-invalid");
+      el.removeAttribute("aria-describedby");
+    });
+  }
+
+  function linkError(field, message) {
+    clearLinkError();
+    var msg = richEl("span", { "class": "rich-link-error", id: id + "LinkError" });
+    msg.appendChild(richEl("span", { "class": "visually-hidden" }, "Error: "));
+    msg.appendChild(document.createTextNode(message));
+    field.parentNode.insertBefore(msg, field);
+    field.setAttribute("aria-invalid", "true");
+    field.setAttribute("aria-describedby", msg.id);
+    field.focus();
+  }
+
+  function openLink() {
+    var r = rangeInside() || lastRange;
+    savedRange = r ? r.cloneRange() : null;
+    linkTarget = anchorAt(savedRange);
+    clearLinkError();
+
+    /* Link text is asked for only when there is nothing selected to become
+       it, and no link already under the caret to change. */
+    var hasSelection = !!(savedRange && !savedRange.collapsed);
+    textInput.value = "";
+    textWrap.hidden = !!(linkTarget || hasSelection);
+    urlInput.value = linkTarget ? (linkTarget.getAttribute("href") || "") : "";
+    removeBtn.hidden = !linkTarget;
+
+    panel.hidden = false;
+    linkBtn.setAttribute("aria-expanded", "true");
+    (textWrap.hidden ? urlInput : textInput).focus();
+  }
+
+  function closeLink(returnFocus) {
+    panel.hidden = true;
+    linkBtn.setAttribute("aria-expanded", "false");
+    clearLinkError();
+    if (returnFocus) {
+      if (savedRange) lastRange = savedRange;
+      restore();
+    }
+  }
+
+  function applyLink() {
+    var needText = !textWrap.hidden;
+    var text = textInput.value.trim();
+    if (needText && !text) {
+      linkError(textInput, "Enter the wording for the link");
+      return;
+    }
+    var href = richHref(urlInput.value.trim());
+    if (!href) {
+      linkError(urlInput, "Enter an address starting with https://, http:// or mailto:");
+      return;
+    }
+
+    var target = linkTarget;
+    var range = savedRange;
+    closeLink(true);
+
+    if (target) {
+      target.setAttribute("href", href);
+      richFireInput(ed);
+      announce("Link updated.");
+      return;
+    }
+
+    var done = false;
+    try {
+      if (range && !range.collapsed) {
+        done = !!(document.execCommand && document.execCommand("createLink", false, href));
+      } else {
+        done = !!(document.execCommand && document.execCommand("insertHTML", false,
+          '<a href="' + esc(href) + '">' + esc(text) + "</a>"));
+      }
+    } catch (e) {
+      done = false;
+    }
+    if (!done) {
+      var a = richEl("a", { href: href });
+      if (range && ed.contains(range.commonAncestorContainer)) {
+        if (range.collapsed) {
+          a.textContent = text;
+          range.insertNode(a);
+        } else {
+          try { range.surroundContents(a); } catch (e2) { a.appendChild(range.extractContents()); range.insertNode(a); }
+        }
+      } else {
+        a.textContent = text || href;
+        ed.appendChild(a);
+      }
+      richFireInput(ed);
+    }
+    announce("Link added.");
+  }
+
+  function removeLink() {
+    var a = linkTarget;
+    closeLink(true);
+    if (!a || !a.parentNode) return;
+    var ok = false;
+    try {
+      var r = document.createRange();
+      r.selectNodeContents(a);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      ok = !!(document.execCommand && document.execCommand("unlink", false, null)) && !a.parentNode;
+    } catch (e) {
+      ok = false;
+    }
+    if (!ok && a.parentNode) {
+      var p = a.parentNode;
+      while (a.firstChild) p.insertBefore(a.firstChild, a);
+      p.removeChild(a);
+      richFireInput(ed);
+    }
+    announce("Link removed.");
+  }
+
+  applyBtn.addEventListener("click", applyLink);
+  cancelBtn.addEventListener("click", function () { closeLink(true); });
+  removeBtn.addEventListener("click", removeLink);
+  /* Enter in either box applies the link rather than submitting the form,
+     which would run Generate. */
+  panel.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && ev.target.tagName === "INPUT") {
+      ev.preventDefault();
+      applyLink();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      closeLink(true);
+    }
+  });
+
+  return ed;
+}
+
+function enhanceRichFields() {
+  /* Enter makes a <p>, as the export has, rather than a <div>. Browsers that
+     do not know the command ignore it, and richClean() reads either. */
+  try { document.execCommand("defaultParagraphSeparator", false, "p"); } catch (e) { /* optional */ }
+  RICH_FIELDS.forEach(buildRichEditor);
+}
+
 function syncCreditUnit() {
   var ceus = checked("unitCeus");
   document.getElementById("creditsWrap").hidden = ceus;
@@ -2466,10 +3436,14 @@ function init() {
   syncBranches();
   syncHoursTotal();
 
+  /* Before the paste notes, so each editor makes its own and buildPasteNotes
+     finds it there. */
+  enhanceRichFields();
   buildPasteNotes();
   PASTE_FIELDS.forEach(function (id) {
     var el = document.getElementById(id);
-    if (el) el.addEventListener("paste", handlePaste);
+    /* Only the textareas. A rich editor has its own handler. */
+    if (el && el.tagName === "TEXTAREA") el.addEventListener("paste", handlePaste);
   });
 
   ["unitCredits", "unitCeus"].forEach(function (id) {
