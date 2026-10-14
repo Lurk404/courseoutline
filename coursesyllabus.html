@@ -153,8 +153,8 @@
      matched too, guaranteeing a visible indicator (SC 2.4.7). */
   #errorSummary:focus { outline: 3px solid #0b5fff; outline-offset: 2px; }
 
-  iframe { width: 100%; border: 1px solid #595959; }
-
+  iframe { width: 100%; box-sizing: border-box; display: block; border: 1px solid #595959; }
+ 
   code { background: #f2f2f2; padding: 0 0.2rem; }
 
   /* Light enough that body text keeps 18:1 on it (contrast.js reads this
@@ -195,6 +195,39 @@
   }
   .rich-editor p, .rich-editor ul, .rich-editor ol { margin: 0 0 0.5rem; }
   .rich-editor > :last-child { margin-bottom: 0; }
+   /* One border on <details> itself, so it frames the whole section no matter
+     how many children it holds. The inset comes from padding on <details>,
+     not margins on its children, so no child rule (.hint's margin, the
+     iframe's width: 100%) can undo it; the summary takes it back with
+     negative margins so its strip still runs border to border. The light
+     border is decorative: the summary text and marker identify the control,
+     so SC 1.4.11's 3:1 doesn't bind it. */
+  details {
+    margin: 0 0 1rem;
+    padding: 0 0.9rem;
+    border: 1px solid #c8c8c8;
+    border-radius: 4px;
+  }
+  details > summary {
+    cursor: pointer;
+    min-height: 2.75rem;          /* matches the buttons' target size */
+    box-sizing: border-box;
+    margin: 0 -0.9rem;
+    padding: 0.6rem 0.9rem;
+    background: #f6f7f8;
+    border-radius: 4px;
+  }
+  details > summary:hover { background: #f2f2f2; }
+  /* Darken the frame while the summary is hovered, matching inputs/buttons. */
+  details:has(> summary:hover) { border-color: #595959; }
+
+  details[open] { padding-bottom: 0.75rem; }
+  details[open] > summary {
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #c8c8c8;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
 </style>
 </head><body><main>
 <h1>Course Syllabus Builder</h1>
@@ -202,7 +235,7 @@
 <p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
 <details>
 <summary>Show form</summary>
-<hr><form id="outlineForm" novalidate=""><fieldset><legend>Course identification</legend>
+<form id="outlineForm" novalidate=""><fieldset><legend>Course identification</legend>
 <p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
 </fieldset><fieldset><legend>Credits</legend>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
