@@ -198,16 +198,11 @@
 </style>
 </head><body><main>
 <h1>Course Syllabus Builder</h1>
-  <p>Use this form to create accessible, consistent course syllabi without awkward templates. Fill out the form once and simply update due dates and deadlines each semester.</p>
+<p>Use this form to create accessible, consistent course syllabi without awkward templates. Fill out the form once and simply update due dates and deadlines each semester.</p>
 <p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
-<details><summary>Form instructions</summary>
-<p><strong>In text boxes without a toolbar:</strong> lines starting with <code>-</code> or <code>*</code> become a bulleted list, lines starting with <code>1.</code> become a numbered list, and other lines become paragraphs.</p>
-<p><strong>To add a link in those boxes,</strong> put the wording in square brackets and the address in round brackets straight after it, with no space between:</p>
-<p><code>[BC Transfer Guide](https://www.bctransferguide.ca)</code></p>
-<p>Boxes with a toolbar take bold, italics, lists and links from its buttons. Pasted lists and links are kept.</p>
-</details>
-  <hr> 
-<form id="outlineForm" novalidate><fieldset><legend>Course identification</legend>
+<details>
+<summary>Show form</summary>
+<hr><form id="outlineForm" novalidate=""><fieldset><legend>Course identification</legend>
 <p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
 </fieldset><fieldset><legend>Credits</legend>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
@@ -249,10 +244,10 @@
 </fieldset><fieldset><legend><label for="courseDescription">Calendar course description (required)</label></legend>
 <p class="field"><span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
 </fieldset><fieldset><legend>Learning outcomes</legend>
-<p>Course learning outcomes must match Education Council (EdCo) approved documentation. Refer to <a href="https://langara.sharepoint.com/:x:/r/sites/academic-quality-assurance-aqa/_layouts/15/Doc.aspx?sourcedoc=%7B8891F3E9-5DBF-4A48-B4CC-BDF999513F5F%7D&file=CLO%20Tracking%20Dashboard_May%2029%202024_forSharePoint.xlsx&action=default&mobileredirect=true&wdOrigin=SHAREPOINT.SHELL%2CAPPHOME-WEB.FILEBROWSER.RECENT&wdPreviousSession=7b804a32-e2fb-49e7-8354-58f4c9dfffd2&wdPreviousSessionSrc=AppHomeWeb&CID=756972bd-da9d-393d-4d79-c4bbc566f300" target="_blank" rel="noopener">CLO Tracking Dashboard</a> for the most up to date approved course learning outcomes.</p>
+<p>Course learning outcomes must match Education Council (EdCo) approved documentation. Refer to <a href="https://langara.sharepoint.com/:x:/r/sites/academic-quality-assurance-aqa/_layouts/15/Doc.aspx?sourcedoc=%7B8891F3E9-5DBF-4A48-B4CC-BDF999513F5F%7D&amp;file=CLO%20Tracking%20Dashboard_May%2029%202024_forSharePoint.xlsx&amp;action=default&amp;mobileredirect=true&amp;wdOrigin=SHAREPOINT.SHELL%2CAPPHOME-WEB.FILEBROWSER.RECENT&amp;wdPreviousSession=7b804a32-e2fb-49e7-8354-58f4c9dfffd2&amp;wdPreviousSessionSrc=AppHomeWeb&amp;CID=756972bd-da9d-393d-4d79-c4bbc566f300" target="_blank" rel="noopener">CLO Tracking Dashboard</a> for the most up to date approved course learning outcomes.</p>
 <!-- Quotes OUTCOME_STEM in the script word for word; change the two together. -->
 <p class="hint">The sentence <strong>Upon successful completion of this course, students will be able to:</strong> is added above the list automatically.</p>
-  <p class="hint">One outcome per field.</p>
+<p class="hint">One outcome per field.</p>
 <!-- No .table-scroll wrapper here, unlike the assessment and schedule
            tables. That wrapper exists to keep a wide table from widening the
            page, and carries tabindex="0" so the scrollable region is keyboard
@@ -308,7 +303,7 @@
 <p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
 </fieldset><fieldset><legend><label for="textbook">Course materials and textbooks (required)</label></legend>
 <div class="radio-row" id="zeroCostWrap"><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has <a href="https://langara.libguides.com/open-education/what-is-open-education" target="_blank" rel="noopener noreferrer">zero textbook cost</a></label></div>
-<div class="field"> <textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></div>
+<div class="field"><textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></div>
 <p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to this section automatically.</p>
 <!-- The notice is a FIPPA disclosure attached to the resource, so it
          belongs in the section where the resource is named. It appears
@@ -331,13 +326,12 @@
        Brightspace itself, chosen from its document templates when the file is
        created, so this tool no longer wraps the output in a copy of it. --><!-- Generate stays with the form it acts on. Download and Copy moved below
        the preview, so the order of the page matches the order of the work:
-       fill in, generate, check the result, then take it away. -->
-<!-- Filled in and shown only when Generate, Copy or Download finds a field
+       fill in, generate, check the result, then take it away. --><!-- Filled in and shown only when Generate, Copy or Download finds a field
      that is not complete. Focus moves here, so the heading, which carries the
      count, is what a screen reader announces, and each item links to the
      field it names (SC 3.3.1, 3.3.3). Directly above Generate, where the
      result of pressing it is expected. -->
-<div id="errorSummary" class="error-summary" role="group" aria-labelledby="errorSummaryHeading" tabindex="-1" hidden="">
+<div id="errorSummary" class="error-summary" role="group" aria-labelledby="errorSummaryHeading" hidden="" tabindex="-1">
 <h2 id="errorSummaryHeading"></h2>
 <ul id="errorList"></ul>
 </div>
@@ -345,7 +339,7 @@
 </form><hr>
 <h2>Preview</h2>
 <p class="hint">The finished syllabus may not look exactly like this preview. Use the preview to review your syllabus content.</p>
-  <iframe id="preview" title="Course syllabus preview" height="600"></iframe> <!-- The steps sit here, between the result and the button they start with,
+<iframe id="preview" title="Course syllabus preview" height="600"></iframe> <!-- The steps sit here, between the result and the button they start with,
      because this is the point on the page where they are acted on. -->
 <p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
 <ol aria-labelledby="workflowIntro">
@@ -378,6 +372,7 @@
 <p><label for="source">Generated HTML (read-only)</label></p>
 <textarea id="source" rows="20" readonly="readonly"></textarea>
 <p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
+</details>
 </details>
 </main>
 <p><script>
@@ -1100,16 +1095,6 @@ function isWeightNumber(s) {
   return /^(?:\d+(?:\.\d+)?|\.\d+)$/.test(weightFigure(s));
 }
 
-/* Exam-type rows are exempt from the due-date requirement below: a final
- * exam's date is normally set by the Registrar after the outline is written,
- * not by the instructor. Matched on the word "exam"/"exams" alone (not bare
- * "final"), so "Final Exam"/"Final Exams"/"Midterm Exam" are exempt but
- * "Final Project"/"Final Paper" - which do have an instructor-set date -
- * still require one. */
-function isExamActivity(s) {
-  return /\bexams?\b/i.test(String(s == null ? "" : s));
-}
-
 function formatWeight(s) {
   var f = weightFigure(s);
   return f ? f + "%" : "";
@@ -1450,8 +1435,8 @@ function buildHtml() {
 /* ------------------------------------------------------------------ *
  * Validation
  *
- * Every field is required except the grading guidelines and the
- * departmental guidelines. Generate, Copy and Download all check first and
+ * Every field is required except the grading guidelines, the
+ * departmental guidelines, and assessment due dates. Generate, Copy and Download all check first and
  * produce nothing until the form passes, so an incomplete syllabus never
  * reaches the preview, the clipboard or a file.
  *
@@ -1573,9 +1558,9 @@ function collectErrors() {
   }
 
   /* A weight with nothing to weigh, or an activity with no weight, is half an
-     assessment. The due date is required, since a schedule with gaps in it
-     is not one - except for an exam-type row, whose date is normally set by
-     the Registrar after the outline is written, not by the instructor. */
+     assessment. The due date is optional: some dates are not known when the
+     syllabus is written (a final exam set by the Registrar, a date announced
+     in class), so a row may leave it blank. */
   var usedRows = 0;
   Array.prototype.forEach.call(document.getElementById("assessBody").rows, function (tr, i) {
     var inputs = tr.querySelectorAll("input");
@@ -1589,7 +1574,6 @@ function collectErrors() {
     if (!(activity || weight || due || dueBad)) return;
     usedRows++;
     var n = i + 1;
-    var examRow = isExamActivity(activity);
     /* The weight box shares a wrapper with its % sign, so its message goes in
        front of the wrapper. In front of the box it would land inside the flex
        row, beside the box rather than above it. */
@@ -1603,9 +1587,7 @@ function collectErrors() {
     }
     if (dueBad) {
       add("assessDue" + n, "Enter a complete due date for assessment row " + n +
-          (examRow ? ", or clear it" : ""));
-    } else if (!due && !examRow) {
-      add("assessDue" + n, "Enter a due date for assessment row " + n);
+          ", or clear it");
     }
   });
   if (!usedRows) {
