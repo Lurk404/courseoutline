@@ -266,18 +266,18 @@
 <div class="radio-row"><input type="radio" name="req" id="reqNo" value="no" checked="checked"> <label for="reqNo">No</label></div>
 <div class="radio-row"><input type="radio" name="req" id="reqYes" value="yes"> <label for="reqYes">Yes</label></div>
 </div>
-<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites (required)</label> <span class="hint" id="reqDetailHint">Link syntax works here too, so a named course can point at its own page.</span> <input type="text" id="reqDetail" aria-describedby="reqDetailHint" aria-required="true" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."></p>
+<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites (required)</label> <input type="text" id="reqDetail" aria-describedby="reqDetailHint" aria-required="true" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."></p>
 </fieldset><fieldset id="instructorFieldset"><legend>Instructor</legend>
 <p class="hint">A syllabus names the instructor and how to reach them. Answer office hours explicitly, even if the answer is that there are none.</p>
 <p class="field"><label for="instructors">Instructor name(s) (required)</label> <input type="text" id="instructors" autocomplete="name" aria-required="true"></p>
 <p class="field"><label for="office">Office (required)</label> <input type="text" id="office" aria-required="true" placeholder="e.g. A322b"></p>
-<p class="field"><label for="phone">Phone (required)</label> <input type="tel" id="phone" autocomplete="tel" aria-required="true" placeholder="e.g. 604 323 5511"></p>
+<p class="field"><label for="phone">Phone</label> <input type="tel" id="phone" autocomplete="tel" placeholder="e.g. 604 323 5511"></p>
 <p class="field"><label for="email">Email (required)</label> <input type="email" id="email" autocomplete="email" aria-required="true"></p>
 <p class="field"><label for="officeHours">Office hours (required)</label> <input type="text" id="officeHours" aria-required="true" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment"></p>
 </fieldset><fieldset><legend><label for="courseDescription">Calendar course description (required)</label></legend>
 <p class="field"><span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
 </fieldset><fieldset><legend>Learning outcomes</legend>
-<p>Course learning outcomes must match Education Council (EdCo) approved documentation. Refer to <a href="https://langara.sharepoint.com/:x:/r/sites/academic-quality-assurance-aqa/_layouts/15/Doc.aspx?sourcedoc=%7B8891F3E9-5DBF-4A48-B4CC-BDF999513F5F%7D&amp;file=CLO%20Tracking%20Dashboard_May%2029%202024_forSharePoint.xlsx&amp;action=default&amp;mobileredirect=true&amp;wdOrigin=SHAREPOINT.SHELL%2CAPPHOME-WEB.FILEBROWSER.RECENT&amp;wdPreviousSession=7b804a32-e2fb-49e7-8354-58f4c9dfffd2&amp;wdPreviousSessionSrc=AppHomeWeb&amp;CID=756972bd-da9d-393d-4d79-c4bbc566f300" target="_blank" rel="noopener">CLO Tracking Dashboard</a> for the most up to date approved course learning outcomes.</p>
+<p>Course learning outcomes must match Education Council (EdCo) approved documentation. Refer to <a href="https://langara.sharepoint.com/:x:/r/sites/academic-quality-assurance-aqa/_layouts/15/Doc.aspx?sourcedoc=%7B8891F3E9-5DBF-4A48-B4CC-BDF999513F5F%7D&amp;file=CLO%20Tracking%20Dashboard_May%2029%202024_forSharePoint.xlsx&amp;action=default&amp;mobileredirect=true&amp;wdOrigin=SHAREPOINT.SHELL%2CAPPHOME-WEB.FILEBROWSER.RECENT&amp;wdPreviousSession=7b804a32-e2fb-49e7-8354-58f4c9dfffd2&amp;wdPreviousSessionSrc=AppHomeWeb&amp;CID=756972bd-da9d-393d-4d79-c4bbc566f300" target="_blank" rel="noopener">CLO Tracking Dashboard</a> for approved course learning outcomes.</p>
 <!-- Quotes OUTCOME_STEM in the script word for word; change the two together. -->
 <p class="hint">The sentence <strong>Upon successful completion of this course, students will be able to:</strong> is added above the list automatically.</p>
 <p class="hint">One outcome per field.</p>
@@ -297,7 +297,7 @@
 <tbody id="outcomeBody"></tbody>
 </table>
 <p><button type="button" id="addOutcomeBtn">Add learning outcome</button></p>
-</fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (required)</legend>
+</fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (at least one week required)</legend>
 <div class="table-scroll" tabindex="0">
 <table id="scheduleTable"><caption>Week-by-week schedule</caption>
 <thead>
@@ -314,7 +314,7 @@
 <p><button type="button" id="addWeekBtn">Add week</button></p>
 </fieldset><fieldset><legend>Assessment and grading</legend>
 <div class="table-scroll" tabindex="0">
-<table id="assessTable"><caption id="assessCaption">Means of assessment and weighting (required)</caption>
+<table id="assessTable"><caption id="assessCaption">Means of assessment and weighting (at least one item required, dates not required)</caption>
 <thead>
 <tr>
 <th scope="col">Assessment activity</th>
@@ -1468,8 +1468,8 @@ function buildHtml() {
 /* ------------------------------------------------------------------ *
  * Validation
  *
- * Every field is required except the grading guidelines, the
- * departmental guidelines, and assessment due dates. Generate, Copy and Download all check first and
+ * Every field is required except the instructor's phone, the grading
+ * guidelines, the departmental guidelines, and assessment due dates. Generate, Copy and Download all check first and
  * produce nothing until the form passes, so an incomplete syllabus never
  * reaches the preview, the clipboard or a file.
  *
@@ -1565,7 +1565,6 @@ function collectErrors() {
 
   if (!val("instructors")) add("instructors", "Enter the instructor's name");
   if (!val("office")) add("office", "Enter the office location");
-  if (!val("phone")) add("phone", "Enter a phone number");
   if (!val("email")) add("email", "Enter an email address");
   else if (!emailLooksValid(document.getElementById("email"))) {
     add("email", "Enter an email address in the format name@langara.ca");
