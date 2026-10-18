@@ -235,6 +235,13 @@
 <p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
 <details>
 <summary>Show form</summary>
+<!-- Inside "Show form" but outside the form element: it fills the form in
+     rather than being part of it, and a button here must never submit. -->
+<details id="openSaveDetails">
+<summary>Start from a save file</summary>
+<p class="hint">Opening a save file replaces everything in the form.</p>
+<p class="actions"><button type="button" id="openSaveBtn">Open save file</button> <input type="file" id="openSaveInput" accept=".json,application/json" hidden=""> <span id="openSaveStatus" role="status"></span></p>
+</details>
 <form id="outlineForm" novalidate=""><fieldset><legend>Course identification</legend>
 <p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
 </fieldset><fieldset><legend>Credits</legend>
@@ -371,7 +378,16 @@
 </form><hr>
 <h2>Preview</h2>
 <p class="hint">The finished syllabus may not look exactly like this preview. Use the preview to review your syllabus content.</p>
-<iframe id="preview" title="Course syllabus preview" height="600"></iframe> <!-- The steps sit here, between the result and the button they start with,
+<iframe id="preview" title="Course syllabus preview" height="600"></iframe>
+<!-- NOT WIRED YET. Nothing is emailed: a static page cannot send mail on
+     its own. Sending needs a back end (for example a Power Automate flow)
+     that this page calls. Until that exists, this note promises something
+     the page does not do. A fieldset outside the form is valid HTML and
+     groups the one control with the note that explains it. -->
+<fieldset id="emailCopies"><legend>Email copies</legend>
+<p>A copy of this syllabus will be emailed to <strong id="emailEcho">the instructor email address in the form</strong> and to your department contact.</p>
+<p class="field"><label for="deptContact">Department contact email</label> <span class="hint" id="deptContactHint">The person who collects syllabi for your department, such as the chair or department assistant.</span> <input type="email" id="deptContact" autocomplete="off" aria-describedby="deptContactHint" placeholder="name@langara.ca"></p>
+</fieldset> <!-- The steps sit here, between the result and the button they start with,
      because this is the point on the page where they are acted on. -->
 <p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
 <ol aria-labelledby="workflowIntro">
@@ -397,6 +413,9 @@
 <!-- "Show" rather than "Click to see": the summary is operated by keyboard
      and touch as often as by mouse, and a screen reader already announces it
      as expandable. -->
+  <h2>Save for next semester</h2>
+<p>Download your answers as a save file. Next semester, open the file with <strong>Start from a save file</strong> at the top of the form, update the dates, and generate a new syllabus. Keep the file somewhere you will find it, such as OneDrive.</p>
+<p class="actions"><button type="button" id="saveFileBtn">Download save file</button> <span id="saveStatus" role="status"></span></p>
 <details id="sourceDetails">
 <summary>Show HTML source code (advanced users)</summary>
 <p class="hint">If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
@@ -405,7 +424,17 @@
 <textarea id="source" rows="20" readonly="readonly"></textarea>
 <p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
 </details>
+<!-- The record every output is built from, shown as it will be sent on.
+     Its own status line beside its button, for the same reason the save
+     button has one. -->
+<details id="jsonDetails">
+<summary>Show syllabus data as JSON (advanced users)</summary>
+<p class="hint">The answers in this form as structured data. The save file holds the same data.</p>
+<p class="actions"><button type="button" id="copyJsonBtn">Copy JSON</button> <span id="jsonStatus" role="status"></span></p>
+<p><label for="jsonSource">Syllabus data (read-only)</label></p>
+<textarea id="jsonSource" rows="20" readonly="readonly"></textarea>
 </details>
+  </details>
 </main>
 <p><script>
 "use strict";
@@ -921,25 +950,33 @@ function creditUnit() {
 
 /* Credits read as "3.0" rather than "3" throughout Langara's calendar, and CEUs
    are conventionally written the same way. */
-function creditValue() {
-  var raw = creditUnit() === "ceus" ? val("ceus") : val("credits");
-  if (raw === "") return "";
-  var n = Number(raw);
-  return isFinite(n) ? n.toFixed(1) : raw;
+function creditFigure(raw) {
+  var s = String(raw == null ? "" : raw).trim();
+  if (s === "") return "";
+  var n = Number(s);
+  return isFinite(n) ? n.toFixed(1) : s;
 }
 
-function creditLabel() {
-  return creditUnit() === "ceus" ? "CEUs" : "Credits";
+function creditValue() {
+  return creditFigure(creditUnit() === "ceus" ? val("ceus") : val("credits"));
+}
+
+function creditLabel(unit) {
+  return (unit || creditUnit()) === "ceus" ? "CEUs" : "Credits";
 }
 
 /* Blank and zero mean the same thing: a course with no seminar does not list
    seminar hours at all, rather than listing them as zero. */
-function hourValue(id) {
-  var raw = val(id);
-  if (raw === "") return null;
-  var n = Number(raw);
+function hourNumber(raw) {
+  var s = String(raw == null ? "" : raw).trim();
+  if (s === "") return null;
+  var n = Number(s);
   if (!isFinite(n) || n === 0) return null;
   return n;
+}
+
+function hourValue(id) {
+  return hourNumber(val(id));
 }
 
 function enteredHours() {
@@ -950,12 +987,15 @@ function enteredHours() {
 
 /* A total that repeats a single figure says nothing, so it appears only once
    there is more than one kind of hour to add up. */
-function totalHours() {
-  var hours = enteredHours();
+function hourTotal(hours) {
   if (hours.length < 2) return null;
   var sum = hours.reduce(function (a, n) { return a + n; }, 0);
   /* Half-hour contact times must not surface as 4.499999999999999. */
   return Math.round(sum * 100) / 100;
+}
+
+function totalHours() {
+  return hourTotal(enteredHours());
 }
 
 function assessRows() {
@@ -1091,8 +1131,7 @@ function outcomeRows() {
    inline() on each row, so link syntax works in an outcome the way it does
    everywhere else; esc() on the stem, which is ours and contains no link
    syntax to parse. */
-function learningOutcomesBody() {
-  var rows = outcomeRows();
+function learningOutcomesBody(rows) {
   if (!rows.length) return [];
 
   var out = ["<p>" + esc(OUTCOME_STEM) + "</p>", "<ul>"];
@@ -1272,19 +1311,25 @@ function link(url, label) {
 var STAT_LINE_GAP = "margin: 0 0 0.5em;";
 var STAT_LAST_GAP = "margin: 0 0 1em;";
 
-function statBand() {
+function statBand(course) {
   var stats = [];
 
-  if (creditValue()) stats.push([creditLabel(), creditValue()]);
+  var unit = course.creditUnit === "ceus" ? "ceus" : "credits";
+  var credit = creditFigure(course.creditValue);
+  if (credit) stats.push([creditLabel(unit), credit]);
 
-  [["Lecture hours", "lectureHours"],
-   ["Lab hours", "labHours"],
-   ["Seminar hours", "seminarHours"]].forEach(function (pair) {
-    var n = hourValue(pair[1]);
-    if (n !== null) stats.push([pair[0], String(n)]);
+  var hours = [];
+  [["Lecture hours", "lecture"],
+   ["Lab hours", "lab"],
+   ["Seminar hours", "seminar"]].forEach(function (pair) {
+    var n = hourNumber(course.contactHours[pair[1]]);
+    if (n !== null) {
+      stats.push([pair[0], String(n)]);
+      hours.push(n);
+    }
   });
 
-  var total = totalHours();
+  var total = hourTotal(hours);
   if (total !== null) stats.push(["Total hours", String(total)]);
 
   return stats.map(function (s, i) {
@@ -1293,27 +1338,35 @@ function statBand() {
   });
 }
 
-function buildHtml() {
+/* The document, built from a syllabus record and nothing else: this function
+   never reads the form. Whatever the record came from - the form just now, a
+   save file, a list row - the same record gives the same document. It is
+   normalised first, so a record from outside cannot hand it a value of the
+   wrong type, and every value still goes through esc(), inline() or
+   richClean() on its way into the markup. */
+function renderHtml(input) {
+  var r = normalizeRecord(input);
+  var c = r.course;
   var L = [];
   var W = words();
 
-  L.push(heading(1, val("courseTitle") || W.fallbackTitle));
+  L.push(heading(1, txt(c.title) || W.fallbackTitle));
 
   /* Course facts, in the order they are asked for on the form. */
-  L = L.concat(statBand());
+  L = L.concat(statBand(c));
 
-  L = L.concat(labelled("Year and semester", val("yearSemester")));
+  L = L.concat(labelled("Year and semester", txt(c.term)));
   /* The template calls this Course Format; the option list is delivery mode,
      which is how most departments fill it in. If a department uses it for an
      hours breakdown instead, the contact-hours fields above already carry
      that and this should become a free-text field. */
-  L = L.concat(labelled("Course format", val("mode")));
+  L = L.concat(labelled("Course format", txt(c.format)));
 
   /* Always stated, so a student never has to wonder whether a missing line
      means none or forgotten: "None" when No is chosen or Yes is left blank.
      Answering No still drops anything typed while Yes was selected, rather
      than leaving it in the export where nobody can see it. */
-  var req = checked("reqYes") ? val("reqDetail") : "";
+  var req = c.hasRequisites ? txt(c.requisites) : "";
   L = L.concat(labelled("Pre/corequisites", req || "None"));
 
   /* Transfer credit is boilerplate rather than a field, but it is a labelled
@@ -1332,14 +1385,15 @@ function buildHtml() {
      the instructor), Phone beside Email below them (both about how to reach
      them). The grid flows in source order, so this ordering IS the layout -
      changing the array below changes which fields share a row. */
+  var ins = r.instructor;
   var instructorBody = [];
-  if (val("instructors")) instructorBody.push("<p>" + inline(val("instructors")) + "</p>");
+  if (txt(ins.name)) instructorBody.push("<p>" + inline(txt(ins.name)) + "</p>");
 
   var details = [];
-  [["Office", val("office")],
-   ["Office hours", val("officeHours")],
-   ["Phone", val("phone")],
-   ["Email", val("email")]].forEach(function (pair) {
+  [["Office", txt(ins.office)],
+   ["Office hours", txt(ins.officeHours)],
+   ["Phone", txt(ins.phone)],
+   ["Email", txt(ins.email)]].forEach(function (pair) {
     details = details.concat(labelledGridCell(pair[0], pair[1]));
   });
 
@@ -1351,14 +1405,14 @@ function buildHtml() {
 
   L = L.concat(section(2, "Instructor", instructorBody));
 
-  L = L.concat(section(2, "Course description", blocks(val("courseDescription"))));
-  L = L.concat(section(2, "Learning outcomes", learningOutcomesBody()));
+  L = L.concat(section(2, "Course description", blocks(txt(c.description))));
+  L = L.concat(section(2, "Learning outcomes", learningOutcomesBody(recordOutcomes(r))));
 
   /* Detailed course schedule, F1003 3.4(d). Week / Topic / Readings, the
      template's own three columns. 3.4(d) also names deadlines: the due dates
      in the assessment table carry those, and anything else due in a week can
      go on its own line in the readings cell. */
-  var weeks = scheduleRows();
+  var weeks = recordSchedule(r);
   var schedBody = [];
   if (weeks.length) {
     schedBody = schedBody.concat(tableStart("Week-by-week schedule"));
@@ -1378,7 +1432,7 @@ function buildHtml() {
 
   /* Assessment. The Grades link sits inside this section rather than carrying a
      heading of its own. */
-  var rows = sortByDue(assessRows());
+  var rows = sortByDue(recordAssessments(r));
   var assessBody = [];
   if (rows.length) {
     assessBody = assessBody.concat(tableStart("Means of assessment and weighting"));
@@ -1397,7 +1451,7 @@ function buildHtml() {
   /* The instructor's own grading guidelines sit between the table and the link
      to the College's scale - F1003 3.2(g). The heading goes out only with
      content under it: an empty h3 is a heading for nothing. */
-  var grading = fieldBlocks("gradingNotes");
+  var grading = richBlocks(r.gradingGuidelines);
   if (grading.length) {
     assessBody.push(heading(3, "Grading guidelines"));
     assessBody = assessBody.concat(grading);
@@ -1411,12 +1465,12 @@ function buildHtml() {
      resource that triggers it, and closes the section unless the instructor
      has affirmed that no resource is hosted outside Canada. */
   var textbookBody = [];
-  if (checked("zeroCost")) {
+  if (r.materials.zeroCost) {
     textbookBody.push("<p>" + esc(W.zeroCost) + "</p>");
   }
-  textbookBody = textbookBody.concat(fieldBlocks("textbook"));
+  textbookBody = textbookBody.concat(richBlocks(r.materials.content));
   textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
-  if (!checked("privacyOptOut")) {
+  if (!r.materials.privacyOptOut) {
     textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
   }
   L = L.concat(section(2, W.materialsHeading, textbookBody));
@@ -1441,13 +1495,17 @@ function buildHtml() {
       link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
   ]));
 
-  L = L.concat(section(2, "Departmental and course guidelines", fieldBlocks("deptPolicies")));
+  L = L.concat(section(2, "Departmental and course guidelines", richBlocks(r.departmentGuidelines)));
 
   /* Always present now that it is generated rather than typed, so there is no
      blank case left to guard against. esc() rather than inline(): the string
-     comes from the clock, not from a box someone could put link syntax in. */
+     comes from the record's timestamp, not from a box someone could put link
+     syntax in. The timestamp is set when the form is read, so a new syllabus
+     carries the current month, and a record rendered again later keeps the
+     month it was made. */
   var versionBody = [];
-  versionBody.push("<p><strong>Effective date:</strong> " + esc(effectiveDate()) + "</p>");
+  versionBody.push("<p><strong>Effective date:</strong> " +
+                   esc(effectiveDate(recordDate(r.savedAt))) + "</p>");
   versionBody.push("<p>" + esc(DISCLAIMER) + "</p>");
   if (safeUrl(ARCHIVE_URL)) {
     versionBody.push("<p>" + link(ARCHIVE_URL, ARCHIVE_LABEL) + "</p>");
@@ -1462,6 +1520,11 @@ function buildHtml() {
   L.push("<p>" + esc(ACKNOWLEDGEMENT) + "</p>");
 
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/* The form as it stands, as a document. */
+function buildHtml() {
+  return renderHtml(collectRecord());
 }
 
 /* ------------------------------------------------------------------ *
@@ -1637,6 +1700,13 @@ function collectErrors() {
     });
   }
 
+  /* Optional for now, so only a malformed address is flagged. Last in the
+     list because it sits last on the page, below the preview. */
+  var dept = document.getElementById("deptContact");
+  if (dept && val("deptContact") && !emailLooksValid(dept)) {
+    add("deptContact", "Enter the department contact email in the format name@langara.ca");
+  }
+
   return errors;
 }
 
@@ -1650,7 +1720,8 @@ var shownAction = "generate";
 var ACTION_PHRASES = {
   generate: "generate the syllabus",
   copy: "copy the syllabus",
-  download: "download the syllabus"
+  download: "download the syllabus",
+  copyJson: "copy the syllabus data"
 };
 
 function errorSignature(errors) {
@@ -3170,8 +3241,13 @@ function generate(announce, action) {
     return null;
   }
 
-  var html = buildHtml();
+  /* The form is read once, into a record, and everything shown comes from
+     that record: the preview and source box here, the JSON panel beside
+     them. They cannot disagree, because there is only one reading. */
+  var record = collectRecord();
+  var html = renderHtml(record);
   document.getElementById("source").value = html;
+  document.getElementById("jsonSource").value = recordJson(record);
 
   /* The output is a fragment, so the preview iframe gets a document wrapped
      around it with a declared charset, or it would mis-render em dashes.
@@ -3199,6 +3275,8 @@ function generate(announce, action) {
    saying something was generated or copied. */
 function clearOutput() {
   document.getElementById("source").value = "";
+  document.getElementById("jsonSource").value = "";
+  setJsonStatus("");
   document.getElementById("preview").removeAttribute("srcdoc");
   setStatus("");
   setExportStatus("");
@@ -3446,6 +3524,522 @@ function copy() {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Copy JSON
+ *
+ * The record as JSON, for checking what the form produced and for building
+ * whatever receives it next. Checks the form first, like the other copy
+ * buttons, so what is copied is a record that would also generate. Reports
+ * beside its own button, which is far below the export status line.
+ * ------------------------------------------------------------------ */
+
+function setJsonStatus(message) {
+  document.getElementById("jsonStatus").textContent = message;
+}
+
+function copyJson() {
+  if (generate(false, "copyJson") === null) return;
+  var box = document.getElementById("jsonSource");
+
+  /* execCommand reports whether it copied, so a failure is said plainly
+     rather than announced as a success. The text is left selected either
+     way, so Ctrl+C still works. */
+  function fallback() {
+    document.getElementById("jsonDetails").open = true;
+    box.removeAttribute("readonly");
+    box.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    box.setAttribute("readonly", "readonly");
+    setJsonStatus(ok ? "JSON copied to the clipboard." :
+      "Could not copy automatically. The JSON is selected: press Ctrl+C to copy it.");
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(box.value).then(function () {
+      setJsonStatus("JSON copied to the clipboard.");
+    }, fallback);
+  } else {
+    fallback();
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * The syllabus record
+ *
+ * Everything the form holds, as one plain JSON object. The form is read into
+ * a record once (collectRecord), and everything downstream works from the
+ * record, never from the form: the HTML export (renderHtml), the save file,
+ * and in time the SharePoint list row and the emailed copies. One shape for
+ * all of them means a syllabus that is saved, listed, emailed or opened again
+ * is the same data every time, and a new field on the form is a new line in
+ * one of the tables below.
+ *
+ * Keys name what the data is, not the form's element ids, so a flow or a
+ * list column reads course.term rather than yearSemester.
+ *
+ * Values are kept as typed, as strings. A save can be half-finished, and a
+ * box that held "3" should come back holding "3". Formatting - "3.0", "20%",
+ * "October 2, 2026" - is the renderer's job, not the record's.
+ *
+ * Only what the document will say is recorded. The form keeps a value
+ * typed into a box that is now hidden (credits while CEUs is chosen,
+ * pre/corequisites after No is chosen); the record does not, so nobody
+ * reading it can pick up a figure the syllabus does not show.
+ *
+ * A record can arrive from outside - a save file now, a list row later - so
+ * normalizeRecord() trusts nothing in one: every value is forced to the type
+ * the schema gives it, rows are capped, and rich HTML is cleaned again by
+ * richClean() whenever it is rendered or put back into an editor.
+ *
+ * schemaVersion 1 is the save file this builder wrote before the record
+ * existed, keyed by element id. It is still read, converted on the way in;
+ * it is never written.
+ * ------------------------------------------------------------------ */
+
+var RECORD_APP = "langara-course-syllabus-builder";
+var RECORD_VERSION = 2;
+
+/* Caps how many rows a record can ask for, so a damaged or hostile file
+   cannot stall the page building thousands of them. */
+var RECORD_MAX_ROWS = 200;
+
+/* Each plain text control: its element id, and where its value sits in the
+   record. The ids are also the keys a version 1 save file used. */
+var RECORD_FIELDS = [
+  ["courseTitle", "course.title"],
+  ["yearSemester", "course.term"],
+  ["mode", "course.format"],
+  ["lectureHours", "course.contactHours.lecture"],
+  ["labHours", "course.contactHours.lab"],
+  ["seminarHours", "course.contactHours.seminar"],
+  ["reqDetail", "course.requisites"],
+  ["courseDescription", "course.description"],
+  ["instructors", "instructor.name"],
+  ["office", "instructor.office"],
+  ["phone", "instructor.phone"],
+  ["email", "instructor.email"],
+  ["officeHours", "instructor.officeHours"],
+  ["deptContact", "distribution.departmentContact"]
+];
+
+/* Checkboxes. The two radio pairs are not here: each pair is one value
+   (course.creditUnit, course.hasRequisites), handled where it is read and
+   set, as are the credits and CEUs boxes that share course.creditValue. */
+var RECORD_CHECKS = [
+  ["zeroCost", "materials.zeroCost"],
+  ["privacyOptOut", "materials.privacyOptOut"]
+];
+
+/* The rich boxes, held as HTML that has been through richClean(). */
+var RECORD_RICH = [
+  ["gradingNotes", "gradingGuidelines"],
+  ["textbook", "materials.content"],
+  ["deptPolicies", "departmentGuidelines"]
+];
+
+/* Every key, in the order the JSON lists them. A record is always this
+   whole shape, empty values included, so whatever reads one never has to
+   ask whether a key is there. */
+function emptyRecord() {
+  return {
+    app: RECORD_APP,
+    schemaVersion: RECORD_VERSION,
+    savedAt: "",
+    course: {
+      code: "",
+      title: "",
+      term: "",
+      format: "",
+      creditUnit: "credits",
+      creditValue: "",
+      contactHours: { lecture: "", lab: "", seminar: "" },
+      hasRequisites: false,
+      requisites: "",
+      description: ""
+    },
+    instructor: { name: "", office: "", phone: "", email: "", officeHours: "" },
+    outcomes: [],
+    schedule: [],
+    assessments: [],
+    gradingGuidelines: "",
+    materials: { zeroCost: false, content: "", privacyOptOut: false },
+    departmentGuidelines: "",
+    distribution: { departmentContact: "" }
+  };
+}
+
+/* Own properties only, so a key like __proto__ in a file reads as missing. */
+function getPath(obj, path) {
+  return path.split(".").reduce(function (o, k) {
+    return (o && typeof o === "object" && Object.prototype.hasOwnProperty.call(o, k)) ? o[k] : undefined;
+  }, obj);
+}
+
+/* Only ever called on a record from emptyRecord(), with a path from the
+   tables above, so every step already exists. */
+function setPath(obj, path, value) {
+  var keys = path.split(".");
+  var last = keys.pop();
+  keys.reduce(function (o, k) { return o[k]; }, obj)[last] = value;
+}
+
+function obj(v) {
+  return (v && typeof v === "object" && !Array.isArray(v)) ? v : {};
+}
+
+/* Strings only, whatever the file holds. */
+function str(v) {
+  return v == null ? "" : String(v);
+}
+
+function txt(v) {
+  return str(v).trim();
+}
+
+function rowsFrom(list) {
+  return Array.isArray(list) ? list.slice(0, RECORD_MAX_ROWS) : [];
+}
+
+/* "ENGL 1123 Literature and Composition" gives "ENGL 1123". Derived, never
+   typed: the form takes code and title in one box, and a list needs the code
+   on its own to find a course's earlier syllabi. Langara codes are four
+   letters and four digits. A title that does not open with one gives a
+   blank, not a guess, and the blank is there in the JSON to be seen. */
+function courseCode(title) {
+  var m = /^\s*([A-Za-z]{4})[\s-]*(\d{4})\b/.exec(str(title));
+  return m ? m[1].toUpperCase() + " " + m[2] : "";
+}
+
+/* A rich box's content as cleaned HTML. If the editor was never built, the
+   box is still a textarea, and its text goes through blocks() so the record
+   holds HTML either way. */
+function richValue(id) {
+  var el = document.getElementById(id);
+  if (!el) return "";
+  if (el.getAttribute("data-rich")) return richClean(el.innerHTML).html;
+  return blocks(String(el.value)).join("\n");
+}
+
+/* The form, read into a record. now exists so a test can pin the timestamp;
+   nothing in the page passes it. Rows with nothing in them are left out, as
+   the document leaves them out; a schedule row holding only its week number
+   counts as empty, since the form numbers new rows itself. */
+function collectRecord(now) {
+  var r = emptyRecord();
+  var d = (now && typeof now.toISOString === "function") ? now : new Date();
+  r.savedAt = d.toISOString();
+
+  RECORD_FIELDS.forEach(function (f) { setPath(r, f[1], val(f[0])); });
+  RECORD_CHECKS.forEach(function (f) { setPath(r, f[1], checked(f[0])); });
+  RECORD_RICH.forEach(function (f) { setPath(r, f[1], richValue(f[0])); });
+
+  var c = r.course;
+  c.creditUnit = creditUnit();
+  c.creditValue = val(c.creditUnit === "ceus" ? "ceus" : "credits");
+  c.hasRequisites = checked("reqYes");
+  if (!c.hasRequisites) c.requisites = "";
+  c.code = courseCode(c.title);
+
+  r.outcomes = outcomeRows();
+  r.schedule = scheduleRows().map(function (cells) {
+    return { week: cells[0] || "", topic: cells[1] || "", readings: cells[2] || "" };
+  });
+  /* The one value not kept quite as typed: a % typed into a weight box is
+     taken off, as the export takes it off, so a weight in the record is a
+     plain figure a flow or a list can add up. */
+  r.assessments = assessRows().map(function (a) {
+    return { activity: a[0], weight: weightFigure(a[1]), due: a[2] };
+  });
+  return r;
+}
+
+/* A version 1 save file, as a record. Read the way version 1 opened it: in
+   each radio pair the first box marked wins, and a file marking neither
+   keeps the form's default. */
+function recordFromV1(d) {
+  var fields = obj(d.fields);
+  var checks = obj(d.checks);
+  var rich = obj(d.rich);
+  var r = emptyRecord();
+  r.savedAt = str(d.saved);
+
+  RECORD_FIELDS.forEach(function (f) { setPath(r, f[1], str(fields[f[0]])); });
+  RECORD_CHECKS.forEach(function (f) { setPath(r, f[1], checks[f[0]] === true); });
+  RECORD_RICH.forEach(function (f) { setPath(r, f[1], str(rich[f[0]])); });
+
+  var c = r.course;
+  c.creditUnit = (checks.unitCredits !== true && checks.unitCeus === true) ? "ceus" : "credits";
+  c.creditValue = str(fields[c.creditUnit === "ceus" ? "ceus" : "credits"]);
+  c.hasRequisites = checks.reqNo !== true && checks.reqYes === true;
+
+  r.outcomes = rowsFrom(d.outcomes);
+  r.schedule = rowsFrom(d.schedule).map(function (row) {
+    row = Array.isArray(row) ? row : [];
+    return { week: row[0], topic: row[1], readings: row[2] };
+  });
+  r.assessments = rowsFrom(d.assessments).map(function (row) {
+    row = Array.isArray(row) ? row : [];
+    return { activity: row[0], weight: row[1], due: row[2] };
+  });
+  return r;
+}
+
+/* Any input, as a well-formed record: every key present, every value of its
+   own type, rows capped. Unknown keys are dropped. The code is worked out
+   again from the title, so a record cannot carry one that disagrees with it,
+   and pre/corequisites are blanked when the record says there are none. */
+function normalizeRecord(input) {
+  var d = obj(input);
+  if (d.schemaVersion === undefined && d.fields !== undefined) d = recordFromV1(d);
+
+  var r = emptyRecord();
+  r.savedAt = str(d.savedAt);
+
+  RECORD_FIELDS.forEach(function (f) { setPath(r, f[1], str(getPath(d, f[1]))); });
+  RECORD_CHECKS.forEach(function (f) { setPath(r, f[1], getPath(d, f[1]) === true); });
+  RECORD_RICH.forEach(function (f) { setPath(r, f[1], str(getPath(d, f[1]))); });
+
+  var c = r.course;
+  c.creditUnit = getPath(d, "course.creditUnit") === "ceus" ? "ceus" : "credits";
+  c.creditValue = str(getPath(d, "course.creditValue"));
+  c.hasRequisites = getPath(d, "course.hasRequisites") === true;
+  if (!c.hasRequisites) c.requisites = "";
+  c.code = courseCode(c.title);
+
+  r.outcomes = rowsFrom(d.outcomes).map(str);
+  r.schedule = rowsFrom(d.schedule).map(function (w) {
+    w = obj(w);
+    return { week: str(w.week), topic: str(w.topic), readings: str(w.readings) };
+  });
+  r.assessments = rowsFrom(d.assessments).map(function (a) {
+    a = obj(a);
+    return { activity: str(a.activity), weight: str(a.weight), due: str(a.due) };
+  });
+  return r;
+}
+
+function recordJson(record) {
+  return JSON.stringify(record, null, 2);
+}
+
+/* What the renderer needs from a record's rows: trimmed, and with the rows
+   that would put nothing on the page left out - the same rows the form's own
+   readers (outcomeRows, scheduleRows, assessRows) leave out. */
+function recordOutcomes(r) {
+  return r.outcomes.map(txt).filter(Boolean);
+}
+
+function recordSchedule(r) {
+  return r.schedule.map(function (w) {
+    return [txt(w.week), txt(w.topic), txt(w.readings)];
+  }).filter(function (cells) { return cells[1] || cells[2]; });
+}
+
+function recordAssessments(r) {
+  return r.assessments.map(function (a) {
+    return [txt(a.activity), txt(a.weight), txt(a.due)];
+  }).filter(function (a) { return a[0] || a[1] || a[2]; });
+}
+
+/* A rich value on its way into the document: cleaned again, whatever it
+   came from, and nothing at all when nothing is left. */
+function richBlocks(html) {
+  var clean = richClean(str(html)).html;
+  return clean ? [clean] : [];
+}
+
+function recordDate(iso) {
+  var d = new Date(str(iso));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* ------------------------------------------------------------------ *
+ * Save file
+ *
+ * The syllabus record, downloaded as a small JSON file the instructor keeps,
+ * so next semester starts from this one instead of from nothing. Nothing
+ * leaves the browser: the file is built here and downloaded, and opened
+ * again with a file picker. Saving does not validate, so half-finished work
+ * can be saved too.
+ *
+ * A save file can come from anywhere, so opening one trusts nothing in it:
+ * it goes through normalizeRecord(), plain fields are set through .value,
+ * which never parses markup, and the three rich boxes go through richClean(),
+ * the same allow-list a paste does.
+ * ------------------------------------------------------------------ */
+
+function setSaveStatus(message) {
+  document.getElementById("saveStatus").textContent = message;
+}
+
+function setOpenSaveStatus(message) {
+  document.getElementById("openSaveStatus").textContent = message;
+}
+
+/* The old name for collectRecord(), kept for anything that still calls it. */
+function saveData() {
+  return collectRecord();
+}
+
+function saveFileName() {
+  function slug(s) {
+    return s.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+  }
+  var parts = [slug(val("courseTitle")) || words().fileStem];
+  if (slug(val("yearSemester"))) parts.push(slug(val("yearSemester")));
+  parts.push("save");
+  return parts.join("-") + ".json";
+}
+
+function downloadSaveFile() {
+  var json = recordJson(collectRecord());
+  var blob = new Blob([json], { type: "application/json;charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = saveFileName();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  setSaveStatus("Downloaded " + saveFileName() + ".");
+}
+
+function clearBody(id) {
+  var body = document.getElementById(id);
+  while (body.rows.length) body.deleteRow(0);
+}
+
+function savedDateText(iso) {
+  var d = new Date(str(iso));
+  if (isNaN(d.getTime())) return "";
+  return MONTH_NAMES[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
+}
+
+/* Puts a record into the form, replacing everything in it. The box for the
+   unit not chosen is emptied, as the record holds no value for it. */
+function applyRecord(input) {
+  var r = normalizeRecord(input);
+  var c = r.course;
+
+  RECORD_FIELDS.forEach(function (f) {
+    var el = document.getElementById(f[0]);
+    if (el) el.value = getPath(r, f[1]);
+  });
+
+  var ceus = c.creditUnit === "ceus";
+  document.getElementById(ceus ? "unitCeus" : "unitCredits").checked = true;
+  document.getElementById("credits").value = ceus ? "" : c.creditValue;
+  document.getElementById("ceus").value = ceus ? c.creditValue : "";
+  document.getElementById(c.hasRequisites ? "reqYes" : "reqNo").checked = true;
+
+  RECORD_CHECKS.forEach(function (f) {
+    var el = document.getElementById(f[0]);
+    if (el) el.checked = getPath(r, f[1]);
+  });
+
+  RECORD_RICH.forEach(function (f) {
+    var el = document.getElementById(f[0]);
+    if (!el) return;
+    var value = getPath(r, f[1]);
+    if (el.getAttribute("data-rich")) {
+      var html = richClean(value).html;
+      el.innerHTML = html || "<p><br></p>";
+    } else {
+      /* The editor was never built, so the box is still a textarea: its
+         text, not its markup. */
+      var doc = new DOMParser().parseFromString(value, "text/html");
+      el.value = doc.body ? doc.body.textContent.trim() : "";
+    }
+  });
+
+  clearBody("outcomeBody");
+  r.outcomes.forEach(function (t) { addOutcomeRow(t); });
+  if (!document.getElementById("outcomeBody").rows.length) addOutcomeRow("");
+
+  clearBody("scheduleBody");
+  r.schedule.forEach(function (w) { addScheduleRow([w.week, w.topic, w.readings]); });
+  if (!document.getElementById("scheduleBody").rows.length) addScheduleRow(["1", "", ""]);
+
+  clearBody("assessBody");
+  r.assessments.forEach(function (a) { addAssessRow(a.activity, a.weight, a.due); });
+  if (!document.getElementById("assessBody").rows.length) addAssessRow("", "", "");
+
+  syncCreditUnit();
+  syncBranches();
+  syncHoursTotal();
+  syncWeightTotal();
+  syncEmailEcho();
+  fitScheduleBoxes();
+
+  /* Whatever was flagged or generated before described the old answers. */
+  renderErrors([], "generate");
+  clearOutput();
+}
+
+/* The old name for applyRecord(), kept for anything that still calls it. */
+function applySaveData(data) {
+  applyRecord(data);
+}
+
+function openSaveFile(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function () {
+    var data = null;
+    try {
+      data = JSON.parse(String(reader.result));
+    } catch (e) {
+      data = null;
+    }
+    if (!data || typeof data !== "object" || data.app !== RECORD_APP) {
+      setOpenSaveStatus(file.name + " is not a save file from this builder. Nothing was changed.");
+      return;
+    }
+    applyRecord(data);
+    var when = savedDateText(data.savedAt !== undefined ? data.savedAt : data.saved);
+    var version = Number(data.schemaVersion !== undefined ? data.schemaVersion : data.version);
+    var newer = version > RECORD_VERSION
+      ? " It was saved by a newer version of this builder, so check every field." : "";
+    setOpenSaveStatus("Opened " + file.name + (when ? ", saved " + when : "") +
+      ". Update the dates, then generate." + newer);
+  };
+  reader.onerror = function () {
+    setOpenSaveStatus("Could not read " + file.name + ". Nothing was changed.");
+  };
+  reader.readAsText(file);
+}
+
+/* The note above the department contact names the address the copy goes to,
+   so the instructor can see it is the right one before relying on it. */
+function syncEmailEcho() {
+  var echo = document.getElementById("emailEcho");
+  if (!echo) return;
+  echo.textContent = val("email") || "the instructor email address in the form";
+}
+
+function initSaveFile() {
+  var input = document.getElementById("openSaveInput");
+  document.getElementById("openSaveBtn").addEventListener("click", function () {
+    input.click();
+  });
+  input.addEventListener("change", function () {
+    openSaveFile(input.files && input.files[0]);
+    /* Cleared, so choosing the same file again still fires change. */
+    input.value = "";
+  });
+  document.getElementById("saveFileBtn").addEventListener("click", downloadSaveFile);
+
+  document.getElementById("email").addEventListener("input", syncEmailEcho);
+  syncEmailEcho();
+
+  /* Outside the form, so the form's delegated listeners do not reach it. */
+  var dept = document.getElementById("deptContact");
+  dept.addEventListener("input", refreshErrors);
+  dept.addEventListener("change", refreshErrors);
+}
+
 function init() {
   syncCreditUnit();
   syncBranches();
@@ -3531,6 +4125,7 @@ function init() {
   document.getElementById("copyFormattedBtn").addEventListener("click", copyFormatted);
   document.getElementById("downloadBtn").addEventListener("click", download);
   document.getElementById("copyBtn").addEventListener("click", copy);
+  document.getElementById("copyJsonBtn").addEventListener("click", copyJson);
 
   /* Nothing submits anywhere; Enter should not wipe the form. novalidate on
      the form keeps the browser's own bubbles out of it, so generate() is the
@@ -3546,6 +4141,8 @@ function init() {
      time this looks at it. */
   form.addEventListener("input", refreshErrors);
   form.addEventListener("change", refreshErrors);
+
+  initSaveFile();
 }
 
 if (document.readyState === "loading") {
