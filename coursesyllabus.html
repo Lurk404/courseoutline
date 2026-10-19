@@ -156,6 +156,17 @@
      specificity of input[type="text"] above and, coming later, wins. */
   .carry-note { display: block; color: #8a5a00; font-weight: bold; margin: 0.2rem 0; }
   input.carried, textarea.carried, select.carried { border-left: 4px solid #8a5a00; }
+
+  /* The autosave banner. The status line inside it is a live region, so it
+     stays in the page at all times - a region that is display: none when
+     its text arrives may not be announced - and only the frame comes and
+     goes. Empty, it takes no space. The border sets the offer apart from
+     the introduction around it; #595959 is the same 7:1 grey as the
+     controls. */
+  #draftBanner p { margin: 0; }
+  #draftBanner.draft-on { border: 2px solid #595959; padding: 0.75rem 1rem; margin: 0 0 1rem; }
+  #draftBanner.draft-on .actions { margin-top: 0.5rem; }
+
   /* Focus moves here when Generate, Copy or Download finds a problem.
      Programmatic focus does not always trigger :focus-visible, so :focus is
      matched too, guaranteeing a visible indicator (SC 2.4.7). */
@@ -241,7 +252,16 @@
 <h1>Course Syllabus Builder</h1>
 <p>Use this form to create accessible, consistent course syllabi without awkward templates. Fill out the form once and simply update due dates and deadlines each semester.</p>
 <p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
-<details>
+<!-- Autosave. Filled in after the page loads: an offer to restore the
+     entry this browser kept from last time, or a note that this browser
+     will not let the page keep one. The status line is a live region, so
+     the offer is announced as well as shown. Outside "Show form", so it is
+     seen while the form is still closed. -->
+<div id="draftBanner">
+<p id="draftStatus" role="status"></p>
+<p class="actions" id="draftActions" hidden=""><button type="button" id="draftRestoreBtn" aria-describedby="draftStatus">Restore</button> <button type="button" id="draftDiscardBtn" aria-describedby="draftStatus">Discard</button></p>
+</div>
+<details id="formDetails">
 <summary>Show form</summary>
 <!-- Inside "Show form" but outside the form element: these fill the form in
      rather than being part of it, and a button here must never submit.
@@ -4009,6 +4029,7 @@ function downloadSaveFile() {
   document.body.removeChild(a);
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   setSaveStatus("Downloaded " + saveFileName() + ".");
+  draftMarkSaved();
 }
 
 function clearBody(id) {
@@ -4082,6 +4103,7 @@ function applyRecord(input) {
   /* Whatever was flagged or generated before described the old answers. */
   renderErrors([], "generate");
   clearOutput();
+  draftFormReplaced();
   return r;
 }
 
@@ -4318,6 +4340,7 @@ function submitSyllabus() {
   postToFlow(flowUrl(SUBMIT_FLOW_URL), { record: record, html: html }).then(function (res) {
     if (res.ok) {
       setSubmitStatus("Submitted, and a copy was emailed to " + listText(to) + ".");
+      draftMarkSaved();
     } else {
       setSubmitStatus("The syllabus list answered with an error (" + res.status + "), so this " +
         "may not have been saved. Check the list before submitting again.");
@@ -4427,6 +4450,239 @@ function initSaveFile() {
   dept.addEventListener("change", refreshErrors);
 }
 
+/* ------------------------------------------------------------------ *
+ * Autosave
+ *
+ * The syllabus record, kept in this browser's localStorage so a closed tab,
+ * a crash or a restart does not cost the work. Written half a second after
+ * the last change, as the same JSON the save file holds - schemaVersion and
+ * savedAt included - under one key named for this builder, because every
+ * page on lurk404.github.io shares one storage area.
+ *
+ * Never put back on its own. On load, a kept entry that holds anything is
+ * offered, Restore or Discard, in the status line at the top. Nothing is
+ * written while the offer is open, so typing past it cannot overwrite the
+ * entry it offers; the offer says so. Discard sets the entry aside rather
+ * than deleting it: the next change replaces it. Nothing else clears it.
+ *
+ * Storage can be missing, full or blocked - private windows, managed
+ * browsers - so every read and write is guarded, and when one fails the
+ * page says autosave is off instead of seeming to keep work it is not.
+ *
+ * Separately, leaving the page with changes made since the form was last
+ * opened from a file, loaded, restored, saved to a file or submitted asks
+ * first, through the browser's own "Leave site?" dialog. Autosave does not
+ * count as saving here: the entry is only in this browser.
+ * ------------------------------------------------------------------ */
+
+var DRAFT_KEY = RECORD_APP + ":draft";
+var DRAFT_DELAY = 500;
+
+/* The banner's text arrives a moment after load. A live region filled while
+   the page is still being read in may be passed over by a screen reader. */
+var DRAFT_ANNOUNCE_DELAY = 300;
+
+var DRAFT_OFF_TEXT = "Autosave is not available in this browser. " +
+  "Use Download save file to keep your work.";
+
+var draftStore = null;    /* localStorage, once a write has been seen to work */
+var draftTimer = null;
+var draftPending = null;  /* { record, when, newer } while the offer is open */
+var draftStored = "";     /* what is in storage, as a snapshot */
+var draftBaseline = "";   /* what the leave warning compares against */
+
+/* A record as a string to compare, without the moment it was taken, so the
+   same answers saved a minute apart compare equal. */
+function recordSnapshot(r) {
+  var at = r.savedAt;
+  r.savedAt = "";
+  var s = JSON.stringify(r);
+  r.savedAt = at;
+  return s;
+}
+
+function formSnapshot() {
+  return recordSnapshot(collectRecord());
+}
+
+/* Reading window.localStorage can itself throw, and some browsers allow a
+   read but refuse every write, so a small write is tried before trusting it. */
+function draftStorage() {
+  try {
+    var s = window.localStorage;
+    var probe = DRAFT_KEY + ":probe";
+    s.setItem(probe, "1");
+    s.removeItem(probe);
+    return s;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Oct 18, 2:14 pm. A fixed month list, for the reason MONTH_NAMES gives; the
+   year only when it is not this one. */
+function draftWhenText(iso, now) {
+  var d = recordDate(iso);
+  if (!d) return "";
+  var n = (now && typeof now.getFullYear === "function") ? now : new Date();
+  var h = d.getHours();
+  var m = d.getMinutes();
+  var day = MONTH_NAMES[d.getMonth()].slice(0, 3) + " " + d.getDate();
+  if (d.getFullYear() !== n.getFullYear()) day += ", " + d.getFullYear();
+  return day + ", " + (h % 12 || 12) + ":" + (m < 10 ? "0" : "") + m + (h < 12 ? " am" : " pm");
+}
+
+function setDraftStatus(message, offer) {
+  document.getElementById("draftStatus").textContent = message;
+  document.getElementById("draftActions").hidden = !offer;
+  var banner = document.getElementById("draftBanner");
+  if (message) banner.classList.add("draft-on");
+  else banner.classList.remove("draft-on");
+}
+
+/* The kept entry, if there is one worth offering: from this builder, and
+   not just an empty form. */
+function readDraft() {
+  var raw = null;
+  try { raw = draftStore.getItem(DRAFT_KEY); } catch (e) { raw = null; }
+  if (!raw) return null;
+  var data = null;
+  try { data = JSON.parse(raw); } catch (e) { data = null; }
+  if (!data || typeof data !== "object" || data.app !== RECORD_APP) return null;
+  var record = normalizeRecord(data);
+  if (recordSnapshot(record) === draftBaseline) return null;
+  return {
+    record: record,
+    when: draftWhenText(record.savedAt),
+    newer: Number(data.schemaVersion) > RECORD_VERSION
+  };
+}
+
+function writeDraft() {
+  if (draftTimer) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+  if (!draftStore || draftPending) return;
+  var record = collectRecord();
+  var snap = recordSnapshot(record);
+  if (snap === draftStored) return;
+  try {
+    draftStore.setItem(DRAFT_KEY, recordJson(record));
+    draftStored = snap;
+  } catch (e) {
+    draftStore = null;
+    setDraftStatus(DRAFT_OFF_TEXT, false);
+  }
+}
+
+/* Waits for typing to stop, so a run of keystrokes is one write. */
+function scheduleDraft() {
+  if (!draftStore || draftPending) return;
+  if (draftTimer) clearTimeout(draftTimer);
+  draftTimer = setTimeout(writeDraft, DRAFT_DELAY);
+}
+
+/* Called by applyRecord: whatever was just put into the form is the new
+   starting point, and the entry to keep. */
+function draftFormReplaced() {
+  draftBaseline = formSnapshot();
+  scheduleDraft();
+}
+
+/* Called once the answers have left the page: the save file downloaded, or
+   the syllabus submitted. */
+function draftMarkSaved() {
+  draftBaseline = formSnapshot();
+}
+
+function draftUnsaved() {
+  return formSnapshot() !== draftBaseline;
+}
+
+function draftFrom(p) {
+  return p.when ? " from " + p.when : "";
+}
+
+function draftAfterChoice() {
+  var summary = document.querySelector("#formDetails > summary");
+  if (summary) summary.focus();
+}
+
+function restoreDraft() {
+  var p = draftPending;
+  if (!p) return;
+  draftPending = null;
+  applyRecord(p.record);
+  document.getElementById("formDetails").open = true;
+  setDraftStatus("Restored your entry" + draftFrom(p) + "." +
+    (p.newer ? " It was saved by a newer version of this builder, so check every field." : ""), false);
+  draftAfterChoice();
+}
+
+function discardDraft() {
+  var p = draftPending;
+  if (!p) return;
+  draftPending = null;
+  setDraftStatus("Set aside the entry" + draftFrom(p) + ". Your next change replaces it.", false);
+  draftAfterChoice();
+}
+
+function initDraft() {
+  draftBaseline = formSnapshot();
+  draftStored = draftBaseline;
+  draftStore = draftStorage();
+
+  var message = "";
+  if (!draftStore) {
+    message = DRAFT_OFF_TEXT;
+  } else {
+    draftPending = readDraft();
+    if (draftPending) {
+      message = "You have an unsaved entry" + draftFrom(draftPending) + "." +
+        " Autosave is paused until you choose.";
+      draftStored = recordSnapshot(draftPending.record);
+    }
+  }
+  if (message) {
+    var offer = !!draftPending;
+    setTimeout(function () { setDraftStatus(message, offer); }, DRAFT_ANNOUNCE_DELAY);
+  }
+
+  document.getElementById("draftRestoreBtn").addEventListener("click", restoreDraft);
+  document.getElementById("draftDiscardBtn").addEventListener("click", discardDraft);
+
+  /* Typing, choices, and the buttons that add, remove or format - a removed
+     row or a bolded word is a change no input event reports. The department
+     contact sits outside the form, so it is wired on its own. */
+  var form = document.getElementById("outlineForm");
+  form.addEventListener("input", scheduleDraft);
+  form.addEventListener("change", scheduleDraft);
+  form.addEventListener("click", function (ev) {
+    if (ev.target && ev.target.closest && ev.target.closest("button")) scheduleDraft();
+  });
+  var dept = document.getElementById("deptContact");
+  dept.addEventListener("input", scheduleDraft);
+  dept.addEventListener("change", scheduleDraft);
+
+  /* A write still waiting when the page goes is made now. */
+  function flush() { if (draftTimer) writeDraft(); }
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") flush();
+  });
+  window.addEventListener("beforeunload", function (ev) {
+    flush();
+    if (!draftUnsaved()) return;
+    /* preventDefault is the current way to ask; the string is for browsers
+       from before it. Its words are never shown - every browser writes its
+       own. */
+    ev.preventDefault();
+    ev.returnValue = "You have changes that are not saved.";
+    return ev.returnValue;
+  });
+}
+
 function init() {
   syncCreditUnit();
   syncBranches();
@@ -4533,6 +4789,7 @@ function init() {
 
   initSaveFile();
   initFlows();
+  initDraft();
 }
 
 if (document.readyState === "loading") {
