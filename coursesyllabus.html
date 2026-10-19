@@ -148,6 +148,14 @@
   .error-summary { border: 3px solid #b00020; padding: 0.75rem 1rem; margin: 0 0 1rem; }
   .error-summary h2 { font-size: 1.25rem; margin: 0 0 0.5rem; }
   .error-summary ul { margin: 0; padding-left: 1.25rem; }
+
+  /* Carried over from a loaded syllabus. The note's words say so, so the
+     thick border is a second signal, never the only one (SC 1.4.1).
+     #8a5a00 is 5.9:1 on white, clearing 4.5:1 for the text and 3:1 for the
+     border. The control rule names its elements so it matches the
+     specificity of input[type="text"] above and, coming later, wins. */
+  .carry-note { display: block; color: #8a5a00; font-weight: bold; margin: 0.2rem 0; }
+  input.carried, textarea.carried, select.carried { border-left: 4px solid #8a5a00; }
   /* Focus moves here when Generate, Copy or Download finds a problem.
      Programmatic focus does not always trigger :focus-visible, so :focus is
      matched too, guaranteeing a visible indicator (SC 2.4.7). */
@@ -235,15 +243,28 @@
 <p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
 <details>
 <summary>Show form</summary>
-<!-- Inside "Show form" but outside the form element: it fills the form in
-     rather than being part of it, and a button here must never submit. -->
+<!-- Inside "Show form" but outside the form element: these fill the form in
+     rather than being part of it, and a button here must never submit.
+
+     Shown only when LOOKUP_FLOW_URL is set. -->
+<details id="lookupDetails" hidden="">
+<summary>Start from your last syllabus</summary>
+<p class="hint">Loading replaces everything in the form.</p>
+<p class="field"><label for="lookupCode">Course code and number</label> <input type="text" id="lookupCode" autocomplete="off" placeholder="e.g. ENGL 1123"></p>
+<p class="field"><label for="lookupEmail">Your email</label> <input type="email" id="lookupEmail" autocomplete="email" placeholder="name@langara.ca"></p>
+<p class="actions"><button type="button" id="lookupBtn">Load last syllabus</button> <span id="lookupStatus" role="status"></span></p>
+</details>
 <details id="openSaveDetails">
 <summary>Start from a save file</summary>
 <p class="hint">Opening a save file replaces everything in the form.</p>
 <p class="actions"><button type="button" id="openSaveBtn">Open save file</button> <input type="file" id="openSaveInput" accept=".json,application/json" hidden=""> <span id="openSaveStatus" role="status"></span></p>
 </details>
 <form id="outlineForm" novalidate=""><fieldset><legend>Course identification</legend>
-<p class="field"><label for="courseTitle">Course code, number, and title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. ENGL 1123 Literature and Composition"></p>
+<!-- Two boxes rather than one, so the code can be checked and used to find
+     this course's earlier syllabi. The document still opens with both
+     together, as F1003 3.2(a) asks. -->
+<p class="field"><label for="courseCode">Course code and number (required)</label> <input type="text" id="courseCode" autocomplete="off" aria-required="true" placeholder="e.g. ENGL 1123"></p>
+<p class="field"><label for="courseTitle">Course title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. Literature and Composition"></p>
 </fieldset><fieldset><legend>Credits</legend>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
 <div class="radio-row"><input type="radio" name="creditUnit" id="unitCeus" value="ceus"> <label for="unitCeus">CEUs</label></div>
@@ -379,14 +400,15 @@
 <h2>Preview</h2>
 <p class="hint">The finished syllabus may not look exactly like this preview. Use the preview to review your syllabus content.</p>
 <iframe id="preview" title="Course syllabus preview" height="600"></iframe>
-<!-- NOT WIRED YET. Nothing is emailed: a static page cannot send mail on
-     its own. Sending needs a back end (for example a Power Automate flow)
-     that this page calls. Until that exists, this note promises something
-     the page does not do. A fieldset outside the form is valid HTML and
-     groups the one control with the note that explains it. -->
-<fieldset id="emailCopies"><legend>Email copies</legend>
-<p>A copy of this syllabus will be emailed to <strong id="emailEcho">the instructor email address in the form</strong> and to your department contact.</p>
+<!-- Shown only when SUBMIT_FLOW_URL is set. A static page cannot send mail
+     on its own; the flow it posts to does. Without one, a note saying a copy
+     will be emailed would promise something the page does not do, so the
+     whole group stays hidden. A fieldset outside the form is valid HTML and
+     groups the controls with the note that explains them. -->
+<fieldset id="emailCopies" hidden=""><legend>Submit and email copies</legend>
+<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email address in the form</strong> and to your department contact.</p>
 <p class="field"><label for="deptContact">Department contact email</label> <span class="hint" id="deptContactHint">The person who collects syllabi for your department, such as the chair or department assistant.</span> <input type="email" id="deptContact" autocomplete="off" aria-describedby="deptContactHint" placeholder="name@langara.ca"></p>
+<p class="actions"><button type="button" id="submitBtn">Submit syllabus</button> <span id="submitStatus" role="status"></span></p>
 </fieldset> <!-- The steps sit here, between the result and the button they start with,
      because this is the point on the page where they are acted on. -->
 <p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
@@ -504,6 +526,17 @@ var ACKNOWLEDGEMENT = "sn\u0259w\u0313ey\u0259\u026C lel\u0259m\u0313 Langara Co
    Leave it as an empty string and the whole line is omitted from the output. */
 var ARCHIVE_URL   = "";
 var ARCHIVE_LABEL = "View previous versions of this document";
+
+/* TEST CONNECTION - the two Power Automate flows set up in
+   sharepoint-test-setup.md. Paste each flow's HTTP URL between the quotes.
+   Left empty, Submit and "Start from your last syllabus" are not shown and
+   the page works exactly as it does without them.
+
+   For a test list holding test data only. A flow whose trigger is open to
+   "Anyone" has no lock but its URL, and the URL is readable by anyone who
+   opens this file. */
+var SUBMIT_FLOW_URL = "";
+var LOOKUP_FLOW_URL = "";
 
 /* Month names, written out rather than read from the runtime.
 
@@ -1350,7 +1383,7 @@ function renderHtml(input) {
   var L = [];
   var W = words();
 
-  L.push(heading(1, txt(c.title) || W.fallbackTitle));
+  L.push(heading(1, courseHeading(c.code, c.title) || W.fallbackTitle));
 
   /* Course facts, in the order they are asked for on the form. */
   L = L.concat(statBand(c));
@@ -1581,7 +1614,18 @@ function collectErrors() {
     });
   }
 
-  if (!val("courseTitle")) add("courseTitle", "Enter the course code, number, and title");
+  if (!val("courseCode")) add("courseCode", "Enter the course code and number, like ENGL 1123");
+  else if (!normalizeCourseCode(val("courseCode"))) {
+    add("courseCode", "Enter the course code as letters then numbers, like ENGL 1123");
+  }
+
+  /* The habit of the old single box: the code typed into the title as well,
+     which would print it twice. Flagged rather than taken out. */
+  var titleSplit = splitCourseTitle(val("courseTitle"));
+  if (!val("courseTitle")) add("courseTitle", "Enter the course title");
+  else if (titleSplit && titleSplit.code === normalizeCourseCode(val("courseCode"))) {
+    add("courseTitle", "Take the course code out of the title. It has its own box above");
+  }
 
   if (creditUnit() === "ceus") {
     if (badNumber("ceus")) add("ceus", "CEUs must be a number, like 3.5");
@@ -1721,7 +1765,8 @@ var ACTION_PHRASES = {
   generate: "generate the syllabus",
   copy: "copy the syllabus",
   download: "download the syllabus",
-  copyJson: "copy the syllabus data"
+  copyJson: "copy the syllabus data",
+  submit: "submit the syllabus"
 };
 
 function errorSignature(errors) {
@@ -3246,6 +3291,7 @@ function generate(announce, action) {
      them. They cannot disagree, because there is only one reading. */
   var record = collectRecord();
   var html = renderHtml(record);
+  generatedRecord = record;
   document.getElementById("source").value = html;
   document.getElementById("jsonSource").value = recordJson(record);
 
@@ -3265,7 +3311,7 @@ function generate(announce, action) {
     "</head><body>" + html + "</body></html>";
   document.getElementById("preview").setAttribute("srcdoc", previewDoc);
 
-  if (announce !== false) setStatus(words().generatedStatus);
+  if (announce !== false) setStatus(words().generatedStatus + carryReminder());
   return html;
 }
 
@@ -3277,13 +3323,15 @@ function clearOutput() {
   document.getElementById("source").value = "";
   document.getElementById("jsonSource").value = "";
   setJsonStatus("");
+  setSubmitStatus("");
+  generatedRecord = null;
   document.getElementById("preview").removeAttribute("srcdoc");
   setStatus("");
   setExportStatus("");
 }
 
 function fileName() {
-  var base = val("courseTitle").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+  var base = formHeading().replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
   var stem = base || words().fileStem;
   return stem + ".html";
 }
@@ -3594,11 +3642,17 @@ function copyJson() {
  *
  * schemaVersion 1 is the save file this builder wrote before the record
  * existed, keyed by element id. It is still read, converted on the way in;
- * it is never written.
+ * it is never written. Versions 1 and 2 had one box for code and title;
+ * a record from either has its title split on the way in (normalizeRecord).
+ *
+ * syllabusKey - course code and instructor email, "ENGL 1123|name@langara.ca"
+ * - is what finds a course's earlier syllabi in the list. The code alone is
+ * not enough: several instructors teach sections of the same course. It is
+ * worked out from those two fields every time, never taken from a record.
  * ------------------------------------------------------------------ */
 
 var RECORD_APP = "langara-course-syllabus-builder";
-var RECORD_VERSION = 2;
+var RECORD_VERSION = 3;
 
 /* Caps how many rows a record can ask for, so a damaged or hostile file
    cannot stall the page building thousands of them. */
@@ -3607,6 +3661,7 @@ var RECORD_MAX_ROWS = 200;
 /* Each plain text control: its element id, and where its value sits in the
    record. The ids are also the keys a version 1 save file used. */
 var RECORD_FIELDS = [
+  ["courseCode", "course.code"],
   ["courseTitle", "course.title"],
   ["yearSemester", "course.term"],
   ["mode", "course.format"],
@@ -3646,6 +3701,7 @@ function emptyRecord() {
     app: RECORD_APP,
     schemaVersion: RECORD_VERSION,
     savedAt: "",
+    syllabusKey: "",
     course: {
       code: "",
       title: "",
@@ -3701,14 +3757,47 @@ function rowsFrom(list) {
   return Array.isArray(list) ? list.slice(0, RECORD_MAX_ROWS) : [];
 }
 
-/* "ENGL 1123 Literature and Composition" gives "ENGL 1123". Derived, never
-   typed: the form takes code and title in one box, and a list needs the code
-   on its own to find a course's earlier syllabi. Langara codes are four
-   letters and four digits. A title that does not open with one gives a
-   blank, not a guess, and the blank is there in the JSON to be seen. */
-function courseCode(title) {
-  var m = /^\s*([A-Za-z]{4})[\s-]*(\d{4})\b/.exec(str(title));
-  return m ? m[1].toUpperCase() + " " + m[2] : "";
+/* Course codes. Langara's are four letters and four digits, ENGL 1123. The
+   pattern is looser than that - two to five letters, three or four digits,
+   an optional letter - because Continuing Studies codes have not been
+   checked against it, and refusing a real code would block a syllabus.
+   Whatever is typed, "engl1123", "ENGL-1123" and "ENGL 1123" are the same
+   course, so the code is written one way - capitals, one space - before it
+   is shown or used as a key. Anything that does not fit gives a blank, and
+   the form says so (collectErrors). */
+var COURSE_CODE_RE  = /^([A-Za-z]{2,5})[ \t-]*(\d{3,4}[A-Za-z]?)$/;
+var TITLE_CODE_RE   = /^\s*([A-Za-z]{2,5})[ \t-]*(\d{3,4}[A-Za-z]?)(?![A-Za-z0-9])[\s:\u2013\u2014-]*/;
+
+function normalizeCourseCode(raw) {
+  var m = COURSE_CODE_RE.exec(txt(raw));
+  return m ? m[1].toUpperCase() + " " + m[2].toUpperCase() : "";
+}
+
+/* A title that opens with a course code, as every title did when one box
+   held both: the code, and what follows it. null when there is none. */
+function splitCourseTitle(title) {
+  var s = str(title);
+  var m = TITLE_CODE_RE.exec(s);
+  if (!m) return null;
+  return { code: m[1].toUpperCase() + " " + m[2].toUpperCase(), title: s.slice(m[0].length).trim() };
+}
+
+/* What the document's first heading says: code and title together. */
+function courseHeading(code, title) {
+  var c = txt(code);
+  return [normalizeCourseCode(c) || c, txt(title)].filter(Boolean).join(" ");
+}
+
+function formHeading() {
+  return courseHeading(val("courseCode"), val("courseTitle"));
+}
+
+/* Blank unless both halves are usable, so a half-finished record never
+   carries a key that would match the wrong course or nobody. */
+function syllabusKey(code, email) {
+  var c = normalizeCourseCode(code);
+  var e = txt(email).toLowerCase();
+  return (c && /^[^\s@|]+@[^\s@|]+$/.test(e)) ? c + "|" + e : "";
 }
 
 /* A rich box's content as cleaned HTML. If the editor was never built, the
@@ -3739,7 +3828,8 @@ function collectRecord(now) {
   c.creditValue = val(c.creditUnit === "ceus" ? "ceus" : "credits");
   c.hasRequisites = checked("reqYes");
   if (!c.hasRequisites) c.requisites = "";
-  c.code = courseCode(c.title);
+  c.code = normalizeCourseCode(c.code) || c.code;
+  r.syllabusKey = syllabusKey(c.code, r.instructor.email);
 
   r.outcomes = outcomeRows();
   r.schedule = scheduleRows().map(function (cells) {
@@ -3786,9 +3876,13 @@ function recordFromV1(d) {
 }
 
 /* Any input, as a well-formed record: every key present, every value of its
-   own type, rows capped. Unknown keys are dropped. The code is worked out
-   again from the title, so a record cannot carry one that disagrees with it,
-   and pre/corequisites are blanked when the record says there are none. */
+   own type, rows capped. Unknown keys are dropped. Pre/corequisites are
+   blanked when the record says there are none, and the key is worked out
+   again, so a record cannot carry one that disagrees with its own fields.
+
+   A record from before the code had its own box has a blank code and a
+   title that opens with one; the two are separated here. A code typed into
+   both boxes is kept once. */
 function normalizeRecord(input) {
   var d = obj(input);
   if (d.schemaVersion === undefined && d.fields !== undefined) d = recordFromV1(d);
@@ -3805,7 +3899,18 @@ function normalizeRecord(input) {
   c.creditValue = str(getPath(d, "course.creditValue"));
   c.hasRequisites = getPath(d, "course.hasRequisites") === true;
   if (!c.hasRequisites) c.requisites = "";
-  c.code = courseCode(c.title);
+
+  var split = splitCourseTitle(c.title);
+  if (!txt(c.code)) {
+    if (split) {
+      c.code = split.code;
+      c.title = split.title;
+    }
+  } else if (split && split.code === normalizeCourseCode(c.code)) {
+    c.title = split.title;
+  }
+  c.code = normalizeCourseCode(c.code) || txt(c.code);
+  r.syllabusKey = syllabusKey(c.code, r.instructor.email);
 
   r.outcomes = rowsFrom(d.outcomes).map(str);
   r.schedule = rowsFrom(d.schedule).map(function (w) {
@@ -3886,7 +3991,7 @@ function saveFileName() {
   function slug(s) {
     return s.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
   }
-  var parts = [slug(val("courseTitle")) || words().fileStem];
+  var parts = [slug(formHeading()) || words().fileStem];
   if (slug(val("yearSemester"))) parts.push(slug(val("yearSemester")));
   parts.push("save");
   return parts.join("-") + ".json";
@@ -3922,6 +4027,7 @@ function savedDateText(iso) {
 function applyRecord(input) {
   var r = normalizeRecord(input);
   var c = r.course;
+  clearCarryMarks();
 
   RECORD_FIELDS.forEach(function (f) {
     var el = document.getElementById(f[0]);
@@ -3976,6 +4082,7 @@ function applyRecord(input) {
   /* Whatever was flagged or generated before described the old answers. */
   renderErrors([], "generate");
   clearOutput();
+  return r;
 }
 
 /* The old name for applyRecord(), kept for anything that still calls it. */
@@ -3997,18 +4104,298 @@ function openSaveFile(file) {
       setOpenSaveStatus(file.name + " is not a save file from this builder. Nothing was changed.");
       return;
     }
-    applyRecord(data);
+    var record = applyRecord(data);
+    var marked = markCarriedOver(record);
     var when = savedDateText(data.savedAt !== undefined ? data.savedAt : data.saved);
     var version = Number(data.schemaVersion !== undefined ? data.schemaVersion : data.version);
     var newer = version > RECORD_VERSION
       ? " It was saved by a newer version of this builder, so check every field." : "";
     setOpenSaveStatus("Opened " + file.name + (when ? ", saved " + when : "") +
-      ". Update the dates, then generate." + newer);
+      ". " + carryLoadedText(marked) + newer);
   };
   reader.onerror = function () {
     setOpenSaveStatus("Could not read " + file.name + ". Nothing was changed.");
   };
   reader.readAsText(file);
+}
+
+/* ------------------------------------------------------------------ *
+ * Carried-over fields
+ *
+ * After a syllabus is loaded - from a save file or from the list - the
+ * answers that change every term are marked: the year and semester, the
+ * office hours, the assessment due dates and the schedule. Each mark is a
+ * line of text above the field, tied to the field with aria-describedby,
+ * and a thick border on the box; the words carry the meaning and the
+ * border only repeats it (SC 1.4.1).
+ *
+ * A mark goes when its field is edited - for the schedule, when anything
+ * in it is. Generate still works with marks in place, since a correction
+ * within the same term is legitimate, but its status line names what has
+ * not been touched. Flagged, never blocked.
+ * ------------------------------------------------------------------ */
+
+var carryMarks = [];
+
+function carryIntro(term) {
+  return "Carried over from " + (txt(term) ? "the " + txt(term) + " syllabus" : "your last syllabus") + ". ";
+}
+
+/* name is how the status lines refer to the mark; before is what the note
+   goes in front of; whole means any edit among the controls clears it. */
+function addCarryMark(name, noteId, text, before, controls, whole) {
+  controls = controls.filter(Boolean);
+  if (!before || !before.parentNode || !controls.length) return;
+  var note = document.createElement("span");
+  note.className = "carry-note";
+  note.id = noteId;
+  note.textContent = text;
+  before.parentNode.insertBefore(note, before);
+  controls.forEach(function (el) {
+    el.classList.add("carried");
+    el.setAttribute("data-carry-ref", noteId);
+    var described = el.getAttribute("aria-describedby");
+    el.setAttribute("aria-describedby", described ? noteId + " " + described : noteId);
+  });
+  carryMarks.push({ name: name, note: note, controls: controls, whole: !!whole });
+}
+
+function untieCarry(el) {
+  var ref = el.getAttribute("data-carry-ref");
+  if (!ref) return;
+  el.classList.remove("carried");
+  el.removeAttribute("data-carry-ref");
+  var kept = (el.getAttribute("aria-describedby") || "").split(/\s+/).filter(function (t) {
+    return t && t !== ref;
+  });
+  if (kept.length) el.setAttribute("aria-describedby", kept.join(" "));
+  else el.removeAttribute("aria-describedby");
+}
+
+function removeCarryMark(mark) {
+  mark.controls.forEach(untieCarry);
+  if (mark.note.parentNode) mark.note.parentNode.removeChild(mark.note);
+  carryMarks = carryMarks.filter(function (m) { return m !== mark; });
+}
+
+function clearCarryMarks() {
+  carryMarks.slice().forEach(removeCarryMark);
+}
+
+/* Marks whose rows have all been removed have nothing left to check. */
+function liveCarryMarks() {
+  carryMarks.slice().forEach(function (m) {
+    m.controls = m.controls.filter(function (el) { return document.body.contains(el); });
+    if (!m.controls.length) removeCarryMark(m);
+  });
+  return carryMarks;
+}
+
+function onCarryEdit(ev) {
+  var el = ev.target;
+  if (!el || !el.getAttribute || !el.getAttribute("data-carry-ref")) return;
+  carryMarks.slice().forEach(function (m) {
+    if (m.controls.indexOf(el) === -1) return;
+    if (m.whole) {
+      removeCarryMark(m);
+      return;
+    }
+    untieCarry(el);
+    m.controls = m.controls.filter(function (c) { return c !== el; });
+    if (!m.controls.length) removeCarryMark(m);
+  });
+}
+
+/* Marks a record just put into the form. Returns the names marked. */
+function markCarriedOver(record) {
+  var intro = carryIntro(record.course.term);
+
+  var term = document.getElementById("yearSemester");
+  if (term && term.value) {
+    addCarryMark("year and semester", "yearSemesterCarry", intro + "Change it to this term.", term, [term]);
+  }
+
+  var hours = document.getElementById("officeHours");
+  if (hours && hours.value) {
+    addCarryMark("office hours", "officeHoursCarry", intro + "Check them for this term.", hours, [hours]);
+  }
+
+  var due = Array.prototype.filter.call(
+    document.querySelectorAll('#assessBody input[data-kind="due"]'),
+    function (el) { return !!el.value; });
+  if (due.length) {
+    addCarryMark("due dates", "dueCarry", intro + "Update each due date for this term.",
+      document.getElementById("assessTable").parentNode, due);
+  }
+
+  var weeks = Array.prototype.slice.call(document.querySelectorAll("#scheduleBody input, #scheduleBody textarea"));
+  if (scheduleRows().length) {
+    addCarryMark("schedule", "scheduleCarry", intro + "Check the weeks for this term.",
+      document.getElementById("scheduleTable").parentNode, weeks, true);
+  }
+
+  return carryMarks.map(function (m) { return m.name; });
+}
+
+function listText(names) {
+  if (names.length < 2) return names.join("");
+  return names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+}
+
+function carryLoadedText(names) {
+  if (!names.length) return "Update the dates, then generate.";
+  var t = listText(names);
+  return "Marked to check for this term: " + t + ".";
+}
+
+/* Appended to the Generate status. Empty when nothing is still marked. */
+function carryReminder() {
+  var names = liveCarryMarks().map(function (m) { return m.name; });
+  if (!names.length) return "";
+  return " Not yet changed from your last syllabus: " + listText(names) + ".";
+}
+
+/* ------------------------------------------------------------------ *
+ * Test connection: Submit and Load
+ *
+ * Two Power Automate flows, one that adds a row to the syllabus list and
+ * emails the copies, and one that finds the newest row for a course code
+ * and instructor email. Both are optional: with no URL set, neither control
+ * is shown. See sharepoint-test-setup.md.
+ *
+ * Both send text/plain rather than application/json. A cross-site POST
+ * with a JSON content type makes the browser ask the server's permission
+ * first (a CORS preflight), which a flow's HTTP trigger may not answer;
+ * text/plain goes without asking, and the flow parses it with
+ * json(triggerBody()). Reading the answer still needs the flow to send an
+ * Access-Control-Allow-Origin header, which the guide sets.
+ *
+ * Status lines say what is known and no more. A submission that gets no
+ * answer may still have been saved, so it says to check before trying again.
+ * ------------------------------------------------------------------ */
+
+var generatedRecord = null;
+var submitBusy = false;
+var lookupBusy = false;
+
+function flowUrl(u) {
+  var s = txt(u);
+  return /^https:\/\/[^\s]+$/i.test(s) ? s : "";
+}
+
+function postToFlow(url, payload) {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+    body: JSON.stringify(payload)
+  });
+}
+
+function setSubmitStatus(message) {
+  var el = document.getElementById("submitStatus");
+  if (el) el.textContent = message;
+}
+
+function setLookupStatus(message) {
+  document.getElementById("lookupStatus").textContent = message;
+}
+
+function submitSyllabus() {
+  if (submitBusy) return;
+  var html = generate(false, "submit");
+  if (html === null || !generatedRecord) return;
+  if (typeof fetch !== "function") {
+    setSubmitStatus("This browser cannot reach the syllabus list. Nothing was submitted.");
+    return;
+  }
+  var record = generatedRecord;
+  var to = [record.instructor.email, record.distribution.departmentContact].filter(Boolean);
+
+  submitBusy = true;
+  setSubmitStatus("Submitting\u2026");
+  function done() { submitBusy = false; }
+
+  postToFlow(flowUrl(SUBMIT_FLOW_URL), { record: record, html: html }).then(function (res) {
+    if (res.ok) {
+      setSubmitStatus("Submitted, and a copy was emailed to " + listText(to) + ".");
+    } else {
+      setSubmitStatus("The syllabus list answered with an error (" + res.status + "), so this " +
+        "may not have been saved. Check the list before submitting again.");
+    }
+  }, function () {
+    setSubmitStatus("No answer from the syllabus list, so it is not known whether this was " +
+      "saved. Check the list before submitting again.");
+  }).then(done, done);
+}
+
+function loadFromList() {
+  if (lookupBusy) return;
+  var code = normalizeCourseCode(val("lookupCode"));
+  var email = val("lookupEmail").toLowerCase();
+  var key = syllabusKey(code, email);
+  if (!key) {
+    setLookupStatus("Enter the course code, like ENGL 1123, and your email address. Nothing was changed.");
+    return;
+  }
+  if (typeof fetch !== "function") {
+    setLookupStatus("This browser cannot reach the syllabus list. Nothing was changed.");
+    return;
+  }
+
+  lookupBusy = true;
+  setLookupStatus("Looking for your last " + code + " syllabus\u2026");
+  function done() { lookupBusy = false; }
+
+  postToFlow(flowUrl(LOOKUP_FLOW_URL), { syllabusKey: key }).then(function (res) {
+    if (res.status === 404) {
+      setLookupStatus("No syllabus found for " + code + " and " + email + ". Nothing was changed.");
+      return;
+    }
+    if (!res.ok) {
+      setLookupStatus("The syllabus list answered with an error (" + res.status + "). Nothing was changed.");
+      return;
+    }
+    return res.text().then(function (text) {
+      var data = null;
+      try { data = JSON.parse(text); } catch (e) { data = null; }
+      /* A flow that returns the stored column as it is sends the record as
+         a JSON string inside JSON, so one more parse is tried. */
+      if (typeof data === "string") {
+        try { data = JSON.parse(data); } catch (e) { data = null; }
+      }
+      if (!data || typeof data !== "object" || data.app !== RECORD_APP) {
+        setLookupStatus("The syllabus list sent back something this builder cannot read. Nothing was changed.");
+        return;
+      }
+      /* A flow whose filter is wrong would hand back someone else's
+         syllabus. Checked here rather than trusted. */
+      var found = normalizeRecord(data);
+      if (found.syllabusKey !== key) {
+        setLookupStatus("The syllabus list sent back a different course or instructor (" +
+          (found.syllabusKey || "no key") + "). Nothing was changed.");
+        return;
+      }
+      var record = applyRecord(data);
+      var marked = markCarriedOver(record);
+      var when = savedDateText(record.savedAt);
+      setLookupStatus("Loaded your " + code + " syllabus" +
+        (txt(record.course.term) ? " for " + txt(record.course.term) : "") +
+        (when ? ", saved " + when : "") + ". " + carryLoadedText(marked));
+    });
+  }, function () {
+    setLookupStatus("Could not reach the syllabus list. Check your connection and try again. Nothing was changed.");
+  }).then(done, done);
+}
+
+function initFlows() {
+  if (flowUrl(LOOKUP_FLOW_URL)) {
+    document.getElementById("lookupDetails").hidden = false;
+    document.getElementById("lookupBtn").addEventListener("click", loadFromList);
+  }
+  if (flowUrl(SUBMIT_FLOW_URL)) {
+    document.getElementById("emailCopies").hidden = false;
+    document.getElementById("submitBtn").addEventListener("click", submitSyllabus);
+  }
 }
 
 /* The note above the department contact names the address the copy goes to,
@@ -4141,8 +4528,11 @@ function init() {
      time this looks at it. */
   form.addEventListener("input", refreshErrors);
   form.addEventListener("change", refreshErrors);
+  form.addEventListener("input", onCarryEdit);
+  form.addEventListener("change", onCarryEdit);
 
   initSaveFile();
+  initFlows();
 }
 
 if (document.readyState === "loading") {
