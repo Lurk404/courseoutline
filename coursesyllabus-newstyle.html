@@ -402,6 +402,10 @@
   .doc .doc-table input,
   .doc .doc-table textarea { width: 100%; border: 0; border-bottom: 1px solid #595959; }
   .doc .doc-table textarea { padding: 0.15rem 0.35rem; vertical-align: top; }
+  /* On the form only, every cell is centred top to bottom, so the boxes sit
+     level with the Remove button beside them rather than at the top of a row
+     the button makes taller. The export keeps its own top alignment. */
+  .doc .doc-table td { vertical-align: middle; }
 
   /* The outcomes, drawn as the bulleted list the export makes: the list's
      default 40px indent, and a bullet in front of each box. The bullet's
