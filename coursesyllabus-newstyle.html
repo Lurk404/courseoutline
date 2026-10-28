@@ -262,7 +262,7 @@
    * that will not: questions, hints, buttons. That difference, not colour
    * alone, is what tells them apart (SC 1.4.1).
    * ---------------------------------------------------------------- */
-  :root { --doc-font: sans-serif; }
+  :root { --doc-font: serif; }
 
   .doc { font-family: var(--doc-font); line-height: normal; }
 
@@ -369,8 +369,9 @@
   .doc .doc-table th,
   .doc .doc-table td { padding: 6px 10px; }
   .doc .doc-table tr > :last-child { border: 0; background: transparent; width: 1%; white-space: nowrap; }
-  .doc #scheduleTable th:nth-child(1) { width: 15%; }
-  .doc #scheduleTable th:nth-child(2) { width: 30%; }
+  .doc #scheduleTable th:nth-child(1) { width: 7.5%; }
+  .doc #scheduleTable th:nth-child(2) { width: 46.25%; }
+  .doc #scheduleTable th:nth-child(3) { width: 46.25%; }
   .doc #assessTable th:nth-child(1) { width: 55%; }
   .doc #assessTable th:nth-child(2) { width: 15%; }
   .doc .doc-table input,
@@ -1735,8 +1736,8 @@ function renderHtml(input) {
   if (weeks.length) {
     schedBody = schedBody.concat(tableStart("Week-by-week schedule"));
     schedBody.push("<thead>");
-    schedBody.push("<tr>" + th("Week", "15%") + th("Topic", "30%") +
-                   th("Readings and activities", "55%") + "</tr>");
+    schedBody.push("<tr>" + th("Week", "7.5%") + th("Topic", "46.25%") +
+                   th("Readings and activities", "46.25%") + "</tr>");
     schedBody.push("</thead>");
     schedBody.push("<tbody>");
     weeks.forEach(function (r) {
