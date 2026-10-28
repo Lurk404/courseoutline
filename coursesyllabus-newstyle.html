@@ -302,6 +302,9 @@
   /* The policy links stand one to a line. A 1.5 line height spaces them so
      each keeps the 24px target SC 2.5.8 asks for. */
   .doc [data-boiler] li { line-height: 1.5; }
+  /* Holds the floated logo inside the footer, so it cannot ride down beside
+     the Generate button. */
+  .doc [data-boiler="acknowledgement"] { display: flow-root; }
 
   /* The boxes. Single-line boxes are a fill-in line; boxes of several lines
      a dashed frame. Both stay #595959, 7:1 on white, so the edge that marks
@@ -339,7 +342,12 @@
   .doc .doc-line > input,
   .doc .doc-line > select { flex: 1 1 12rem; width: auto; min-width: 0; }
   .doc .doc-line > select { flex-grow: 0; }
-  .doc .doc-line > .error-message { flex-basis: 100%; }
+  /* An error message takes a line of its own above the label and box,
+     rather than coming between them. */
+  .doc .doc-line > .error-message { flex-basis: 100%; order: -1; }
+  /* The unit word is the choice: bold like a label, sized to its text. */
+  .doc .unit-pick { font-weight: bold; white-space: nowrap; }
+  .doc .unit-pick select { font-weight: bold; width: auto; padding-right: 0.15rem; }
   .doc .doc-line.stat > input { flex: 0 1 6rem; }
 
   /* Credits and hours close together, as the export sets them: half the
@@ -349,17 +357,30 @@
 
   /* The course heading: the browser's own h1 size and margins, with the two
      boxes side by side and their labels in builder ink above them. */
-  .doc .doc-title { display: flex; flex-wrap: wrap; gap: 0 1rem; margin: 0.67em 0; }
-  .doc .doc-title .field { margin: 0; font-size: 2em; font-weight: bold; }
-  .doc .doc-title-code { flex: 0 1 6em; min-width: 0; }
+  /* Bottom-aligned, so the two boxes stay level even if a label wraps. */
+  .doc .doc-title { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 1rem; margin: 0.67em 0; }
+  /* h2 size on the form; the export still makes this the h1. */
+  .doc .doc-title .field { margin: 0; font-size: 1.5em; font-weight: bold; }
+  .doc .doc-title-code { flex: 0 1 7.5em; min-width: 0; }
   .doc .doc-title-name { flex: 1 1 14em; min-width: 0; }
   .doc .chrome-label { display: block; font-size: 0.875rem; font-weight: normal; color: #4a4a4a; }
 
   /* Office beside Office hours, Phone beside Email, as in the export: always
      two columns, never three, so the pairs hold. Below 40rem each cell takes
      its own row (SC 1.4.10). */
+  /* Side by side, each label stays on the line with its box, so the four
+     line up. Below 48rem, where two would no longer fit, the grid goes to
+     one column and every label sits above its box, all four alike
+     (SC 1.4.10). */
   .doc .doc-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 1.5rem; }
-  @media (max-width: 40rem) { .doc .doc-grid { grid-template-columns: minmax(0, 1fr); } }
+  .doc .doc-grid .doc-line { flex-wrap: nowrap; }
+  .doc .doc-grid .doc-line > input { flex: 1 1 0; }
+  @media (max-width: 48rem) {
+    .doc .doc-grid { grid-template-columns: minmax(0, 1fr); }
+    .doc .doc-grid .doc-line { display: block; }
+    .doc .doc-grid .doc-line > label { display: block; margin-bottom: 0.15rem; }
+    .doc .doc-grid .doc-line > input { width: 100%; }
+  }
   .doc .doc-grid .field { margin: 0 0 0.75em; }
   .doc #instructors { width: 100%; }
 
@@ -374,8 +395,12 @@
   .doc #scheduleTable th:nth-child(3) { width: 46.25%; }
   .doc #assessTable th:nth-child(1) { width: 55%; }
   .doc #assessTable th:nth-child(2) { width: 15%; }
+  /* The same padding on the textareas as on the one-line boxes. Without it
+     they keep the page's general textarea padding and stand taller than
+     every other box in a table. */
   .doc .doc-table input,
   .doc .doc-table textarea { width: 100%; border: 0; border-bottom: 1px solid #595959; }
+  .doc .doc-table textarea { padding: 0.15rem 0.35rem; vertical-align: top; }
 
   /* The outcomes, drawn as the bulleted list the export makes: the list's
      default 40px indent, and a bullet in front of each box. The bullet's
@@ -449,17 +474,17 @@
 <p class="field doc-title-name"><label class="chrome-label" for="courseTitle">Course title</label> <input type="text" id="courseTitle" aria-required="true" placeholder="Literature and Composition"></p>
 </fieldset>
 
-<fieldset class="doc-group"><legend class="chrome-legend">Is this course measured in credits or CEUs?</legend>
-<div class="chrome-choices">
-<div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
-<div class="radio-row"><input type="radio" name="creditUnit" id="unitCeus" value="ceus"> <label for="unitCeus">CEUs</label></div>
-</div>
-<p class="field doc-line stat" id="creditsWrap"><label for="credits">Credits:</label> <input type="number" id="credits" step="0.5" min="0" aria-required="true" placeholder="3"></p>
-<p class="field doc-line stat" id="ceusWrap" hidden=""><label for="ceus">CEUs:</label> <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="3.5"></p>
-</fieldset>
+<!-- The line reads as it will in the syllabus, "Credits: 3", with the word
+     itself the choice between Credits and CEUs (F1003 3.2(b): credits/CEUs
+     as appropriate). Both number boxes stay in the page, one hidden, so
+     switching unit never loses what was typed. -->
+<p class="field doc-line stat" id="creditLine"><span class="unit-pick"><label class="visually-hidden" for="creditUnitSelect">Credits or CEUs</label><select id="creditUnitSelect">
+<option value="credits">Credits</option>
+<option value="ceus">CEUs</option>
+</select>:</span> <label class="visually-hidden" for="credits">Credits</label><input type="number" id="credits" step="0.5" min="0" aria-required="true" placeholder="3"> <label class="visually-hidden" for="ceus">CEUs</label><input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="3.5" hidden=""></p>
 
 <fieldset class="doc-group"><legend class="chrome-legend">Contact hours (at least one)</legend>
-<p class="hint">Enter these as <strong>hours per week</strong>. A box left blank or set to <code>0</code> is left out of the syllabus, and a total appears only once two kinds of hour are entered. Continuing Studies courses may instead enter a <strong>total for the whole course</strong> in each box; use the same basis for all three.</p>
+<p class="hint">Enter <strong>hours per week</strong>. Continuing Studies courses may enter <strong>hours for the whole course</strong> instead, but then every box needs whole-course hours, because they are added together for the total. A box left blank or set to <code>0</code> is left out of the syllabus.</p>
 <p class="field doc-line stat"><label for="lectureHours">Lecture hours:</label> <input type="number" id="lectureHours" step="0.5" min="0" placeholder="3"></p>
 <p class="field doc-line stat"><label for="labHours">Lab hours:</label> <input type="number" id="labHours" step="0.5" min="0" placeholder="2"></p>
 <p class="field doc-line stat"><label for="seminarHours">Seminar hours:</label> <input type="number" id="seminarHours" step="0.5" min="0" placeholder="0"></p>
@@ -734,6 +759,17 @@ var DISCLAIMER = "This syllabus is subject to change. Confirm the current versio
    normalised away by an editor that decides to be helpful. */
 var ACKNOWLEDGEMENT = "sn\u0259w\u0313ey\u0259\u026C lel\u0259m\u0313 Langara College acknowledges " +
   "that we are located on the unceded territory of the Musqueam people.";
+
+/* The template breaks the acknowledgement before "unceded". The break goes
+   in at this phrase when the footer is built, so the sentence above stays
+   whole and searchable. */
+var ACKNOWLEDGEMENT_BREAK = "unceded territory";
+
+/* The logo from Brightspace's 2021 HTML templates. A root-relative address,
+   so it resolves on the Brightspace server the syllabus is pasted into and
+   shows only as its alt text anywhere else (GitHub Pages, the preview). */
+var LOGO_URL = "/shared/2021_HTML_Templates-v3/pages/../_assets/img/logo.png";
+var LOGO_ALT = "Langara logo";
 
 /* PLACEHOLDER \u2014 set ARCHIVE_URL to the archive location once one exists.
    Leave it as an empty string and the whole line is omitted from the output. */
@@ -1191,7 +1227,7 @@ function checked(id) {
 }
 
 function creditUnit() {
-  return checked("unitCeus") ? "ceus" : "credits";
+  return val("creditUnitSelect") === "ceus" ? "ceus" : "credits";
 }
 
 /* Credits read as "3.0" rather than "3" throughout Langara's calendar, and CEUs
@@ -1656,7 +1692,13 @@ function versioningSection(dateText) {
 /* Closes the document, as it closes the College's own template, set off
    from the versioning block by a horizontal rule. */
 function acknowledgementBlock() {
-  return ['<hr style="' + esc(HR_STYLE) + '">', "", "<p>" + esc(ACKNOWLEDGEMENT) + "</p>"];
+  var at = ACKNOWLEDGEMENT.indexOf(ACKNOWLEDGEMENT_BREAK);
+  var ack = at > 0
+    ? esc(ACKNOWLEDGEMENT.slice(0, at)) + "<br>" + esc(ACKNOWLEDGEMENT.slice(at))
+    : esc(ACKNOWLEDGEMENT);
+  return ['<hr style="' + esc(HR_STYLE) + '">', "",
+          '<p><img src="' + esc(LOGO_URL) + '" alt="' + esc(LOGO_ALT) + '" style="float: right;"></p>',
+          "<p>" + ack + "</p>"];
 }
 
 /* The document, built from a syllabus record and nothing else: this function
@@ -3514,9 +3556,9 @@ function enhanceRichFields() {
 }
 
 function syncCreditUnit() {
-  var ceus = checked("unitCeus");
-  document.getElementById("creditsWrap").hidden = ceus;
-  document.getElementById("ceusWrap").hidden = !ceus;
+  var ceus = creditUnit() === "ceus";
+  document.getElementById("credits").hidden = ceus;
+  document.getElementById("ceus").hidden = !ceus;
 }
 
 function syncBranches() {
@@ -4292,7 +4334,7 @@ function applyRecord(input) {
   });
 
   var ceus = c.creditUnit === "ceus";
-  document.getElementById(ceus ? "unitCeus" : "unitCredits").checked = true;
+  document.getElementById("creditUnitSelect").value = ceus ? "ceus" : "credits";
   document.getElementById("credits").value = ceus ? "" : c.creditValue;
   document.getElementById("ceus").value = ceus ? c.creditValue : "";
   document.getElementById(c.hasRequisites ? "reqYes" : "reqNo").checked = true;
@@ -4894,9 +4936,7 @@ function init() {
     if (el && el.tagName === "TEXTAREA") el.addEventListener("paste", handlePaste);
   });
 
-  ["unitCredits", "unitCeus"].forEach(function (id) {
-    document.getElementById(id).addEventListener("change", syncCreditUnit);
-  });
+  document.getElementById("creditUnitSelect").addEventListener("change", syncCreditUnit);
   ["reqYes", "reqNo", "zeroCost", "privacyOptOut"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", syncBranches);
   });
