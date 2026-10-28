@@ -354,6 +354,7 @@
      ordinary paragraph gap between lines, a full one after the last. */
   .doc .stat { margin: 0 0 0.5em; }
   .doc .stat-total { margin: 0 0 1em; }
+  .doc #creditLine { margin: 0 0 1em; }
 
   /* The course heading: the browser's own h1 size and margins, with the two
      boxes side by side and their labels in builder ink above them. */
@@ -1581,15 +1582,16 @@ function link(url, label) {
 }
 
 /* Credits and hours as ordinary labelled lines - bold label, plain figure -
-   the same shape as the "Year and semester" line below them, but set closer
-   together so they read as one group.
+   the same shape as the "Year and semester" line below them. Credits stands
+   on its own; the hours are set closer together so they read as one group.
 
-   The gap between them is half the gap between ordinary paragraphs: 0.5em,
-   against the 1em a browser puts between paragraphs (and the 1rem
-   Bootstrap's own stylesheet uses, inside the Langara template - equal to 1em
-   at body size). The top margin is zeroed so the gap is exactly the bottom
-   margin. The last line takes a full 1em, so the group is separated from
-   what follows by an ordinary paragraph gap rather than a half one. */
+   The gap inside the hours group is half the gap between ordinary
+   paragraphs: 0.5em, against the 1em a browser puts between paragraphs (and
+   the 1rem Bootstrap's own stylesheet uses, inside the Langara template -
+   equal to 1em at body size). The top margin is zeroed so each gap is
+   exactly the bottom margin. Credits and the last hours line take a full
+   1em, so the hours group is set off by an ordinary paragraph gap on both
+   sides. */
 var STAT_LINE_GAP = "margin: 0 0 0.5em;";
 var STAT_LAST_GAP = "margin: 0 0 1em;";
 
@@ -1598,7 +1600,6 @@ function statBand(course) {
 
   var unit = course.creditUnit === "ceus" ? "ceus" : "credits";
   var credit = creditFigure(course.creditValue);
-  if (credit) stats.push([creditLabel(unit), credit]);
 
   var hours = [];
   [["Lecture hours", "lecture"],
@@ -1614,10 +1615,15 @@ function statBand(course) {
   var total = hourTotal(hours);
   if (total !== null) stats.push(["Total hours", String(total)]);
 
-  return stats.map(function (s, i) {
-    var gap = i === stats.length - 1 ? STAT_LAST_GAP : STAT_LINE_GAP;
-    return '<p style="' + gap + '"><strong>' + esc(s[0]) + ":</strong> " + esc(s[1]) + "</p>";
-  });
+  function line(label, value, gap) {
+    return '<p style="' + gap + '"><strong>' + esc(label) + ":</strong> " + esc(value) + "</p>";
+  }
+
+  var out = [];
+  if (credit) out.push(line(creditLabel(unit), credit, STAT_LAST_GAP));
+  return out.concat(stats.map(function (s, i) {
+    return line(s[0], s[1], i === stats.length - 1 ? STAT_LAST_GAP : STAT_LINE_GAP);
+  }));
 }
 
 /* ------------------------------------------------------------------ *
