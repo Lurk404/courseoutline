@@ -629,9 +629,8 @@
 <p class="hint" id="weightTotal">Total weight: not yet entered</p>
 <span class="visually-hidden" id="weightAnnounce" role="status"></span>
 <p><button type="button" id="addAssessBtn">Add assessment row</button></p>
-<div class="field" id="gradingWrap"><h3><label for="gradingNotes">Grading guidelines</label> <span class="opt">(optional)</span></h3> <span class="hint" id="gradingNotesHint">How the grade is arrived at for this section: rounding, late penalties, minimum passing requirements. Left blank, the heading is left out too.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></div>
-<div data-boiler="grades"></div>
-<!-- Assessment details: optional, as many as wanted. Each block is a title
+
+  <!-- Assessment details: optional, as many as wanted. Each block is a title
      (an h4 in the export) and an editor for the body. The h3 above them is
      shown only while there is a block, as the export prints it only when
      there are details. Ids come from a counter and are never reused or
@@ -642,6 +641,9 @@
 <p class="hint" id="detailsHint">Optional. Describe individual assessments, each under its own title.</p>
 <p><button type="button" id="addDetailBtn" aria-describedby="detailsHint">Add assessment details</button></p>
 </fieldset>
+  
+<div class="field" id="gradingWrap"><h3><label for="gradingNotes">Grading guidelines</label> <span class="opt">(optional)</span></h3> <span class="hint" id="gradingNotesHint">How the grade is arrived at for this section: rounding, late penalties, minimum passing requirements. Left blank, the heading is left out too.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></div>
+<div data-boiler="grades"></div>
 
 <fieldset class="doc-section"><legend><h2><label for="textbook">Textbooks and course materials</label></h2></legend>
 <div class="radio-row" id="zeroCostWrap"><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has <a href="https://langara.libguides.com/open-education/what-is-open-education" target="_blank" rel="noopener noreferrer">zero textbook cost</a></label></div>
