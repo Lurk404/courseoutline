@@ -344,7 +344,8 @@
   .doc .doc-line > select { flex-grow: 0; }
   /* An error message takes a line of its own above the label and box,
      rather than coming between them. */
-  .doc .doc-line > .error-message { flex-basis: 100%; order: -1; }
+  .doc .doc-line > .error-message,
+  .doc .doc-line > .carry-note { flex-basis: 100%; order: -1; }
   /* The unit word is the choice: bold like a label, sized to its text. */
   .doc .unit-pick { font-weight: bold; white-space: nowrap; }
   .doc .unit-pick select { font-weight: bold; width: auto; padding-right: 0.15rem; }
@@ -383,7 +384,12 @@
     .doc .doc-grid .doc-line > input { width: 100%; }
   }
   .doc .doc-grid .field { margin: 0 0 0.75em; }
-  .doc #instructors { width: 100%; }
+  .doc .instructor-name input { width: 100%; }
+  /* Blocks after the first are set off by a rule, so where one instructor
+     ends and the next begins is plain at a glance. */
+  .doc .instructor-block + .instructor-block { border-top: 1px solid #c8c8c8; padding-top: 0.25rem; }
+  .doc .instructor-remove { margin: 0 0 1em; }
+  .doc .instructor-remove[hidden] { display: none; }
 
   /* Tables as the export draws them: the same borders, shading and padding.
      The Remove buttons sit in a column the syllabus does not have, so that
@@ -479,6 +485,8 @@
 <p class="field doc-title-name"><label class="chrome-label" for="courseTitle">Course title</label> <input type="text" id="courseTitle" aria-required="true" placeholder="Literature and Composition"></p>
 </fieldset>
 
+<p class="field doc-line" id="courseSectionWrap"><label for="courseSection">Section:</label> <input type="text" id="courseSection" autocomplete="off" aria-required="true" placeholder="001"></p>
+
 <!-- The line reads as it will in the syllabus, "Credits: 3", with the word
      itself the choice between Credits and CEUs (F1003 3.2(b): credits/CEUs
      as appropriate). Both number boxes stay in the page, one hidden, so
@@ -521,17 +529,27 @@
 
 <div data-boiler="transfer"></div>
 
-<fieldset id="instructorFieldset" class="doc-section"><legend><h2><label for="instructors">Instructor</label></h2></legend>
-<p class="field"><input type="text" id="instructors" autocomplete="name" aria-required="true" placeholder="Instructor name(s)"></p>
+<!-- One block per instructor, built by addInstructorBlock() from the
+     template below, the same name-then-grid shape the export repeats. The
+     heading says Instructors once there is more than one. -->
+<fieldset id="instructorFieldset" class="doc-section"><legend><h2 id="instructorHeading">Instructor</h2></legend>
+<div id="instructorList"></div>
+<p><button type="button" id="addInstructorBtn">Add instructor</button></p>
+</fieldset>
+<template id="instructorTemplate">
+<div class="instructor-block" role="group">
+<p class="field instructor-name"><label class="chrome-label" data-stem="instructorName">Instructor name</label> <input type="text" data-stem="instructorName" aria-required="true" placeholder="Instructor name"></p>
 <!-- Office beside Office hours, Phone beside Email: the pairing the export's
      grid uses. -->
 <div class="doc-grid">
-<p class="field doc-line"><label for="office">Office:</label> <input type="text" id="office" aria-required="true" placeholder="A322b"></p>
-<p class="field doc-line"><label for="officeHours">Office hours:</label> <input type="text" id="officeHours" aria-required="true" placeholder="Tuesdays 13:00-15:00, or by appointment"></p>
-<p class="field doc-line"><label for="phone">Phone <span class="opt">(optional)</span>:</label> <input type="tel" id="phone" autocomplete="tel" placeholder="604 323 5511"></p>
-<p class="field doc-line"><label for="email">Email:</label> <input type="email" id="email" autocomplete="email" aria-required="true" placeholder="name@langara.ca"></p>
+<p class="field doc-line"><label data-stem="instructorOffice">Office:</label> <input type="text" data-stem="instructorOffice" aria-required="true" placeholder="A322b"></p>
+<p class="field doc-line"><label data-stem="instructorOfficeHours">Office hours:</label> <input type="text" data-stem="instructorOfficeHours" aria-required="true" placeholder="Tuesdays 13:00-15:00, or by appointment"></p>
+<p class="field doc-line"><label data-stem="instructorPhone">Phone <span class="opt">(optional)</span>:</label> <input type="tel" data-stem="instructorPhone" placeholder="604 323 5511"></p>
+<p class="field doc-line"><label data-stem="instructorEmail">Email:</label> <input type="email" data-stem="instructorEmail" aria-required="true" placeholder="name@langara.ca"></p>
 </div>
-</fieldset>
+<p class="instructor-remove"><button type="button" class="removeInstructor">Remove<span class="visually-hidden"></span></button></p>
+</div>
+</template>
 
 <fieldset class="doc-section"><legend><h2><label for="courseDescription">Course description</label></h2></legend>
 <p class="field"><span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
@@ -651,7 +669,7 @@
      whole group stays hidden. A fieldset outside the form is valid HTML and
      groups the controls with the note that explains them. -->
 <fieldset id="emailCopies" hidden=""><legend>Submit and email copies</legend>
-<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email address in the form</strong> and to your department contact.</p>
+<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email addresses in the form</strong> and to your department contact.</p>
 <p class="field"><label for="deptContact">Department contact email</label> <span class="hint" id="deptContactHint">The person who collects syllabi for your department, such as the chair or department assistant.</span> <input type="email" id="deptContact" autocomplete="off" aria-describedby="deptContactHint" placeholder="name@langara.ca"></p>
 <p class="actions"><button type="button" id="submitBtn">Submit syllabus</button> <span id="submitStatus" role="status"></span></p>
 </fieldset> <!-- The steps sit here, between the result and the button they start with,
@@ -1724,6 +1742,7 @@ function renderHtml(input) {
   var W = words();
 
   L.push(heading(1, courseHeading(c.code, c.title) || W.fallbackTitle));
+  L = L.concat(labelled("Section", txt(c.section)));
 
   /* Course facts, in the order they are asked for on the form. */
   L = L.concat(statBand(c));
@@ -1757,25 +1776,29 @@ function renderHtml(input) {
      the instructor), Phone beside Email below them (both about how to reach
      them). The grid flows in source order, so this ordering IS the layout -
      changing the array below changes which fields share a row. */
-  var ins = r.instructor;
+  /* Each instructor in turn, the same shape repeated: name, then the grid.
+     The heading counts them. */
+  var team = r.instructors.filter(instructorHasContent);
   var instructorBody = [];
-  if (txt(ins.name)) instructorBody.push("<p>" + inline(txt(ins.name)) + "</p>");
+  team.forEach(function (ins) {
+    if (txt(ins.name)) instructorBody.push("<p>" + inline(txt(ins.name)) + "</p>");
 
-  var details = [];
-  [["Office", txt(ins.office)],
-   ["Office hours", txt(ins.officeHours)],
-   ["Phone", txt(ins.phone)],
-   ["Email", txt(ins.email)]].forEach(function (pair) {
-    details = details.concat(labelledGridCell(pair[0], pair[1]));
+    var details = [];
+    [["Office", txt(ins.office)],
+     ["Office hours", txt(ins.officeHours)],
+     ["Phone", txt(ins.phone)],
+     ["Email", txt(ins.email)]].forEach(function (pair) {
+      details = details.concat(labelledGridCell(pair[0], pair[1]));
+    });
+
+    if (details.length) {
+      instructorBody.push('<div style="' + esc(INSTRUCTOR_GRID.wrap) + '">');
+      instructorBody = instructorBody.concat(details);
+      instructorBody.push("</div>");
+    }
   });
 
-  if (details.length) {
-    instructorBody.push('<div style="' + esc(INSTRUCTOR_GRID.wrap) + '">');
-    instructorBody = instructorBody.concat(details);
-    instructorBody.push("</div>");
-  }
-
-  L = L.concat(section(2, "Instructor", instructorBody));
+  L = L.concat(section(2, instructorHeading(team.length), instructorBody));
 
   L = L.concat(section(2, "Course description", blocks(txt(c.description))));
   L = L.concat(section(2, "Learning outcomes", learningOutcomesBody(recordOutcomes(r))));
@@ -1939,6 +1962,8 @@ function collectErrors() {
     add("courseTitle", "Take the course code out of the title. It has its own box above");
   }
 
+  if (!val("courseSection")) add("courseSection", "Enter the section");
+
   if (creditUnit() === "ceus") {
     if (badNumber("ceus")) add("ceus", "CEUs must be a number, like 3.5");
     else if (!val("ceus")) add("ceus", "Enter the number of CEUs");
@@ -1981,13 +2006,24 @@ function collectErrors() {
   if (!val("mode")) add("mode", "Choose the course format");
   if (checked("reqYes") && !val("reqDetail")) add("reqDetail", "Enter the pre/corequisites, or choose No");
 
-  if (!val("instructors")) add("instructors", "Enter the instructor's name");
-  if (!val("office")) add("office", "Enter the office location");
-  if (!val("email")) add("email", "Enter an email address");
-  else if (!emailLooksValid(document.getElementById("email"))) {
-    add("email", "Enter an email address in the format name@langara.ca");
-  }
-  if (!val("officeHours")) add("officeHours", "Enter the office hours, or say there are none");
+  /* The first instructor is required. An added one left wholly empty is
+     ignored, as an empty row is; one partly filled in must be finished. */
+  var insBlocks = instructorBlocks();
+  insBlocks.forEach(function (block, i) {
+    var n = i + 1;
+    if (n > 1 && !instructorHasContent(readInstructorBlock(block))) return;
+    var of = insBlocks.length > 1 ? " for instructor " + n : "";
+    var id = function (stem) { return stem + n; };
+    if (!val(id("instructorName"))) add(id("instructorName"), "Enter the instructor's name" + of);
+    if (!val(id("instructorOffice"))) add(id("instructorOffice"), "Enter the office location" + of);
+    if (!val(id("instructorEmail"))) add(id("instructorEmail"), "Enter an email address" + of);
+    else if (!emailLooksValid(document.getElementById(id("instructorEmail")))) {
+      add(id("instructorEmail"), "Enter an email address" + of + " in the format name@langara.ca");
+    }
+    if (!val(id("instructorOfficeHours"))) {
+      add(id("instructorOfficeHours"), "Enter the office hours" + of + ", or say there are none");
+    }
+  });
 
   if (!val("courseDescription")) add("courseDescription", "Enter the calendar course description");
 
@@ -2522,6 +2558,101 @@ function renumberOutcomeRows() {
     var sr = tr.querySelector(".removeOutcome .visually-hidden");
     if (sr) sr.textContent = " learning outcome " + n;
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * Instructor blocks
+ *
+ * The same shape as the rows - Add makes one, each has a Remove, at least
+ * one is always left, and the ids are renumbered whenever the set changes -
+ * but a block of five boxes rather than a table row, so the details keep
+ * the name-then-grid layout the export gives them.
+ * ------------------------------------------------------------------ */
+
+function instructorBlocks() {
+  var list = document.getElementById("instructorList");
+  return list ? Array.prototype.slice.call(list.children) : [];
+}
+
+function readInstructorBlock(block) {
+  var out = blankInstructor();
+  INSTRUCTOR_KEYS.forEach(function (k) {
+    var el = block.querySelector('input[data-stem="' + k[1] + '"]');
+    out[k[0]] = el ? el.value.trim() : "";
+  });
+  return out;
+}
+
+function instructorHeading(count) {
+  return count > 1 ? "Instructors" : "Instructor";
+}
+
+function addInstructorBlock(values) {
+  var list = document.getElementById("instructorList");
+  var tpl = document.getElementById("instructorTemplate");
+  var block = tpl.content.firstElementChild.cloneNode(true);
+  var v = instructorFrom(values);
+  INSTRUCTOR_KEYS.forEach(function (k) {
+    var el = block.querySelector('input[data-stem="' + k[1] + '"]');
+    if (el) el.value = v[k[0]];
+  });
+  block.querySelector(".removeInstructor").addEventListener("click", function () {
+    removeInstructorBlock(block);
+  });
+  list.appendChild(block);
+  renumberInstructorBlocks();
+  return block;
+}
+
+function removeInstructorBlock(block) {
+  var blocks = instructorBlocks();
+  var index = blocks.indexOf(block);
+  block.parentNode.removeChild(block);
+  if (!instructorBlocks().length) addInstructorBlock();
+  renumberInstructorBlocks();
+  refreshErrors();
+
+  /* Focus to the block that took this one's place, or the one before it. */
+  var rest = instructorBlocks();
+  var next = rest[Math.min(index, rest.length - 1)];
+  var target = next && rest.length > 1 ? next.querySelector(".removeInstructor")
+                                       : next.querySelector("input");
+  if (target) target.focus();
+  setStatus("Instructor removed.");
+}
+
+/* Ids, labels and group names carry the block's number, so they are written
+   again whenever blocks come or go. Numbers show only once there is more
+   than one block, as does each block's Remove. The first block's boxes ask
+   the browser to fill in the author's own name, phone and email (SC 1.3.5);
+   the others are someone else's details, so they do not. */
+function renumberInstructorBlocks() {
+  var blocks = instructorBlocks();
+  var many = blocks.length > 1;
+  blocks.forEach(function (block, i) {
+    var n = i + 1;
+    var who = many ? "Instructor " + n : "Instructor";
+    block.setAttribute("aria-label", who);
+    INSTRUCTOR_KEYS.forEach(function (k) {
+      var id = k[1] + n;
+      var input = block.querySelector('input[data-stem="' + k[1] + '"]');
+      var label = block.querySelector('label[data-stem="' + k[1] + '"]');
+      if (input) input.id = id;
+      if (label) label.setAttribute("for", id);
+    });
+    block.querySelector('label[data-stem="instructorName"]').textContent = who + " name";
+    var auto = n === 1 ? { instructorName: "name", instructorPhone: "tel", instructorEmail: "email" } : {};
+    ["instructorName", "instructorPhone", "instructorEmail"].forEach(function (stem) {
+      var el = block.querySelector('input[data-stem="' + stem + '"]');
+      if (el) el.setAttribute("autocomplete", auto[stem] || "off");
+    });
+    var remove = block.querySelector(".instructor-remove");
+    remove.hidden = !many;
+    remove.querySelector(".visually-hidden").textContent = " instructor " + n;
+  });
+  var heading = document.getElementById("instructorHeading");
+  if (heading) heading.textContent = instructorHeading(blocks.length);
+  syncEmailEcho();
 }
 
 /* ------------------------------------------------------------------ *
@@ -3991,15 +4122,17 @@ function copyJson() {
  * existed, keyed by element id. It is still read, converted on the way in;
  * it is never written. Versions 1 and 2 had one box for code and title;
  * a record from either has its title split on the way in (normalizeRecord).
+ * Version 4 holds a list of instructors where version 3 and earlier held
+ * one; the one becomes a list of one on the way in.
  *
- * syllabusKey - course code and instructor email, "ENGL 1123|name@langara.ca"
+ * syllabusKey - course code and the first instructor's email, "ENGL 1123|name@langara.ca"
  * - is what finds a course's earlier syllabi in the list. The code alone is
  * not enough: several instructors teach sections of the same course. It is
  * worked out from those two fields every time, never taken from a record.
  * ------------------------------------------------------------------ */
 
 var RECORD_APP = "langara-course-syllabus-builder";
-var RECORD_VERSION = 3;
+var RECORD_VERSION = 4;
 
 /* Caps how many rows a record can ask for, so a damaged or hostile file
    cannot stall the page building thousands of them. */
@@ -4010,6 +4143,7 @@ var RECORD_MAX_ROWS = 200;
 var RECORD_FIELDS = [
   ["courseCode", "course.code"],
   ["courseTitle", "course.title"],
+  ["courseSection", "course.section"],
   ["yearSemester", "course.term"],
   ["mode", "course.format"],
   ["lectureHours", "course.contactHours.lecture"],
@@ -4017,13 +4151,36 @@ var RECORD_FIELDS = [
   ["seminarHours", "course.contactHours.seminar"],
   ["reqDetail", "course.requisites"],
   ["courseDescription", "course.description"],
-  ["instructors", "instructor.name"],
-  ["office", "instructor.office"],
-  ["phone", "instructor.phone"],
-  ["email", "instructor.email"],
-  ["officeHours", "instructor.officeHours"],
   ["deptContact", "distribution.departmentContact"]
 ];
+
+/* An instructor's details: the record's key for each, and the id stem of
+   its box in the form. Box n of stem "instructorOffice" is
+   "instructorOffice" + n. The ids in the third place are what a version 1
+   save file called the one instructor's boxes. */
+var INSTRUCTOR_KEYS = [
+  ["name", "instructorName", "instructors"],
+  ["office", "instructorOffice", "office"],
+  ["officeHours", "instructorOfficeHours", "officeHours"],
+  ["phone", "instructorPhone", "phone"],
+  ["email", "instructorEmail", "email"]
+];
+
+function blankInstructor() {
+  return { name: "", office: "", phone: "", email: "", officeHours: "" };
+}
+
+/* An instructor from anywhere, as strings, every key present. */
+function instructorFrom(v) {
+  var o = obj(v);
+  var out = blankInstructor();
+  INSTRUCTOR_KEYS.forEach(function (k) { out[k[0]] = str(o[k[0]]); });
+  return out;
+}
+
+function instructorHasContent(ins) {
+  return INSTRUCTOR_KEYS.some(function (k) { return !!txt(ins[k[0]]); });
+}
 
 /* Checkboxes. The two radio pairs are not here: each pair is one value
    (course.creditUnit, course.hasRequisites), handled where it is read and
@@ -4052,6 +4209,7 @@ function emptyRecord() {
     course: {
       code: "",
       title: "",
+      section: "",
       term: "",
       format: "",
       creditUnit: "credits",
@@ -4061,7 +4219,7 @@ function emptyRecord() {
       requisites: "",
       description: ""
     },
-    instructor: { name: "", office: "", phone: "", email: "", officeHours: "" },
+    instructors: [blankInstructor()],
     outcomes: [],
     schedule: [],
     assessments: [],
@@ -4176,7 +4334,12 @@ function collectRecord(now) {
   c.hasRequisites = checked("reqYes");
   if (!c.hasRequisites) c.requisites = "";
   c.code = normalizeCourseCode(c.code) || c.code;
-  r.syllabusKey = syllabusKey(c.code, r.instructor.email);
+
+  /* An added block left empty is scaffolding, as an empty row is, and is
+     left out. The list never goes out empty. */
+  var ins = instructorBlocks().map(readInstructorBlock).filter(instructorHasContent);
+  r.instructors = ins.length ? ins : [blankInstructor()];
+  r.syllabusKey = syllabusKey(c.code, r.instructors[0].email);
 
   r.outcomes = outcomeRows();
   r.schedule = scheduleRows().map(function (cells) {
@@ -4204,6 +4367,10 @@ function recordFromV1(d) {
   RECORD_FIELDS.forEach(function (f) { setPath(r, f[1], str(fields[f[0]])); });
   RECORD_CHECKS.forEach(function (f) { setPath(r, f[1], checks[f[0]] === true); });
   RECORD_RICH.forEach(function (f) { setPath(r, f[1], str(rich[f[0]])); });
+
+  var one = blankInstructor();
+  INSTRUCTOR_KEYS.forEach(function (k) { one[k[0]] = str(fields[k[2]]); });
+  r.instructors = [one];
 
   var c = r.course;
   c.creditUnit = (checks.unitCredits !== true && checks.unitCeus === true) ? "ceus" : "credits";
@@ -4257,7 +4424,13 @@ function normalizeRecord(input) {
     c.title = split.title;
   }
   c.code = normalizeCourseCode(c.code) || txt(c.code);
-  r.syllabusKey = syllabusKey(c.code, r.instructor.email);
+
+  /* Version 3 and earlier: one instructor object. */
+  var list = Array.isArray(d.instructors) ? d.instructors
+           : (d.instructor !== undefined ? [d.instructor] : []);
+  r.instructors = rowsFrom(list).map(instructorFrom);
+  if (!r.instructors.length) r.instructors = [blankInstructor()];
+  r.syllabusKey = syllabusKey(c.code, r.instructors[0].email);
 
   r.outcomes = rowsFrom(d.outcomes).map(str);
   r.schedule = rowsFrom(d.schedule).map(function (w) {
@@ -4368,6 +4541,10 @@ function applyRecord(input) {
       el.value = doc.body ? doc.body.textContent.trim() : "";
     }
   });
+
+  document.getElementById("instructorList").textContent = "";
+  r.instructors.forEach(function (ins) { addInstructorBlock(ins); });
+  if (!instructorBlocks().length) addInstructorBlock();
 
   clearBody("outcomeBody");
   r.outcomes.forEach(function (t) { addOutcomeRow(t); });
@@ -4496,9 +4673,16 @@ function markCarriedOver(record) {
     addCarryMark("year and semester", "yearSemesterCarry", intro + "Change it to this term.", term, [term]);
   }
 
-  var hours = document.getElementById("officeHours");
-  if (hours && hours.value) {
-    addCarryMark("office hours", "officeHoursCarry", intro + "Check them for this term.", hours, [hours]);
+  var section = document.getElementById("courseSection");
+  if (section && section.value) {
+    addCarryMark("section", "courseSectionCarry", intro + "Check it for this term.", section, [section]);
+  }
+
+  var hours = Array.prototype.filter.call(
+    document.querySelectorAll('#instructorList input[data-stem="instructorOfficeHours"]'),
+    function (el) { return !!el.value; });
+  if (hours.length) {
+    addCarryMark("office hours", "officeHoursCarry", intro + "Check them for this term.", hours[0], hours);
   }
 
   var due = Array.prototype.filter.call(
@@ -4590,7 +4774,8 @@ function submitSyllabus() {
     return;
   }
   var record = generatedRecord;
-  var to = [record.instructor.email, record.distribution.departmentContact].filter(Boolean);
+  var to = record.instructors.map(function (i) { return txt(i.email); })
+    .concat(record.distribution.departmentContact).filter(Boolean);
 
   submitBusy = true;
   setSubmitStatus("Submitting\u2026");
@@ -4685,11 +4870,13 @@ function initFlows() {
 function syncEmailEcho() {
   var echo = document.getElementById("emailEcho");
   if (!echo) return;
-  echo.textContent = val("email") || "the instructor email address in the form";
+  var emails = instructorBlocks().map(function (b) { return readInstructorBlock(b).email; }).filter(Boolean);
+  echo.textContent = emails.length ? listText(emails) : "the instructor email addresses in the form";
 }
 
 function initEmailCopies() {
-  document.getElementById("email").addEventListener("input", syncEmailEcho);
+  /* Delegated, so an instructor added later is covered. */
+  document.getElementById("instructorList").addEventListener("input", syncEmailEcho);
   syncEmailEcho();
 
   /* Outside the form, so the form's delegated listeners do not reach it. */
@@ -4960,6 +5147,8 @@ function init() {
   addAssessRow("", "", "");
   addAssessRow("", "", "");
 
+  addInstructorBlock();
+
   for (var w = 1; w <= 3; w++) addScheduleRow([String(w), "", ""]);
 
   addOutcomeRow("");
@@ -5000,6 +5189,13 @@ function init() {
     var first = tr.querySelector("input");
     if (first) first.focus();
     setStatus("Learning outcome added.");
+  });
+
+  document.getElementById("addInstructorBtn").addEventListener("click", function () {
+    var block = addInstructorBlock();
+    var first = block.querySelector("input");
+    if (first) first.focus();
+    setStatus("Instructor added.");
   });
 
   document.getElementById("addWeekBtn").addEventListener("click", function () {
