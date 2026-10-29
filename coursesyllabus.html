@@ -247,6 +247,30 @@
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
+
+  /* ---------------------------------------------------------------- *
+   * Added since this stylesheet: only what the newer features need, and
+   * the table adjustments asked for on the form.
+   * ---------------------------------------------------------------- */
+
+  /* Instructor blocks: a rule between one instructor and the next, so where
+     one ends is plain at a glance. */
+  .instructor-block + .instructor-block { border-top: 1px solid #c8c8c8; padding-top: 0.75rem; }
+
+  /* The footer's floated logo is kept inside the footer, so it cannot ride
+     down beside the error summary or Generate. */
+  [data-boiler="acknowledgement"] { display: flow-root; }
+
+  /* Schedule columns as the export sets them: Week narrow, the other two
+     even. The Remove column takes only what its button needs. */
+  #scheduleTable th:nth-child(1) { width: 7.5%; }
+  #scheduleTable th:nth-child(2),
+  #scheduleTable th:nth-child(3) { width: 46.25%; }
+  #scheduleTable th:last-child { width: 1%; white-space: nowrap; }
+
+  /* Boxes centred top to bottom in their cells, level with the Remove
+     button beside them. The export keeps its own top alignment. */
+  #outcomeTable td, #scheduleTable td, #assessTable td { vertical-align: middle; }
 </style>
 </head><body><main>
 <h1>Course Syllabus Builder</h1>
@@ -274,74 +298,122 @@
 <p class="field"><label for="lookupEmail">Your email</label> <input type="email" id="lookupEmail" autocomplete="email" placeholder="name@langara.ca"></p>
 <p class="actions"><button type="button" id="lookupBtn">Load last syllabus</button> <span id="lookupStatus" role="status"></span></p>
 </details>
-<form id="outlineForm" novalidate=""><fieldset><legend>Course identification</legend>
+<!-- The form is laid out as the syllabus it makes: the same headings, in the
+     same order, with the fixed text the export adds standing where it will
+     stand. The boxes are the parts the instructor writes. Anything that will
+     not appear in the syllabus - a question, a hint, a button - is set in the
+     page's own sans-serif, so the two can be told apart at a glance.
+
+     The fixed text is filled in from the script (the [data-boiler] slots), by
+     the same functions that build the export, so the form never shows wording
+     the syllabus does not carry. -->
+<form id="outlineForm" class="doc" novalidate="">
+<p class="hint doc-intro">Fill in the boxes. The text around them is added to your syllabus as shown. Every box is required unless it says optional.</p>
+
+<fieldset class="doc-title"><legend class="visually-hidden">Course identification</legend>
 <!-- Two boxes rather than one, so the code can be checked and used to find
      this course's earlier syllabi. The document still opens with both
      together, as F1003 3.2(a) asks. -->
-<p class="field"><label for="courseCode">Course code and number (required)</label> <input type="text" id="courseCode" autocomplete="off" aria-required="true" placeholder="e.g. ENGL 1123"></p>
-<p class="field"><label for="courseTitle">Course title (required)</label> <input type="text" id="courseTitle" aria-required="true" placeholder="e.g. Literature and Composition"></p>
-</fieldset><fieldset><legend>Credits</legend>
-<div class="radio-row"><input type="radio" name="creditUnit" id="unitCredits" value="credits" checked="checked"> <label for="unitCredits">Credits</label></div>
-<div class="radio-row"><input type="radio" name="creditUnit" id="unitCeus" value="ceus"> <label for="unitCeus">CEUs</label></div>
-<p class="field" id="creditsWrap"><label for="credits">Credits (required)</label> <input type="number" id="credits" step="0.5" min="0" aria-required="true" placeholder="e.g. 3"></p>
-<p class="field" id="ceusWrap" hidden=""><label for="ceus">CEUs (required)</label> <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="e.g. 3.5"></p>
-</fieldset><fieldset><legend>Contact hours (at least one required)</legend>
-<p class="hint">Enter these as <strong>hours per week</strong>. A field left blank or set to <code>0</code> is left out of the document, and a total appears only once two kinds of hour are entered.</p>
-<p class="hint">Continuing Studies courses may instead enter each field as a <strong>total for the whole course</strong> rather than per week. Whichever basis you use, use the same one for all three fields.</p>
-<p class="field"><label for="lectureHours">Lecture hours per week</label> <input type="number" id="lectureHours" step="0.5" min="0" placeholder="e.g. 3"></p>
-<p class="field"><label for="labHours">Lab hours per week</label> <input type="number" id="labHours" step="0.5" min="0" placeholder="e.g. 2"></p>
-<p class="field"><label for="seminarHours">Seminar hours per week</label> <input type="number" id="seminarHours" step="0.5" min="0" placeholder="e.g. 0"></p>
-<p class="hint" id="hoursTotal">Total hours: not yet entered</p>
+<p class="field doc-title-code"><label class="chrome-label" for="courseCode">Course code and number</label> <input type="text" id="courseCode" autocomplete="off" aria-required="true" placeholder="ENGL 1123"></p>
+<p class="field doc-title-name"><label class="chrome-label" for="courseTitle">Course title</label> <input type="text" id="courseTitle" aria-required="true" placeholder="Literature and Composition"></p>
+</fieldset>
+
+<p class="field doc-line" id="courseSectionWrap"><label for="courseSection">Section:</label> <input type="text" id="courseSection" autocomplete="off" aria-required="true" placeholder="001"></p>
+
+<!-- Credits or CEUs, as F1003 3.2(b) asks ("as appropriate"). Both number
+     boxes stay in the page, one hidden, so switching unit never loses what
+     was typed. -->
+<p class="field" id="creditUnitWrap"><label for="creditUnitSelect">Credits or CEUs</label> <select id="creditUnitSelect">
+<option value="credits">Credits</option>
+<option value="ceus">CEUs</option>
+</select></p>
+<p class="field" id="creditsWrap"><label for="credits">Credits</label> <input type="number" id="credits" step="0.5" min="0" aria-required="true" placeholder="3"></p>
+<p class="field" id="ceusWrap" hidden=""><label for="ceus">CEUs</label> <input type="number" id="ceus" step="0.1" min="0" aria-required="true" placeholder="3.5"></p>
+
+<fieldset class="doc-group"><legend class="chrome-legend">Contact hours (at least one)</legend>
+<p class="hint">Enter <strong>hours per week</strong>. Continuing Studies courses may enter <strong>hours for the whole course</strong> instead, but then every box needs whole-course hours, because they are added together for the total. A box left blank or set to <code>0</code> is left out of the syllabus.</p>
+<p class="field doc-line stat"><label for="lectureHours">Lecture hours:</label> <input type="number" id="lectureHours" step="0.5" min="0" placeholder="3"></p>
+<p class="field doc-line stat"><label for="labHours">Lab hours:</label> <input type="number" id="labHours" step="0.5" min="0" placeholder="2"></p>
+<p class="field doc-line stat"><label for="seminarHours">Seminar hours:</label> <input type="number" id="seminarHours" step="0.5" min="0" placeholder="0"></p>
+<p class="hint stat-total" id="hoursTotal">Total hours: not yet entered</p>
 <!-- The visible total updates on every keystroke, which is what a sighted
-         author wants and what a screen reader user does not: a live region tied
-         to keystrokes interrupts constantly. The announcement is therefore split
-         off and fires once per field, when the field is left. --> <span class="visually-hidden" id="hoursAnnounce" role="status"></span></fieldset><fieldset><legend>Course details</legend>
-<p class="field" id="yearSemesterWrap"><label for="yearSemester">Year and semester (required)</label> <input type="text" id="yearSemester" aria-required="true" placeholder="e.g. Fall 2026"></p>
-<p class="field"><label for="mode">Course format (required)</label><select id="mode" aria-required="true">
+     author wants and what a screen reader user does not: a live region tied
+     to keystrokes interrupts constantly. The announcement is therefore split
+     off and fires once per field, when the field is left. -->
+<span class="visually-hidden" id="hoursAnnounce" role="status"></span>
+</fieldset>
+
+<p class="field doc-line" id="yearSemesterWrap"><label for="yearSemester">Year and semester:</label> <input type="text" id="yearSemester" aria-required="true" placeholder="Fall 2026"></p>
+<p class="field doc-line"><label for="mode">Course format:</label> <select id="mode" aria-required="true">
 <option value="">Choose one</option>
 <option value="In-person">In-person</option>
 <option value="Mixed mode">Mixed mode</option>
 <option value="Online">Online</option>
 </select></p>
-</fieldset><fieldset><legend>Pre/corequisites</legend>
-<p id="reqQuestion">Does this course have pre/corequisites?</p>
-<div role="radiogroup" aria-labelledby="reqQuestion">
+
+<fieldset class="doc-group"><legend class="chrome-legend" id="reqQuestion">Does this course have pre/corequisites?</legend>
+<div class="chrome-choices">
 <div class="radio-row"><input type="radio" name="req" id="reqNo" value="no" checked="checked"> <label for="reqNo">No</label></div>
 <div class="radio-row"><input type="radio" name="req" id="reqYes" value="yes"> <label for="reqYes">Yes</label></div>
 </div>
-<p class="field" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites (required)</label> <input type="text" id="reqDetail" aria-describedby="reqDetailHint" aria-required="true" placeholder="e.g. Prerequisite: ENGL 1123 or equivalent."></p>
-</fieldset><fieldset id="instructorFieldset"><legend>Instructor</legend>
-<p class="field"><label for="instructors">Instructor name(s) (required)</label> <input type="text" id="instructors" autocomplete="name" aria-required="true"></p>
-<p class="field"><label for="office">Office (required)</label> <input type="text" id="office" aria-required="true" placeholder="e.g. A322b"></p>
-<p class="field"><label for="phone">Phone</label> <input type="tel" id="phone" autocomplete="tel" placeholder="e.g. 604 323 5511"></p>
-<p class="field"><label for="email">Email (required)</label> <input type="email" id="email" autocomplete="email" aria-required="true"></p>
-<p class="field"><label for="officeHours">Office hours (required)</label> <input type="text" id="officeHours" aria-required="true" placeholder="e.g. Tuesdays 13:00-15:00, or by appointment"></p>
-</fieldset><fieldset><legend><label for="courseDescription">Calendar course description (required)</label></legend>
+<p class="field doc-line" id="reqWrap" hidden=""><label for="reqDetail">Pre/corequisites:</label> <input type="text" id="reqDetail" aria-required="true" placeholder="Prerequisite: ENGL 1123 or equivalent."></p>
+<!-- What the syllabus says when No is chosen, so the line is never missing. -->
+<p class="doc-line" id="reqNone"><strong>Pre/corequisites:</strong> None</p>
+</fieldset>
+
+<div data-boiler="transfer"></div>
+
+<!-- One block per instructor, built by addInstructorBlock() from the
+     template below, the same name-then-grid shape the export repeats. The
+     heading says Instructors once there is more than one. -->
+<fieldset id="instructorFieldset" class="doc-section"><legend><h2 id="instructorHeading">Instructor</h2></legend>
+<div id="instructorList"></div>
+<p><button type="button" id="addInstructorBtn">Add instructor</button></p>
+</fieldset>
+<template id="instructorTemplate">
+<div class="instructor-block" role="group">
+<p class="field instructor-name"><label class="chrome-label" data-stem="instructorName">Instructor name</label> <input type="text" data-stem="instructorName" aria-required="true" placeholder="Instructor name"></p>
+<!-- Office beside Office hours, Phone beside Email: the pairing the export's
+     grid uses. -->
+<div class="doc-grid">
+<p class="field doc-line"><label data-stem="instructorOffice">Office:</label> <input type="text" data-stem="instructorOffice" aria-required="true" placeholder="A322b"></p>
+<p class="field doc-line"><label data-stem="instructorOfficeHours">Office hours:</label> <input type="text" data-stem="instructorOfficeHours" aria-required="true" placeholder="Tuesdays 13:00-15:00, or by appointment"></p>
+<p class="field doc-line"><label data-stem="instructorPhone">Phone <span class="opt">(optional)</span>:</label> <input type="tel" data-stem="instructorPhone" placeholder="604 323 5511"></p>
+<p class="field doc-line"><label data-stem="instructorEmail">Email:</label> <input type="email" data-stem="instructorEmail" aria-required="true" placeholder="name@langara.ca"></p>
+</div>
+<p class="instructor-remove"><button type="button" class="removeInstructor">Remove<span class="visually-hidden"></span></button></p>
+</div>
+</template>
+
+<fieldset class="doc-section"><legend><h2><label for="courseDescription">Course description</label></h2></legend>
 <p class="field"><span class="hint" id="courseDescriptionHint">The description as it appears in the College calendar.</span> <textarea id="courseDescription" aria-describedby="courseDescriptionHint" rows="6" aria-required="true"></textarea></p>
-</fieldset><fieldset><legend>Learning outcomes</legend>
-<p>Course learning outcomes must match Education Council (EdCo) approved documentation. Refer to <a href="https://langara.sharepoint.com/:x:/r/sites/academic-quality-assurance-aqa/_layouts/15/Doc.aspx?sourcedoc=%7B8891F3E9-5DBF-4A48-B4CC-BDF999513F5F%7D&amp;file=CLO%20Tracking%20Dashboard_May%2029%202024_forSharePoint.xlsx&amp;action=default&amp;mobileredirect=true&amp;wdOrigin=SHAREPOINT.SHELL%2CAPPHOME-WEB.FILEBROWSER.RECENT&amp;wdPreviousSession=7b804a32-e2fb-49e7-8354-58f4c9dfffd2&amp;wdPreviousSessionSrc=AppHomeWeb&amp;CID=756972bd-da9d-393d-4d79-c4bbc566f300" target="_blank" rel="noopener">CLO Tracking Dashboard</a> for approved course learning outcomes.</p>
-<!-- Quotes OUTCOME_STEM in the script word for word; change the two together. -->
-<p class="hint">The sentence <strong>Upon successful completion of this course, students will be able to:</strong> is added above the list automatically.</p>
-<p class="hint">One outcome per field.</p>
-<!-- No .table-scroll wrapper here, unlike the assessment and schedule
-           tables. That wrapper exists to keep a wide table from widening the
-           page, and carries tabindex="0" so the scrollable region is keyboard
-           reachable. This table is one text column that shrinks with the
-           viewport and cannot overflow, so the wrapper would contribute
-           nothing but an extra tab stop with nothing to scroll. -->
-<table id="outcomeTable"><caption>Learning outcomes (at least one required)</caption>
-<thead>
+</fieldset>
+
+<fieldset class="doc-section"><legend><h2>Learning outcomes</h2></legend>
+<p class="hint">Outcomes must match Education Council (EdCo) approved documentation. Refer to the <a href="https://langara.sharepoint.com/:x:/r/sites/academic-quality-assurance-aqa/_layouts/15/Doc.aspx?sourcedoc=%7B8891F3E9-5DBF-4A48-B4CC-BDF999513F5F%7D&amp;file=CLO%20Tracking%20Dashboard_May%2029%202024_forSharePoint.xlsx&amp;action=default&amp;mobileredirect=true&amp;wdOrigin=SHAREPOINT.SHELL%2CAPPHOME-WEB.FILEBROWSER.RECENT&amp;wdPreviousSession=7b804a32-e2fb-49e7-8354-58f4c9dfffd2&amp;wdPreviousSessionSrc=AppHomeWeb&amp;CID=756972bd-da9d-393d-4d79-c4bbc566f300" target="_blank" rel="noopener">CLO Tracking Dashboard</a>. One outcome per box, at least one.</p>
+<div data-boiler="outcomeStem"></div>
+<!-- Drawn as the bulleted list the export makes. Still a table underneath,
+     so the rows keep the same add, remove and renumber machinery as the
+     other two; its caption and header are kept for assistive technology and
+     hidden from view, where the heading above already says what this is.
+     No .table-scroll wrapper: one text column that shrinks with the viewport
+     cannot overflow, so the wrapper would only add an empty tab stop. -->
+<table id="outcomeTable" class="doc-list"><caption class="visually-hidden">Learning outcomes</caption>
+<thead class="visually-hidden">
 <tr>
 <th scope="col">Learning outcome</th>
-<th scope="col"><span class="visually-hidden">Actions</span></th>
+<th scope="col">Actions</th>
 </tr>
 </thead>
 <tbody id="outcomeBody"></tbody>
 </table>
 <p><button type="button" id="addOutcomeBtn">Add learning outcome</button></p>
-</fieldset><fieldset id="scheduleFieldset"><legend>Detailed course schedule (at least one week required)</legend>
+</fieldset>
+
+<fieldset id="scheduleFieldset" class="doc-section"><legend><h2>Detailed course schedule</h2></legend>
+<p class="hint">At least one week.</p>
 <div class="table-scroll" tabindex="0">
-<table id="scheduleTable"><caption>Week-by-week schedule</caption>
+<table id="scheduleTable" class="doc-table"><caption>Week-by-week schedule</caption>
 <thead>
 <tr>
 <th scope="col">Week</th>
@@ -354,9 +426,12 @@
 </table>
 </div>
 <p><button type="button" id="addWeekBtn">Add week</button></p>
-</fieldset><fieldset><legend>Assessment and grading</legend>
+</fieldset>
+
+<fieldset class="doc-section"><legend><h2>Assessment and grading</h2></legend>
+<p class="hint">At least one assessment and its weight. Due dates are optional.</p>
 <div class="table-scroll" tabindex="0">
-<table id="assessTable"><caption id="assessCaption">Means of assessment and weighting (at least one item required, dates not required)</caption>
+<table id="assessTable" class="doc-table"><caption id="assessCaption">Means of assessment and weighting</caption>
 <thead>
 <tr>
 <th scope="col">Assessment activity</th>
@@ -369,39 +444,48 @@
 </table>
 </div>
 <!-- The visible total updates on every keystroke, which is what a sighted
-         author wants and what a screen reader user does not. The announcement
-         is split off and fires once per cell, when the cell is left. -->
+     author wants and what a screen reader user does not. The announcement
+     is split off and fires once per cell, when the cell is left. -->
 <p class="hint" id="weightTotal">Total weight: not yet entered</p>
 <span class="visually-hidden" id="weightAnnounce" role="status"></span>
 <p><button type="button" id="addAssessBtn">Add assessment row</button></p>
-<div class="field" id="gradingWrap"><label for="gradingNotes">Grading guidelines</label> <span class="hint" id="gradingNotesHint">Optional. How the grade is arrived at for this section — rounding, late penalties, minimum passing requirements. Leave blank and nothing is added.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></div>
-<p class="hint">A link to the College’s <strong>Grades</strong> page is added to this section automatically.</p>
-</fieldset><fieldset><legend><label for="textbook">Course materials and textbooks (required)</label></legend>
-<div class="radio-row" id="zeroCostWrap"><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has <a href="https://langara.libguides.com/open-education/what-is-open-education" target="_blank" rel="noopener noreferrer">zero textbook cost</a></label></div>
-<div class="field"><textarea id="textbook" aria-describedby="textbookHint" rows="7" aria-required="true"></textarea></div>
-<p class="hint">A link reading <strong>Search for textbooks</strong>, pointing at the Langara Bookstore course listing, is added to this section automatically.</p>
-<!-- The notice is a FIPPA disclosure attached to the resource, so it
-         belongs in the section where the resource is named. It appears
-         verbatim in Langara's own Course Outline template.
 
-         Opt-out: the notice goes out unless the instructor affirms it does
-         not apply. Leaving a box untouched is the easy mistake to make, so
-         it errs toward disclosing. -->
+</fieldset>
+  
+<div class="field" id="gradingWrap"><h3><label for="gradingNotes">Grading guidelines</label> <span class="opt">(optional)</span></h3> <span class="hint" id="gradingNotesHint">How the grade is arrived at for this section: rounding, late penalties, minimum passing requirements. Left blank, the heading is left out too.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></div>
+<div data-boiler="grades"></div>
+
+<fieldset class="doc-section"><legend><h2><label for="textbook">Textbooks and course materials</label></h2></legend>
+<div class="radio-row" id="zeroCostWrap"><input type="checkbox" id="zeroCost"> <label for="zeroCost">This course has <a href="https://langara.libguides.com/open-education/what-is-open-education" target="_blank" rel="noopener noreferrer">zero textbook cost</a></label></div>
+<div data-boiler="zeroCost" hidden=""></div>
+<div class="field"><textarea id="textbook" rows="7" aria-required="true"></textarea></div>
+<div data-boiler="bookstore"></div>
+<!-- The notice is a FIPPA disclosure attached to the resource, so it
+     belongs in the section where the resource is named. It appears
+     verbatim in Langara's own Course Outline template.
+
+     Opt-out: the notice goes out unless the instructor affirms it does
+     not apply. Leaving a box untouched is the easy mistake to make, so
+     it errs toward disclosing. The checkbox sits right under the notice
+     it removes. -->
+<div data-boiler="fippa"></div>
 <div class="radio-row" id="privacyWrap"><input type="checkbox" id="privacyOptOut" aria-describedby="privacyOptOutHint"> <label for="privacyOptOut">I affirm that no online resources used in this course are hosted outside of Canada</label></div>
-<p class="hint" id="privacyOptOutHint">Unless this box is checked, the privacy notice for online resources hosted outside Canada is added to this section.</p>
-</fieldset><fieldset><legend><label for="deptPolicies">Departmental and course guidelines</label></legend>
-<div class="field"><span class="hint" id="deptPoliciesHint">Optional. Anything the department requires beyond the College policies, which are added automatically. Leave blank and the section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></div>
-</fieldset><!-- The Versioning fieldset is gone. Its one field, the effective date, is
-       now filled in from the clock at generate time, and the rest of the
-       section (the subject-to-change note, the archive link) was already
-       automatic. A fieldset groups form controls, so one holding nothing but
-       explanatory hints would be the wrong element for what was left. The
-       preview shows the date the document will carry. --><!-- There is no export format choice. The same output pastes into
-       Brightspace and into Word; the Langara page template is applied by
-       Brightspace itself, chosen from its document templates when the file is
-       created, so this tool no longer wraps the output in a copy of it. --><!-- Generate stays with the form it acts on. Download and Copy moved below
-       the preview, so the order of the page matches the order of the work:
-       fill in, generate, check the result, then take it away. --><!-- Filled in and shown only when Generate, Copy or Download finds a field
+<p class="hint" id="privacyOptOutHint">Checking this box takes the privacy notice out of the syllabus.</p>
+</fieldset>
+
+<div data-boiler="policies"></div>
+<div data-boiler="support"></div>
+
+<fieldset class="doc-section"><legend><h2><label for="deptPolicies">Departmental and course guidelines</label> <span class="opt">(optional)</span></h2></legend>
+<div class="field"><span class="hint" id="deptPoliciesHint">Anything the department requires beyond the College policies above. Left blank, this section is left out.</span> <textarea id="deptPolicies" aria-describedby="deptPoliciesHint" rows="6"></textarea></div>
+</fieldset>
+
+<!-- The effective date shown is this month; the syllabus takes the month it
+     is generated in. -->
+<div data-boiler="versioning"></div>
+<div data-boiler="acknowledgement"></div>
+
+<!-- Filled in and shown only when Generate, Copy or Download finds a field
      that is not complete. Focus moves here, so the heading, which carries the
      count, is what a screen reader announces, and each item links to the
      field it names (SC 3.3.1, 3.3.3). Directly above Generate, where the
@@ -409,8 +493,14 @@
 <div id="errorSummary" class="error-summary" role="group" aria-labelledby="errorSummaryHeading" hidden="" tabindex="-1">
 <h2 id="errorSummaryHeading"></h2>
 <ul id="errorList"></ul>
+<!-- The way past the checks. Shown with the summary until it is used, and
+     after that the heading says the syllabus went out with these open. -->
+<div id="overrideWrap">
+<p>You can generate the syllabus anyway, but it may not comply with <a href="https://langara.ca/media/16744/download?inline=" target="_blank" rel="noopener noreferrer">Course Outline Policy F1003<span class="visually-hidden"> (opens in a new tab)</span></a>.</p>
+<p class="actions"><button type="button" id="overrideBtn">Override warnings and generate</button></p>
 </div>
-<p class="actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
+</div>
+<p class="actions doc-actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
 </form><hr>
 <h2>Preview</h2>
 <p class="hint">The finished syllabus may not look exactly like this preview. Use the preview to review your syllabus content.</p>
@@ -421,7 +511,7 @@
      whole group stays hidden. A fieldset outside the form is valid HTML and
      groups the controls with the note that explains them. -->
 <fieldset id="emailCopies" hidden=""><legend>Submit and email copies</legend>
-<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email address in the form</strong> and to your department contact.</p>
+<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email addresses in the form</strong> and to your department contact.</p>
 <p class="field"><label for="deptContact">Department contact email</label> <span class="hint" id="deptContactHint">The person who collects syllabi for your department, such as the chair or department assistant.</span> <input type="email" id="deptContact" autocomplete="off" aria-describedby="deptContactHint" placeholder="name@langara.ca"></p>
 <p class="actions"><button type="button" id="submitBtn">Submit syllabus</button> <span id="submitStatus" role="status"></span></p>
 </fieldset> <!-- The steps sit here, between the result and the button they start with,
@@ -450,6 +540,7 @@
 <!-- "Show" rather than "Click to see": the summary is operated by keyboard
      and touch as often as by mouse, and a screen reader already announces it
      as expandable. -->
+  <hr>
 <details id="sourceDetails">
 <summary>Show HTML source code (advanced users)</summary>
 <p class="hint">If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
@@ -533,6 +624,17 @@ var DISCLAIMER = "This syllabus is subject to change. Confirm the current versio
    normalised away by an editor that decides to be helpful. */
 var ACKNOWLEDGEMENT = "sn\u0259w\u0313ey\u0259\u026C lel\u0259m\u0313 Langara College acknowledges " +
   "that we are located on the unceded territory of the Musqueam people.";
+
+/* The template breaks the acknowledgement before "unceded". The break goes
+   in at this phrase when the footer is built, so the sentence above stays
+   whole and searchable. */
+var ACKNOWLEDGEMENT_BREAK = "unceded territory";
+
+/* The logo from Brightspace's 2021 HTML templates. A root-relative address,
+   so it resolves on the Brightspace server the syllabus is pasted into and
+   shows only as its alt text anywhere else (GitHub Pages, the preview). */
+var LOGO_URL = "/shared/2021_HTML_Templates-v3/pages/../_assets/img/logo.png";
+var LOGO_ALT = "Langara logo";
 
 /* PLACEHOLDER \u2014 set ARCHIVE_URL to the archive location once one exists.
    Leave it as an empty string and the whole line is omitted from the output. */
@@ -990,7 +1092,7 @@ function checked(id) {
 }
 
 function creditUnit() {
-  return checked("unitCeus") ? "ceus" : "credits";
+  return val("creditUnitSelect") === "ceus" ? "ceus" : "credits";
 }
 
 /* Credits read as "3.0" rather than "3" throughout Langara's calendar, and CEUs
@@ -1179,7 +1281,7 @@ function outcomeRows() {
 function learningOutcomesBody(rows) {
   if (!rows.length) return [];
 
-  var out = ["<p>" + esc(OUTCOME_STEM) + "</p>", "<ul>"];
+  var out = [outcomeStemLine(), "<ul>"];
   rows.forEach(function (r) { out.push("<li>" + inline(r) + "</li>"); });
   out.push("</ul>");
   return out;
@@ -1344,15 +1446,16 @@ function link(url, label) {
 }
 
 /* Credits and hours as ordinary labelled lines - bold label, plain figure -
-   the same shape as the "Year and semester" line below them, but set closer
-   together so they read as one group.
+   the same shape as the "Year and semester" line below them. Credits stands
+   on its own; the hours are set closer together so they read as one group.
 
-   The gap between them is half the gap between ordinary paragraphs: 0.5em,
-   against the 1em a browser puts between paragraphs (and the 1rem
-   Bootstrap's own stylesheet uses, inside the Langara template - equal to 1em
-   at body size). The top margin is zeroed so the gap is exactly the bottom
-   margin. The last line takes a full 1em, so the group is separated from
-   what follows by an ordinary paragraph gap rather than a half one. */
+   The gap inside the hours group is half the gap between ordinary
+   paragraphs: 0.5em, against the 1em a browser puts between paragraphs (and
+   the 1rem Bootstrap's own stylesheet uses, inside the Langara template -
+   equal to 1em at body size). The top margin is zeroed so each gap is
+   exactly the bottom margin. Credits and the last hours line take a full
+   1em, so the hours group is set off by an ordinary paragraph gap on both
+   sides. */
 var STAT_LINE_GAP = "margin: 0 0 0.5em;";
 var STAT_LAST_GAP = "margin: 0 0 1em;";
 
@@ -1361,7 +1464,6 @@ function statBand(course) {
 
   var unit = course.creditUnit === "ceus" ? "ceus" : "credits";
   var credit = creditFigure(course.creditValue);
-  if (credit) stats.push([creditLabel(unit), credit]);
 
   var hours = [];
   [["Lecture hours", "lecture"],
@@ -1377,10 +1479,96 @@ function statBand(course) {
   var total = hourTotal(hours);
   if (total !== null) stats.push(["Total hours", String(total)]);
 
-  return stats.map(function (s, i) {
-    var gap = i === stats.length - 1 ? STAT_LAST_GAP : STAT_LINE_GAP;
-    return '<p style="' + gap + '"><strong>' + esc(s[0]) + ":</strong> " + esc(s[1]) + "</p>";
+  function line(label, value, gap) {
+    return '<p style="' + gap + '"><strong>' + esc(label) + ":</strong> " + esc(value) + "</p>";
+  }
+
+  var out = [];
+  if (credit) out.push(line(creditLabel(unit), credit, STAT_LAST_GAP));
+  return out.concat(stats.map(function (s, i) {
+    return line(s[0], s[1], i === stats.length - 1 ? STAT_LAST_GAP : STAT_LINE_GAP);
+  }));
+}
+
+/* ------------------------------------------------------------------ *
+ * Boilerplate blocks
+ *
+ * Each fixed piece of the document is built here once. renderHtml() puts
+ * them in the export; fillBoilerplate() puts the very same markup into the
+ * form, where it stands in the place it will take in the finished syllabus.
+ * One builder for both, so the form can never show wording the export does
+ * not carry.
+ * ------------------------------------------------------------------ */
+
+function transferLine() {
+  return "<p><strong>Transfer credit:</strong> Check current transfer agreements for this " +
+         "course at " + link(TRANSFER_URL, TRANSFER_LABEL) + ".</p>";
+}
+
+function gradesLine() {
+  return "<p>See " + link(GRADES_URL, GRADES_LABEL) + " " + esc(words().gradesNote) + ".</p>";
+}
+
+function zeroCostLine() {
+  return "<p>" + esc(words().zeroCost) + "</p>";
+}
+
+function bookstoreLine() {
+  return "<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>";
+}
+
+function fippaLine() {
+  return "<p>" + esc(FIPPA_NOTE) + "</p>";
+}
+
+function outcomeStemLine() {
+  return "<p>" + esc(OUTCOME_STEM) + "</p>";
+}
+
+/* College policies before departmental ones: the College's obligations frame
+   the department's, not the other way round. */
+function policiesSection() {
+  var body = ["<p>Students are responsible for reading the College policies that govern " +
+              "their studies, including:</p>", "<ul>"];
+  POLICY_LINKS.forEach(function (p) {
+    body.push("<li>" + link(p[1], p[0]) + "</li>");
   });
+  body.push("</ul>");
+  body.push("<p>The full list is at " + link(POLICY_INDEX_URL, POLICY_INDEX_LABEL) + ".</p>");
+  return section(2, "College policies", body);
+}
+
+function supportSection() {
+  return section(2, "Student support", [
+    "<p>Langara offers academic and personal supports to students. See " +
+      link(SUPPORT_URL, SUPPORT_LABEL) + ".</p>",
+    "<p>Students who require academic accommodation should consult " +
+      link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
+  ]);
+}
+
+/* esc() rather than inline(): the date string comes from a timestamp, not
+   from a box someone could put link syntax in. */
+function versioningSection(dateText) {
+  var body = [];
+  body.push("<p><strong>Effective date:</strong> " + esc(dateText) + "</p>");
+  body.push("<p>" + esc(DISCLAIMER) + "</p>");
+  if (safeUrl(ARCHIVE_URL)) {
+    body.push("<p>" + link(ARCHIVE_URL, ARCHIVE_LABEL) + "</p>");
+  }
+  return section(2, "Versioning", body);
+}
+
+/* Closes the document, as it closes the College's own template, set off
+   from the versioning block by a horizontal rule. */
+function acknowledgementBlock() {
+  var at = ACKNOWLEDGEMENT.indexOf(ACKNOWLEDGEMENT_BREAK);
+  var ack = at > 0
+    ? esc(ACKNOWLEDGEMENT.slice(0, at)) + "<br>" + esc(ACKNOWLEDGEMENT.slice(at))
+    : esc(ACKNOWLEDGEMENT);
+  return ['<hr style="' + esc(HR_STYLE) + '">', "",
+          '<p><img src="' + esc(LOGO_URL) + '" alt="' + esc(LOGO_ALT) + '" style="float: right;"></p>',
+          "<p>" + ack + "</p>"];
 }
 
 /* The document, built from a syllabus record and nothing else: this function
@@ -1396,6 +1584,7 @@ function renderHtml(input) {
   var W = words();
 
   L.push(heading(1, courseHeading(c.code, c.title) || W.fallbackTitle));
+  L = L.concat(labelled("Section", txt(c.section)));
 
   /* Course facts, in the order they are asked for on the form. */
   L = L.concat(statBand(c));
@@ -1418,8 +1607,7 @@ function renderHtml(input) {
      line like the ones above it, so it closes the metadata block. Standing
      alone further down it would sit under whatever heading happened to precede
      it and be read as part of that section. */
-  L.push("<p><strong>Transfer credit:</strong> Check current transfer agreements for this " +
-         "course at " + link(TRANSFER_URL, TRANSFER_LABEL) + ".</p>");
+  L.push(transferLine());
 
   /* Instructor - F1003 3.4(a). Name stays a full-width intro
      line above the grid: it is the one field with no fixed length, and a long
@@ -1430,25 +1618,29 @@ function renderHtml(input) {
      the instructor), Phone beside Email below them (both about how to reach
      them). The grid flows in source order, so this ordering IS the layout -
      changing the array below changes which fields share a row. */
-  var ins = r.instructor;
+  /* Each instructor in turn, the same shape repeated: name, then the grid.
+     The heading counts them. */
+  var team = r.instructors.filter(instructorHasContent);
   var instructorBody = [];
-  if (txt(ins.name)) instructorBody.push("<p>" + inline(txt(ins.name)) + "</p>");
+  team.forEach(function (ins) {
+    if (txt(ins.name)) instructorBody.push("<p>" + inline(txt(ins.name)) + "</p>");
 
-  var details = [];
-  [["Office", txt(ins.office)],
-   ["Office hours", txt(ins.officeHours)],
-   ["Phone", txt(ins.phone)],
-   ["Email", txt(ins.email)]].forEach(function (pair) {
-    details = details.concat(labelledGridCell(pair[0], pair[1]));
+    var details = [];
+    [["Office", txt(ins.office)],
+     ["Office hours", txt(ins.officeHours)],
+     ["Phone", txt(ins.phone)],
+     ["Email", txt(ins.email)]].forEach(function (pair) {
+      details = details.concat(labelledGridCell(pair[0], pair[1]));
+    });
+
+    if (details.length) {
+      instructorBody.push('<div style="' + esc(INSTRUCTOR_GRID.wrap) + '">');
+      instructorBody = instructorBody.concat(details);
+      instructorBody.push("</div>");
+    }
   });
 
-  if (details.length) {
-    instructorBody.push('<div style="' + esc(INSTRUCTOR_GRID.wrap) + '">');
-    instructorBody = instructorBody.concat(details);
-    instructorBody.push("</div>");
-  }
-
-  L = L.concat(section(2, "Instructor", instructorBody));
+  L = L.concat(section(2, instructorHeading(team.length), instructorBody));
 
   L = L.concat(section(2, "Course description", blocks(txt(c.description))));
   L = L.concat(section(2, "Learning outcomes", learningOutcomesBody(recordOutcomes(r))));
@@ -1462,8 +1654,8 @@ function renderHtml(input) {
   if (weeks.length) {
     schedBody = schedBody.concat(tableStart("Week-by-week schedule"));
     schedBody.push("<thead>");
-    schedBody.push("<tr>" + th("Week", "15%") + th("Topic", "30%") +
-                   th("Readings and activities", "55%") + "</tr>");
+    schedBody.push("<tr>" + th("Week", "7.5%") + th("Topic", "46.25%") +
+                   th("Readings and activities", "46.25%") + "</tr>");
     schedBody.push("</thead>");
     schedBody.push("<tbody>");
     weeks.forEach(function (r) {
@@ -1501,7 +1693,8 @@ function renderHtml(input) {
     assessBody.push(heading(3, "Grading guidelines"));
     assessBody = assessBody.concat(grading);
   }
-  assessBody.push("<p>See " + link(GRADES_URL, GRADES_LABEL) + " " + esc(W.gradesNote) + ".</p>");
+  assessBody.push(gradesLine());
+
   L = L.concat(section(2, "Assessment and grading", assessBody));
 
   /* Course materials. The zero-cost statement, when the instructor has
@@ -1511,58 +1704,31 @@ function renderHtml(input) {
      has affirmed that no resource is hosted outside Canada. */
   var textbookBody = [];
   if (r.materials.zeroCost) {
-    textbookBody.push("<p>" + esc(W.zeroCost) + "</p>");
+    textbookBody.push(zeroCostLine());
   }
   textbookBody = textbookBody.concat(richBlocks(r.materials.content));
-  textbookBody.push("<p>" + link(BOOKSTORE_URL, BOOKSTORE_LABEL) + "</p>");
+  textbookBody.push(bookstoreLine());
   if (!r.materials.privacyOptOut) {
-    textbookBody.push("<p>" + esc(FIPPA_NOTE) + "</p>");
+    textbookBody.push(fippaLine());
   }
   L = L.concat(section(2, W.materialsHeading, textbookBody));
 
-  /* College policies before departmental ones: the College's obligations frame
-     the department's, not the other way round. Student support sits between
-     them, so the departmental guidelines are the last of the policy material
+  /* Student support sits between the College policies and the department's
+     own, so the departmental guidelines are the last of the policy material
      before the versioning block. */
-  var policyBody = ["<p>Students are responsible for reading the College policies that govern " +
-                    "their studies, including:</p>", "<ul>"];
-  POLICY_LINKS.forEach(function (p) {
-    policyBody.push("<li>" + link(p[1], p[0]) + "</li>");
-  });
-  policyBody.push("</ul>");
-  policyBody.push("<p>The full list is at " + link(POLICY_INDEX_URL, POLICY_INDEX_LABEL) + ".</p>");
-  L = L.concat(section(2, "College policies", policyBody));
-
-  L = L.concat(section(2, "Student support", [
-    "<p>Langara offers academic and personal supports to students. See " +
-      link(SUPPORT_URL, SUPPORT_LABEL) + ".</p>",
-    "<p>Students who require academic accommodation should consult " +
-      link(ACCOMMODATION_URL, ACCOMMODATION_LABEL) + ".</p>"
-  ]));
+  L = L.concat(policiesSection());
+  L = L.concat(supportSection());
 
   L = L.concat(section(2, "Departmental and course guidelines", richBlocks(r.departmentGuidelines)));
 
-  /* Always present now that it is generated rather than typed, so there is no
-     blank case left to guard against. esc() rather than inline(): the string
-     comes from the record's timestamp, not from a box someone could put link
-     syntax in. The timestamp is set when the form is read, so a new syllabus
-     carries the current month, and a record rendered again later keeps the
-     month it was made. */
-  var versionBody = [];
-  versionBody.push("<p><strong>Effective date:</strong> " +
-                   esc(effectiveDate(recordDate(r.savedAt))) + "</p>");
-  versionBody.push("<p>" + esc(DISCLAIMER) + "</p>");
-  if (safeUrl(ARCHIVE_URL)) {
-    versionBody.push("<p>" + link(ARCHIVE_URL, ARCHIVE_LABEL) + "</p>");
-  }
-  L = L.concat(section(2, "Versioning", versionBody));
+  /* Always present now that it is generated rather than typed. The
+     timestamp is set when the form is read, so a new syllabus carries the
+     current month, and a record rendered again later keeps the month it was
+     made. */
+  L = L.concat(versioningSection(effectiveDate(recordDate(r.savedAt))));
 
-  /* Closes the document, as it closes the College's own template, set off
-     from the versioning block by a horizontal rule. */
   L.push("");
-  L.push('<hr style="' + esc(HR_STYLE) + '">');
-  L.push("");
-  L.push("<p>" + esc(ACKNOWLEDGEMENT) + "</p>");
+  L = L.concat(acknowledgementBlock());
 
   return L.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
@@ -1639,6 +1805,8 @@ function collectErrors() {
     add("courseTitle", "Take the course code out of the title. It has its own box above");
   }
 
+  if (!val("courseSection")) add("courseSection", "Enter the section");
+
   if (creditUnit() === "ceus") {
     if (badNumber("ceus")) add("ceus", "CEUs must be a number, like 3.5");
     else if (!val("ceus")) add("ceus", "Enter the number of CEUs");
@@ -1681,13 +1849,24 @@ function collectErrors() {
   if (!val("mode")) add("mode", "Choose the course format");
   if (checked("reqYes") && !val("reqDetail")) add("reqDetail", "Enter the pre/corequisites, or choose No");
 
-  if (!val("instructors")) add("instructors", "Enter the instructor's name");
-  if (!val("office")) add("office", "Enter the office location");
-  if (!val("email")) add("email", "Enter an email address");
-  else if (!emailLooksValid(document.getElementById("email"))) {
-    add("email", "Enter an email address in the format name@langara.ca");
-  }
-  if (!val("officeHours")) add("officeHours", "Enter the office hours, or say there are none");
+  /* The first instructor is required. An added one left wholly empty is
+     ignored, as an empty row is; one partly filled in must be finished. */
+  var insBlocks = instructorBlocks();
+  insBlocks.forEach(function (block, i) {
+    var n = i + 1;
+    if (n > 1 && !instructorHasContent(readInstructorBlock(block))) return;
+    var of = insBlocks.length > 1 ? " for instructor " + n : "";
+    var id = function (stem) { return stem + n; };
+    if (!val(id("instructorName"))) add(id("instructorName"), "Enter the instructor's name" + of);
+    if (!val(id("instructorOffice"))) add(id("instructorOffice"), "Enter the office location" + of);
+    if (!val(id("instructorEmail"))) add(id("instructorEmail"), "Enter an email address" + of);
+    else if (!emailLooksValid(document.getElementById(id("instructorEmail")))) {
+      add(id("instructorEmail"), "Enter an email address" + of + " in the format name@langara.ca");
+    }
+    if (!val(id("instructorOfficeHours"))) {
+      add(id("instructorOfficeHours"), "Enter the office hours" + of + ", or say there are none");
+    }
+  });
 
   if (!val("courseDescription")) add("courseDescription", "Enter the calendar course description");
 
@@ -1860,8 +2039,11 @@ function showSummary(errors, action) {
   }
 
   var n = errors.length;
-  document.getElementById("errorSummaryHeading").textContent =
-    "Fix " + n + " field" + (n === 1 ? "" : "s") + " to " + ACTION_PHRASES[action];
+  var fields = n + " field" + (n === 1 ? "" : "s");
+  document.getElementById("errorSummaryHeading").textContent = warningsOverridden
+    ? "Warnings overridden: " + fields + " still incomplete"
+    : "Fix " + fields + " to " + ACTION_PHRASES[action];
+  document.getElementById("overrideWrap").hidden = warningsOverridden;
 
   errors.forEach(function (e) {
     var li = document.createElement("li");
@@ -1889,11 +2071,29 @@ function renderErrors(errors, action) {
 /* The full check, run by Generate, Copy and Download. True when the form
    passes. On a failure the summary takes focus, so what is announced is the
    thing that explains it; the status lines are left to clearOutput(). */
+/* Once the author chooses to override, the checks still run and still show
+   what is incomplete, but no longer stop Generate, Copy, Download or Submit.
+   The override lasts until the form passes on its own, so a form that is
+   later finished goes back to being checked as usual. */
+var warningsOverridden = false;
+var openWarnings = 0;
+
 function validate(action) {
   var errors = collectErrors();
+  if (!errors.length) warningsOverridden = false;
+  openWarnings = errors.length;
   renderErrors(errors, action);
-  if (errors.length) document.getElementById("errorSummary").focus();
-  return !errors.length;
+  if (!errors.length || warningsOverridden) return true;
+  document.getElementById("errorSummary").focus();
+  return false;
+}
+
+function overrideWarnings() {
+  warningsOverridden = true;
+  /* The button goes away with the choice, so focus goes to Generate, beside
+     the status line that says what happened. */
+  document.getElementById("generateBtn").focus();
+  generate(true);
 }
 
 /* Runs on every edit while problems are on screen, and only ever takes them
@@ -2222,6 +2422,101 @@ function renumberOutcomeRows() {
     var sr = tr.querySelector(".removeOutcome .visually-hidden");
     if (sr) sr.textContent = " learning outcome " + n;
   });
+}
+
+/* ------------------------------------------------------------------ *
+ * Instructor blocks
+ *
+ * The same shape as the rows - Add makes one, each has a Remove, at least
+ * one is always left, and the ids are renumbered whenever the set changes -
+ * but a block of five boxes rather than a table row, so the details keep
+ * the name-then-grid layout the export gives them.
+ * ------------------------------------------------------------------ */
+
+function instructorBlocks() {
+  var list = document.getElementById("instructorList");
+  return list ? Array.prototype.slice.call(list.children) : [];
+}
+
+function readInstructorBlock(block) {
+  var out = blankInstructor();
+  INSTRUCTOR_KEYS.forEach(function (k) {
+    var el = block.querySelector('input[data-stem="' + k[1] + '"]');
+    out[k[0]] = el ? el.value.trim() : "";
+  });
+  return out;
+}
+
+function instructorHeading(count) {
+  return count > 1 ? "Instructors" : "Instructor";
+}
+
+function addInstructorBlock(values) {
+  var list = document.getElementById("instructorList");
+  var tpl = document.getElementById("instructorTemplate");
+  var block = tpl.content.firstElementChild.cloneNode(true);
+  var v = instructorFrom(values);
+  INSTRUCTOR_KEYS.forEach(function (k) {
+    var el = block.querySelector('input[data-stem="' + k[1] + '"]');
+    if (el) el.value = v[k[0]];
+  });
+  block.querySelector(".removeInstructor").addEventListener("click", function () {
+    removeInstructorBlock(block);
+  });
+  list.appendChild(block);
+  renumberInstructorBlocks();
+  return block;
+}
+
+function removeInstructorBlock(block) {
+  var blocks = instructorBlocks();
+  var index = blocks.indexOf(block);
+  block.parentNode.removeChild(block);
+  if (!instructorBlocks().length) addInstructorBlock();
+  renumberInstructorBlocks();
+  refreshErrors();
+
+  /* Focus to the block that took this one's place, or the one before it. */
+  var rest = instructorBlocks();
+  var next = rest[Math.min(index, rest.length - 1)];
+  var target = next && rest.length > 1 ? next.querySelector(".removeInstructor")
+                                       : next.querySelector("input");
+  if (target) target.focus();
+  setStatus("Instructor removed.");
+}
+
+/* Ids, labels and group names carry the block's number, so they are written
+   again whenever blocks come or go. Numbers show only once there is more
+   than one block, as does each block's Remove. The first block's boxes ask
+   the browser to fill in the author's own name, phone and email (SC 1.3.5);
+   the others are someone else's details, so they do not. */
+function renumberInstructorBlocks() {
+  var blocks = instructorBlocks();
+  var many = blocks.length > 1;
+  blocks.forEach(function (block, i) {
+    var n = i + 1;
+    var who = many ? "Instructor " + n : "Instructor";
+    block.setAttribute("aria-label", who);
+    INSTRUCTOR_KEYS.forEach(function (k) {
+      var id = k[1] + n;
+      var input = block.querySelector('input[data-stem="' + k[1] + '"]');
+      var label = block.querySelector('label[data-stem="' + k[1] + '"]');
+      if (input) input.id = id;
+      if (label) label.setAttribute("for", id);
+    });
+    block.querySelector('label[data-stem="instructorName"]').textContent = who + " name";
+    var auto = n === 1 ? { instructorName: "name", instructorPhone: "tel", instructorEmail: "email" } : {};
+    ["instructorName", "instructorPhone", "instructorEmail"].forEach(function (stem) {
+      var el = block.querySelector('input[data-stem="' + stem + '"]');
+      if (el) el.setAttribute("autocomplete", auto[stem] || "off");
+    });
+    var remove = block.querySelector(".instructor-remove");
+    remove.hidden = !many;
+    remove.querySelector(".visually-hidden").textContent = " instructor " + n;
+  });
+  var heading = document.getElementById("instructorHeading");
+  if (heading) heading.textContent = instructorHeading(blocks.length);
+  syncEmailEcho();
 }
 
 /* ------------------------------------------------------------------ *
@@ -3266,13 +3561,48 @@ function enhanceRichFields() {
 }
 
 function syncCreditUnit() {
-  var ceus = checked("unitCeus");
+  var ceus = creditUnit() === "ceus";
   document.getElementById("creditsWrap").hidden = ceus;
   document.getElementById("ceusWrap").hidden = !ceus;
 }
 
 function syncBranches() {
-  document.getElementById("reqWrap").hidden = !checked("reqYes");
+  var yes = checked("reqYes");
+  document.getElementById("reqWrap").hidden = !yes;
+  document.getElementById("reqNone").hidden = yes;
+  /* The fixed text that comes and goes with a box, shown or hidden as the
+     export will include or leave it out. */
+  setBoilerHidden("zeroCost", !checked("zeroCost"));
+  setBoilerHidden("fippa", checked("privacyOptOut"));
+}
+
+/* The form as the document: each [data-boiler] slot gets the markup the
+   export will carry there. Built from the same functions renderHtml() calls,
+   so the two cannot drift. Called once at load; the versioning date is
+   refreshed by refreshBoilerDate() when the month may have turned. */
+var BOILER = {
+  transfer: function () { return [transferLine()]; },
+  outcomeStem: function () { return [outcomeStemLine()]; },
+  grades: function () { return [gradesLine()]; },
+  zeroCost: function () { return [zeroCostLine()]; },
+  bookstore: function () { return [bookstoreLine()]; },
+  fippa: function () { return [fippaLine()]; },
+  policies: policiesSection,
+  support: supportSection,
+  versioning: function () { return versioningSection(effectiveDate()); },
+  acknowledgement: acknowledgementBlock
+};
+
+function fillBoilerplate() {
+  Array.prototype.forEach.call(document.querySelectorAll("[data-boiler]"), function (el) {
+    var build = BOILER[el.getAttribute("data-boiler")];
+    if (build) el.innerHTML = build().join("");
+  });
+}
+
+function setBoilerHidden(name, hide) {
+  var el = document.querySelector('[data-boiler="' + name + '"]');
+  if (el) el.hidden = hide;
 }
 
 function hoursTotalText() {
@@ -3323,7 +3653,13 @@ function generate(announce, action) {
     "</head><body>" + html + "</body></html>";
   document.getElementById("preview").setAttribute("srcdoc", previewDoc);
 
-  if (announce !== false) setStatus(words().generatedStatus + carryReminder());
+  if (announce !== false) {
+    var done = warningsOverridden && openWarnings
+      ? "Syllabus generated with " + openWarnings + " incomplete field" + (openWarnings === 1 ? "" : "s") +
+        ". It may not comply with Policy F1003."
+      : words().generatedStatus;
+    setStatus(done + carryReminder());
+  }
   return html;
 }
 
@@ -3656,15 +3992,17 @@ function copyJson() {
  * existed, keyed by element id. It is still read, converted on the way in;
  * it is never written. Versions 1 and 2 had one box for code and title;
  * a record from either has its title split on the way in (normalizeRecord).
+ * Version 4 holds a list of instructors where version 3 and earlier held
+ * one; the one becomes a list of one on the way in.
  *
- * syllabusKey - course code and instructor email, "ENGL 1123|name@langara.ca"
+ * syllabusKey - course code and the first instructor's email, "ENGL 1123|name@langara.ca"
  * - is what finds a course's earlier syllabi in the list. The code alone is
  * not enough: several instructors teach sections of the same course. It is
  * worked out from those two fields every time, never taken from a record.
  * ------------------------------------------------------------------ */
 
 var RECORD_APP = "langara-course-syllabus-builder";
-var RECORD_VERSION = 3;
+var RECORD_VERSION = 4;
 
 /* Caps how many rows a record can ask for, so a damaged or hostile file
    cannot stall the page building thousands of them. */
@@ -3675,6 +4013,7 @@ var RECORD_MAX_ROWS = 200;
 var RECORD_FIELDS = [
   ["courseCode", "course.code"],
   ["courseTitle", "course.title"],
+  ["courseSection", "course.section"],
   ["yearSemester", "course.term"],
   ["mode", "course.format"],
   ["lectureHours", "course.contactHours.lecture"],
@@ -3682,13 +4021,36 @@ var RECORD_FIELDS = [
   ["seminarHours", "course.contactHours.seminar"],
   ["reqDetail", "course.requisites"],
   ["courseDescription", "course.description"],
-  ["instructors", "instructor.name"],
-  ["office", "instructor.office"],
-  ["phone", "instructor.phone"],
-  ["email", "instructor.email"],
-  ["officeHours", "instructor.officeHours"],
   ["deptContact", "distribution.departmentContact"]
 ];
+
+/* An instructor's details: the record's key for each, and the id stem of
+   its box in the form. Box n of stem "instructorOffice" is
+   "instructorOffice" + n. The ids in the third place are what a version 1
+   save file called the one instructor's boxes. */
+var INSTRUCTOR_KEYS = [
+  ["name", "instructorName", "instructors"],
+  ["office", "instructorOffice", "office"],
+  ["officeHours", "instructorOfficeHours", "officeHours"],
+  ["phone", "instructorPhone", "phone"],
+  ["email", "instructorEmail", "email"]
+];
+
+function blankInstructor() {
+  return { name: "", office: "", phone: "", email: "", officeHours: "" };
+}
+
+/* An instructor from anywhere, as strings, every key present. */
+function instructorFrom(v) {
+  var o = obj(v);
+  var out = blankInstructor();
+  INSTRUCTOR_KEYS.forEach(function (k) { out[k[0]] = str(o[k[0]]); });
+  return out;
+}
+
+function instructorHasContent(ins) {
+  return INSTRUCTOR_KEYS.some(function (k) { return !!txt(ins[k[0]]); });
+}
 
 /* Checkboxes. The two radio pairs are not here: each pair is one value
    (course.creditUnit, course.hasRequisites), handled where it is read and
@@ -3717,6 +4079,7 @@ function emptyRecord() {
     course: {
       code: "",
       title: "",
+      section: "",
       term: "",
       format: "",
       creditUnit: "credits",
@@ -3726,7 +4089,7 @@ function emptyRecord() {
       requisites: "",
       description: ""
     },
-    instructor: { name: "", office: "", phone: "", email: "", officeHours: "" },
+    instructors: [blankInstructor()],
     outcomes: [],
     schedule: [],
     assessments: [],
@@ -3841,7 +4204,12 @@ function collectRecord(now) {
   c.hasRequisites = checked("reqYes");
   if (!c.hasRequisites) c.requisites = "";
   c.code = normalizeCourseCode(c.code) || c.code;
-  r.syllabusKey = syllabusKey(c.code, r.instructor.email);
+
+  /* An added block left empty is scaffolding, as an empty row is, and is
+     left out. The list never goes out empty. */
+  var ins = instructorBlocks().map(readInstructorBlock).filter(instructorHasContent);
+  r.instructors = ins.length ? ins : [blankInstructor()];
+  r.syllabusKey = syllabusKey(c.code, r.instructors[0].email);
 
   r.outcomes = outcomeRows();
   r.schedule = scheduleRows().map(function (cells) {
@@ -3869,6 +4237,10 @@ function recordFromV1(d) {
   RECORD_FIELDS.forEach(function (f) { setPath(r, f[1], str(fields[f[0]])); });
   RECORD_CHECKS.forEach(function (f) { setPath(r, f[1], checks[f[0]] === true); });
   RECORD_RICH.forEach(function (f) { setPath(r, f[1], str(rich[f[0]])); });
+
+  var one = blankInstructor();
+  INSTRUCTOR_KEYS.forEach(function (k) { one[k[0]] = str(fields[k[2]]); });
+  r.instructors = [one];
 
   var c = r.course;
   c.creditUnit = (checks.unitCredits !== true && checks.unitCeus === true) ? "ceus" : "credits";
@@ -3922,7 +4294,13 @@ function normalizeRecord(input) {
     c.title = split.title;
   }
   c.code = normalizeCourseCode(c.code) || txt(c.code);
-  r.syllabusKey = syllabusKey(c.code, r.instructor.email);
+
+  /* Version 3 and earlier: one instructor object. */
+  var list = Array.isArray(d.instructors) ? d.instructors
+           : (d.instructor !== undefined ? [d.instructor] : []);
+  r.instructors = rowsFrom(list).map(instructorFrom);
+  if (!r.instructors.length) r.instructors = [blankInstructor()];
+  r.syllabusKey = syllabusKey(c.code, r.instructors[0].email);
 
   r.outcomes = rowsFrom(d.outcomes).map(str);
   r.schedule = rowsFrom(d.schedule).map(function (w) {
@@ -4009,7 +4387,7 @@ function applyRecord(input) {
   });
 
   var ceus = c.creditUnit === "ceus";
-  document.getElementById(ceus ? "unitCeus" : "unitCredits").checked = true;
+  document.getElementById("creditUnitSelect").value = ceus ? "ceus" : "credits";
   document.getElementById("credits").value = ceus ? "" : c.creditValue;
   document.getElementById("ceus").value = ceus ? c.creditValue : "";
   document.getElementById(c.hasRequisites ? "reqYes" : "reqNo").checked = true;
@@ -4033,6 +4411,10 @@ function applyRecord(input) {
       el.value = doc.body ? doc.body.textContent.trim() : "";
     }
   });
+
+  document.getElementById("instructorList").textContent = "";
+  r.instructors.forEach(function (ins) { addInstructorBlock(ins); });
+  if (!instructorBlocks().length) addInstructorBlock();
 
   clearBody("outcomeBody");
   r.outcomes.forEach(function (t) { addOutcomeRow(t); });
@@ -4161,9 +4543,16 @@ function markCarriedOver(record) {
     addCarryMark("year and semester", "yearSemesterCarry", intro + "Change it to this term.", term, [term]);
   }
 
-  var hours = document.getElementById("officeHours");
-  if (hours && hours.value) {
-    addCarryMark("office hours", "officeHoursCarry", intro + "Check them for this term.", hours, [hours]);
+  var section = document.getElementById("courseSection");
+  if (section && section.value) {
+    addCarryMark("section", "courseSectionCarry", intro + "Check it for this term.", section, [section]);
+  }
+
+  var hours = Array.prototype.filter.call(
+    document.querySelectorAll('#instructorList input[data-stem="instructorOfficeHours"]'),
+    function (el) { return !!el.value; });
+  if (hours.length) {
+    addCarryMark("office hours", "officeHoursCarry", intro + "Check them for this term.", hours[0], hours);
   }
 
   var due = Array.prototype.filter.call(
@@ -4255,7 +4644,8 @@ function submitSyllabus() {
     return;
   }
   var record = generatedRecord;
-  var to = [record.instructor.email, record.distribution.departmentContact].filter(Boolean);
+  var to = record.instructors.map(function (i) { return txt(i.email); })
+    .concat(record.distribution.departmentContact).filter(Boolean);
 
   submitBusy = true;
   setSubmitStatus("Submitting\u2026");
@@ -4350,11 +4740,13 @@ function initFlows() {
 function syncEmailEcho() {
   var echo = document.getElementById("emailEcho");
   if (!echo) return;
-  echo.textContent = val("email") || "the instructor email address in the form";
+  var emails = instructorBlocks().map(function (b) { return readInstructorBlock(b).email; }).filter(Boolean);
+  echo.textContent = emails.length ? listText(emails) : "the instructor email addresses in the form";
 }
 
 function initEmailCopies() {
-  document.getElementById("email").addEventListener("input", syncEmailEcho);
+  /* Delegated, so an instructor added later is covered. */
+  document.getElementById("instructorList").addEventListener("input", syncEmailEcho);
   syncEmailEcho();
 
   /* Outside the form, so the form's delegated listeners do not reach it. */
@@ -4596,6 +4988,7 @@ function initDraft() {
 }
 
 function init() {
+  fillBoilerplate();
   syncCreditUnit();
   syncBranches();
   syncHoursTotal();
@@ -4610,10 +5003,8 @@ function init() {
     if (el && el.tagName === "TEXTAREA") el.addEventListener("paste", handlePaste);
   });
 
-  ["unitCredits", "unitCeus"].forEach(function (id) {
-    document.getElementById(id).addEventListener("change", syncCreditUnit);
-  });
-  ["reqYes", "reqNo"].forEach(function (id) {
+  document.getElementById("creditUnitSelect").addEventListener("change", syncCreditUnit);
+  ["reqYes", "reqNo", "zeroCost", "privacyOptOut"].forEach(function (id) {
     document.getElementById(id).addEventListener("change", syncBranches);
   });
   ["lectureHours", "labHours", "seminarHours"].forEach(function (id) {
@@ -4625,6 +5016,8 @@ function init() {
   addAssessRow("", "", "");
   addAssessRow("", "", "");
   addAssessRow("", "", "");
+
+  addInstructorBlock();
 
   for (var w = 1; w <= 3; w++) addScheduleRow([String(w), "", ""]);
 
@@ -4668,6 +5061,13 @@ function init() {
     setStatus("Learning outcome added.");
   });
 
+  document.getElementById("addInstructorBtn").addEventListener("click", function () {
+    var block = addInstructorBlock();
+    var first = block.querySelector("input");
+    if (first) first.focus();
+    setStatus("Instructor added.");
+  });
+
   document.getElementById("addWeekBtn").addEventListener("click", function () {
     var body = document.getElementById("scheduleBody");
     var tr = addScheduleRow([String(body.rows.length + 1), "", ""]);
@@ -4677,6 +5077,7 @@ function init() {
   });
 
   document.getElementById("generateBtn").addEventListener("click", function () { generate(true); });
+  document.getElementById("overrideBtn").addEventListener("click", overrideWarnings);
   document.getElementById("copyFormattedBtn").addEventListener("click", copyFormatted);
   document.getElementById("downloadBtn").addEventListener("click", download);
   document.getElementById("copyBtn").addEventListener("click", copy);
