@@ -391,11 +391,6 @@
      ends and the next begins is plain at a glance. */
   .doc .instructor-block + .instructor-block { border-top: 1px solid #c8c8c8; padding-top: 0.25rem; }
   .doc .instructor-remove { margin: 0 0 1em; }
-  /* A detail's title box is set as the export's h4: body size, bold. */
-  .doc .detail-title { margin: 1.33em 0 0.5em; }
-  .doc .detail-title input { width: 100%; font-weight: bold; }
-  .doc .detail-block + .detail-block { border-top: 1px solid #c8c8c8; }
-  .doc .detail-remove { margin: 0.5em 0 1em; }
   .doc .instructor-remove[hidden] { display: none; }
 
   /* Tables as the export draws them: the same borders, shading and padding.
@@ -543,13 +538,6 @@
 <div id="instructorList"></div>
 <p><button type="button" id="addInstructorBtn">Add instructor</button></p>
 </fieldset>
-<template id="detailTemplate">
-<div class="detail-block" role="group">
-<p class="field detail-title"><label class="chrome-label" data-stem="detailTitle">Title</label> <input type="text" data-stem="detailTitle" placeholder="Research essay"></p>
-<div class="field"><label class="chrome-label" data-stem="detailBody">Details</label> <textarea data-stem="detailBody" rows="5"></textarea></div>
-<p class="detail-remove"><button type="button" class="removeDetail">Remove<span class="visually-hidden"></span></button></p>
-</div>
-</template>
 <template id="instructorTemplate">
 <div class="instructor-block" role="group">
 <p class="field instructor-name"><label class="chrome-label" data-stem="instructorName">Instructor name</label> <input type="text" data-stem="instructorName" aria-required="true" placeholder="Instructor name"></p>
@@ -630,16 +618,6 @@
 <span class="visually-hidden" id="weightAnnounce" role="status"></span>
 <p><button type="button" id="addAssessBtn">Add assessment row</button></p>
 
-  <!-- Assessment details: optional, as many as wanted. Each block is a title
-     (an h4 in the export) and an editor for the body. The h3 above them is
-     shown only while there is a block, as the export prints it only when
-     there are details. Ids come from a counter and are never reused or
-     renumbered, because each body is a rich editor whose toolbar and link
-     panel are tied to its id; only the numbers people see are rewritten. -->
-<h3 id="detailsHeading" hidden="">Assessment details</h3>
-<div id="detailList"></div>
-<p class="hint" id="detailsHint">Optional. Describe individual assessments, each under its own title.</p>
-<p><button type="button" id="addDetailBtn" aria-describedby="detailsHint">Add assessment details</button></p>
 </fieldset>
   
 <div class="field" id="gradingWrap"><h3><label for="gradingNotes">Grading guidelines</label> <span class="opt">(optional)</span></h3> <span class="hint" id="gradingNotesHint">How the grade is arrived at for this section: rounding, late penalties, minimum passing requirements. Left blank, the heading is left out too.</span> <textarea id="gradingNotes" aria-describedby="gradingNotesHint" rows="5"></textarea></div>
@@ -1885,17 +1863,6 @@ function renderHtml(input) {
   }
   assessBody.push(gradesLine());
 
-  /* Assessment details, after the College's scale and before the course
-     materials: an h3, then each detail's title as an h4 with its body
-     under it. Left out entirely when there are none. */
-  var detailItems = r.assessmentDetails.filter(detailHasContent);
-  if (detailItems.length) {
-    assessBody.push(heading(3, "Assessment details"));
-    detailItems.forEach(function (d) {
-      if (txt(d.title)) assessBody.push(heading(4, txt(d.title)));
-      assessBody = assessBody.concat(richBlocks(d.content));
-    });
-  }
   L = L.concat(section(2, "Assessment and grading", assessBody));
 
   /* Course materials. The zero-cost statement, when the instructor has
@@ -2126,22 +2093,6 @@ function collectErrors() {
       before: document.getElementById("assessTable").parentNode
     });
   }
-
-  /* A detail is optional, but half of one is not: a title with nothing
-     under it, or a body with no title, would print a heading for nothing or
-     a block nobody can find. An empty block is ignored. */
-  detailBlocks().forEach(function (block, i) {
-    var n = i + 1;
-    var t = block.querySelector('input[data-stem="detailTitle"]');
-    var ed = block.querySelector('div[data-stem="detailBody"], textarea[data-stem="detailBody"]');
-    var hasTitle = !!(t && t.value.trim());
-    var hasBody = !!(ed && fieldFilled(ed.id));
-    if (hasTitle === hasBody) return;
-    if (!hasTitle) add(t.id, "Enter a title for assessment details " + n);
-    else add(ed.id, "Enter the details under “" + t.value.trim() + "”", {
-      before: document.getElementById(ed.id + "Rich") || ed
-    });
-  });
 
   /* The message goes above the toolbar, not between it and the editor, so
      it is in front of the whole control. Where the editor was never built,
@@ -2639,86 +2590,6 @@ function renumberOutcomeRows() {
     var sr = tr.querySelector(".removeOutcome .visually-hidden");
     if (sr) sr.textContent = " learning outcome " + n;
   });
-}
-
-/* ------------------------------------------------------------------ *
- * Assessment details blocks
- *
- * Optional, so there may be none: Remove can take the last one away. Ids
- * come from a counter and are never renumbered (see the markup comment).
- * ------------------------------------------------------------------ */
-
-var detailSeq = 0;
-
-function detailBlocks() {
-  var list = document.getElementById("detailList");
-  return list ? Array.prototype.slice.call(list.children) : [];
-}
-
-function readDetailBlock(block) {
-  var t = block.querySelector('input[data-stem="detailTitle"]');
-  var ed = block.querySelector('div[data-stem="detailBody"], textarea[data-stem="detailBody"]');
-  return { title: t ? t.value.trim() : "", content: ed ? richValue(ed.id) : "" };
-}
-
-function detailHasContent(d) {
-  return !!(txt(d.title) || richBlocks(d.content).length);
-}
-
-function addDetailBlock(values) {
-  var list = document.getElementById("detailList");
-  var tpl = document.getElementById("detailTemplate");
-  var block = tpl.content.firstElementChild.cloneNode(true);
-  var uid = ++detailSeq;
-  ["detailTitle", "detailBody"].forEach(function (stem) {
-    var id = stem + uid;
-    block.querySelector('input[data-stem="' + stem + '"], textarea[data-stem="' + stem + '"]').id = id;
-    block.querySelector('label[data-stem="' + stem + '"]').setAttribute("for", id);
-  });
-  block.querySelector(".removeDetail").addEventListener("click", function () {
-    removeDetailBlock(block);
-  });
-  list.appendChild(block);
-
-  var v = obj(values);
-  block.querySelector('input[data-stem="detailTitle"]').value = str(v.title);
-  /* The editor is built once the box is in the page, where it looks for
-     its label. The textarea's data-stem does not carry over to the editor,
-     so it is set again on what replaced it. */
-  var ed = buildRichEditor("detailBody" + uid);
-  if (ed) {
-    ed.setAttribute("data-stem", "detailBody");
-    ed.innerHTML = richClean(str(v.content)).html || "<p><br></p>";
-  } else {
-    var ta = document.getElementById("detailBody" + uid);
-    var doc = new DOMParser().parseFromString(str(v.content), "text/html");
-    ta.value = doc.body ? doc.body.textContent.trim() : "";
-  }
-  renumberDetailBlocks();
-  return block;
-}
-
-function removeDetailBlock(block) {
-  var index = detailBlocks().indexOf(block);
-  block.parentNode.removeChild(block);
-  renumberDetailBlocks();
-  refreshErrors();
-
-  var rest = detailBlocks();
-  var next = rest[Math.min(index, rest.length - 1)];
-  var target = next ? next.querySelector(".removeDetail") : document.getElementById("addDetailBtn");
-  if (target) target.focus();
-  setStatus("Assessment details removed.");
-}
-
-function renumberDetailBlocks() {
-  var blocks = detailBlocks();
-  blocks.forEach(function (block, i) {
-    var n = i + 1;
-    block.setAttribute("aria-label", "Assessment details " + n);
-    block.querySelector(".removeDetail .visually-hidden").textContent = " assessment details " + n;
-  });
-  document.getElementById("detailsHeading").hidden = !blocks.length;
 }
 
 /* ------------------------------------------------------------------ *
@@ -4290,8 +4161,7 @@ function copyJson() {
  * it is never written. Versions 1 and 2 had one box for code and title;
  * a record from either has its title split on the way in (normalizeRecord).
  * Version 4 holds a list of instructors where version 3 and earlier held
- * one; the one becomes a list of one on the way in. Version 5 adds
- * assessmentDetails; a record without it has none.
+ * one; the one becomes a list of one on the way in.
  *
  * syllabusKey - course code and the first instructor's email, "ENGL 1123|name@langara.ca"
  * - is what finds a course's earlier syllabi in the list. The code alone is
@@ -4300,7 +4170,7 @@ function copyJson() {
  * ------------------------------------------------------------------ */
 
 var RECORD_APP = "langara-course-syllabus-builder";
-var RECORD_VERSION = 5;
+var RECORD_VERSION = 4;
 
 /* Caps how many rows a record can ask for, so a damaged or hostile file
    cannot stall the page building thousands of them. */
@@ -4392,7 +4262,6 @@ function emptyRecord() {
     schedule: [],
     assessments: [],
     gradingGuidelines: "",
-    assessmentDetails: [],
     materials: { zeroCost: false, content: "", privacyOptOut: false },
     departmentGuidelines: "",
     distribution: { departmentContact: "" }
@@ -4520,7 +4389,6 @@ function collectRecord(now) {
   r.assessments = assessRows().map(function (a) {
     return { activity: a[0], weight: weightFigure(a[1]), due: a[2] };
   });
-  r.assessmentDetails = detailBlocks().map(readDetailBlock).filter(detailHasContent);
   return r;
 }
 
@@ -4610,10 +4478,6 @@ function normalizeRecord(input) {
   r.assessments = rowsFrom(d.assessments).map(function (a) {
     a = obj(a);
     return { activity: str(a.activity), weight: str(a.weight), due: str(a.due) };
-  });
-  r.assessmentDetails = rowsFrom(d.assessmentDetails).map(function (x) {
-    x = obj(x);
-    return { title: str(x.title), content: str(x.content) };
   });
   return r;
 }
@@ -4715,10 +4579,6 @@ function applyRecord(input) {
       el.value = doc.body ? doc.body.textContent.trim() : "";
     }
   });
-
-  document.getElementById("detailList").textContent = "";
-  r.assessmentDetails.forEach(function (d) { addDetailBlock(d); });
-  renumberDetailBlocks();
 
   document.getElementById("instructorList").textContent = "";
   r.instructors.forEach(function (ins) { addInstructorBlock(ins); });
@@ -5367,13 +5227,6 @@ function init() {
     var first = tr.querySelector("input");
     if (first) first.focus();
     setStatus("Learning outcome added.");
-  });
-
-  document.getElementById("addDetailBtn").addEventListener("click", function () {
-    var block = addDetailBlock();
-    var first = block.querySelector("input");
-    if (first) first.focus();
-    setStatus("Assessment details added.");
   });
 
   document.getElementById("addInstructorBtn").addEventListener("click", function () {
