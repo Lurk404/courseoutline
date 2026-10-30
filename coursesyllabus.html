@@ -165,7 +165,11 @@
      controls. */
   #draftBanner p { margin: 0; }
   #draftBanner.draft-on { border: 2px solid #595959; padding: 0.75rem 1rem; margin: 0 0 1rem; }
-  #draftBanner.draft-on .actions { margin-top: 0.5rem; }
+  /* Clear form, and the question it asks before it clears. */
+  #clearTools { margin: 0.75rem 0 1rem; }
+  #clearTools p { margin: 0; }
+  #clearConfirm { border: 2px solid #595959; padding: 0.75rem 1rem; margin-top: 0.5rem; }
+  #clearConfirm .actions { margin-top: 0.5rem; }
 
   /* Focus moves here when Generate, Copy or Download finds a problem.
      Programmatic focus does not always trigger :focus-visible, so :focus is
@@ -276,17 +280,28 @@
 <h1>Course Syllabus Builder</h1>
 <p>Use this form to create accessible, consistent course syllabi without awkward templates. Fill out the form once and simply update due dates and deadlines each semester.</p>
 <p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
-<!-- Autosave. Filled in after the page loads: an offer to restore the
-     entry this browser kept from last time, or a note that this browser
-     will not let the page keep one. The status line is a live region, so
-     the offer is announced as well as shown. Outside "Show form", so it is
-     seen while the form is still closed. -->
+<!-- Autosave. Filled in after the page loads: a note that the entry this
+     browser kept from last time has been put back, that the form has been
+     cleared, or that this browser will not let the page keep an entry.
+     The status line is a live region, so the note is announced as well as
+     shown. Outside "Show form", so it is seen while the form is closed. -->
 <div id="draftBanner">
 <p id="draftStatus" role="status"></p>
-<p class="actions" id="draftActions" hidden=""><button type="button" id="draftRestoreBtn" aria-describedby="draftStatus">Restore</button> <button type="button" id="draftDiscardBtn" aria-describedby="draftStatus">Discard</button></p>
 </div>
 <details id="formDetails">
 <summary>Show form</summary>
+<!-- Clear form. Outside the form element, like the lookup below, so it
+     can never submit. It asks first, in the page rather than through the
+     browser's confirm(): a Brightspace widget's frame may block confirm(),
+     and the button would then silently do nothing. Cancel takes focus when
+     the question opens, so Enter alone never clears. -->
+<div id="clearTools">
+<p class="actions"><button type="button" id="clearFormBtn" aria-expanded="false" aria-controls="clearConfirm">Clear form</button></p>
+<div id="clearConfirm" hidden="">
+<p id="clearQuestion">Clear everything you have entered? This cannot be undone.</p>
+<p class="actions"><button type="button" id="clearYesBtn" aria-describedby="clearQuestion">Yes, clear form</button> <button type="button" id="clearNoBtn" aria-describedby="clearQuestion">Cancel</button></p>
+</div>
+</div>
 <!-- Inside "Show form" but outside the form element: these fill the form in
      rather than being part of it, and a button here must never submit.
 
@@ -4764,18 +4779,22 @@ function initEmailCopies() {
  * and savedAt included - under one key named for this builder, because every
  * page on lurk404.github.io shares one storage area.
  *
- * Never put back on its own. On load, a kept entry that holds anything is
- * offered, Restore or Discard, in the status line at the top. Nothing is
- * written while the offer is open, so typing past it cannot overwrite the
- * entry it offers; the offer says so. Discard sets the entry aside rather
- * than deleting it: the next change replaces it. Nothing else clears it.
+ * Put back on its own. On load, a kept entry that holds anything is filled
+ * into the form, the form is opened, and the status line at the top says
+ * so, with when it was saved - so nobody mistakes it for a blank form.
+ * Each person's login has its own browser storage, so the entry is only
+ * ever their own.
+ *
+ * Clear form, at the top of the form, asks first, then puts the form back
+ * as the page first built it and removes the kept entry, so nothing comes
+ * back on the next visit.
  *
  * Storage can be missing, full or blocked - private windows, managed
  * browsers - so every read and write is guarded, and when one fails the
  * page says autosave is off instead of seeming to keep work it is not.
  *
  * Separately, leaving the page with changes made since the form was last
- * loaded, restored or submitted asks
+ * loaded, restored, cleared or submitted asks
  * first, through the browser's own "Leave site?" dialog. Autosave does not
  * count as saving here: the entry is only in this browser.
  * ------------------------------------------------------------------ */
@@ -4792,7 +4811,7 @@ var DRAFT_OFF_TEXT = "Autosave is not available in this browser. " +
 
 var draftStore = null;    /* localStorage, once a write has been seen to work */
 var draftTimer = null;
-var draftPending = null;  /* { record, when, newer } while the offer is open */
+var draftStart = null;    /* the form as the page first built it, for Clear form */
 var draftStored = "";     /* what is in storage, as a snapshot */
 var draftBaseline = "";   /* what the leave warning compares against */
 
@@ -4837,9 +4856,8 @@ function draftWhenText(iso, now) {
   return day + ", " + (h % 12 || 12) + ":" + (m < 10 ? "0" : "") + m + (h < 12 ? " am" : " pm");
 }
 
-function setDraftStatus(message, offer) {
+function setDraftStatus(message) {
   document.getElementById("draftStatus").textContent = message;
-  document.getElementById("draftActions").hidden = !offer;
   var banner = document.getElementById("draftBanner");
   if (message) banner.classList.add("draft-on");
   else banner.classList.remove("draft-on");
@@ -4868,7 +4886,7 @@ function writeDraft() {
     clearTimeout(draftTimer);
     draftTimer = null;
   }
-  if (!draftStore || draftPending) return;
+  if (!draftStore) return;
   var record = collectRecord();
   var snap = recordSnapshot(record);
   if (snap === draftStored) return;
@@ -4877,13 +4895,13 @@ function writeDraft() {
     draftStored = snap;
   } catch (e) {
     draftStore = null;
-    setDraftStatus(DRAFT_OFF_TEXT, false);
+    setDraftStatus(DRAFT_OFF_TEXT);
   }
 }
 
 /* Waits for typing to stop, so a run of keystrokes is one write. */
 function scheduleDraft() {
-  if (!draftStore || draftPending) return;
+  if (!draftStore) return;
   if (draftTimer) clearTimeout(draftTimer);
   draftTimer = setTimeout(writeDraft, DRAFT_DELAY);
 }
@@ -4908,32 +4926,81 @@ function draftFrom(p) {
   return p.when ? " from " + p.when : "";
 }
 
-function draftAfterChoice() {
-  var summary = document.querySelector("#formDetails > summary");
-  if (summary) summary.focus();
-}
-
-function restoreDraft() {
-  var p = draftPending;
-  if (!p) return;
-  draftPending = null;
+/* The kept entry, put into the form. What it says is shown once the page
+   has settled (see DRAFT_ANNOUNCE_DELAY). */
+function restoreDraft(p) {
+  draftStored = recordSnapshot(p.record);
   applyRecord(p.record);
   document.getElementById("formDetails").open = true;
-  setDraftStatus("Restored your entry" + draftFrom(p) + "." +
-    (p.newer ? " It was saved by a newer version of this builder, so check every field." : ""), false);
-  draftAfterChoice();
+  return "Your entry" + draftFrom(p) + " is filled in. Choose Clear form to start over." +
+    (p.newer ? " It was saved by a newer version of this builder, so check every field." : "");
 }
 
-function discardDraft() {
-  var p = draftPending;
-  if (!p) return;
-  draftPending = null;
-  setDraftStatus("Set aside the entry" + draftFrom(p) + ". Your next change replaces it.", false);
-  draftAfterChoice();
+/* Rows back to the number the page starts with. applyRecord leaves one
+   empty row where a record has none. */
+function padRows(id, count, add) {
+  var body = document.getElementById(id);
+  while (body.rows.length < count) add(body.rows.length);
+}
+
+/* Everything back to how the page first built it, and the kept entry
+   removed - not replaced with an empty one - so a later visit opens as a
+   first visit does. */
+function clearForm() {
+  applyRecord(draftStart);
+  padRows("outcomeBody", 3, function () { addOutcomeRow(""); });
+  padRows("assessBody", 3, function () { addAssessRow("", "", ""); });
+  padRows("scheduleBody", 3, function (n) { addScheduleRow([String(n + 1), "", ""]); });
+  fitScheduleBoxes();
+
+  /* applyRecord asked for a write; there is nothing to keep. */
+  if (draftTimer) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+  draftBaseline = formSnapshot();
+  draftStored = draftBaseline;
+  if (draftStore) {
+    try { draftStore.removeItem(DRAFT_KEY); } catch (e) { /* the next write replaces it */ }
+  }
+  setDraftStatus(draftStore ? "Form cleared." : "Form cleared. " + DRAFT_OFF_TEXT);
+}
+
+function initClearForm() {
+  var btn = document.getElementById("clearFormBtn");
+  var box = document.getElementById("clearConfirm");
+
+  function openConfirm() {
+    box.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    document.getElementById("clearNoBtn").focus();
+  }
+  function closeConfirm() {
+    box.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    btn.focus();
+  }
+
+  btn.addEventListener("click", function () {
+    if (box.hidden) openConfirm();
+    else closeConfirm();
+  });
+  document.getElementById("clearYesBtn").addEventListener("click", function () {
+    clearForm();
+    closeConfirm();
+  });
+  document.getElementById("clearNoBtn").addEventListener("click", closeConfirm);
+  box.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" || ev.key === "Esc") {
+      ev.preventDefault();
+      closeConfirm();
+    }
+  });
 }
 
 function initDraft() {
-  draftBaseline = formSnapshot();
+  draftStart = collectRecord();
+  draftBaseline = recordSnapshot(draftStart);
   draftStored = draftBaseline;
   draftStore = draftStorage();
 
@@ -4941,20 +5008,14 @@ function initDraft() {
   if (!draftStore) {
     message = DRAFT_OFF_TEXT;
   } else {
-    draftPending = readDraft();
-    if (draftPending) {
-      message = "You have an unsaved entry" + draftFrom(draftPending) + "." +
-        " Autosave is paused until you choose.";
-      draftStored = recordSnapshot(draftPending.record);
-    }
+    var kept = readDraft();
+    if (kept) message = restoreDraft(kept);
   }
   if (message) {
-    var offer = !!draftPending;
-    setTimeout(function () { setDraftStatus(message, offer); }, DRAFT_ANNOUNCE_DELAY);
+    setTimeout(function () { setDraftStatus(message); }, DRAFT_ANNOUNCE_DELAY);
   }
 
-  document.getElementById("draftRestoreBtn").addEventListener("click", restoreDraft);
-  document.getElementById("draftDiscardBtn").addEventListener("click", discardDraft);
+  initClearForm();
 
   /* Typing, choices, and the buttons that add, remove or format - a removed
      row or a bolded word is a change no input event reports. The department
