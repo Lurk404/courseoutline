@@ -173,12 +173,11 @@
   #clearConfirm { border: 2px solid #595959; padding: 0.75rem 1rem; margin-top: 0.5rem; }
   #clearConfirm .actions { margin-top: 0.5rem; }
 
-  /* Focus moves here when Generate, Copy or Download finds a problem.
+  /* Focus moves here when Copy, Download or Submit finds a problem.
      Programmatic focus does not always trigger :focus-visible, so :focus is
      matched too, guaranteeing a visible indicator (SC 2.4.7). */
   #errorSummary:focus { outline: 3px solid #0b5fff; outline-offset: 2px; }
 
-  iframe { width: 100%; box-sizing: border-box; display: block; border: 1px solid #595959; }
  
   code { background: #f2f2f2; padding: 0 0.2rem; }
 
@@ -257,7 +256,7 @@
   /* ---------------------------------------------------------------- *
    * The form drawn as the syllabus it makes
    *
-   * The export carries no stylesheet, so the preview shows it in the
+   * The export carries no stylesheet, so a plain page shows it in the
    * browser's defaults. The form takes the same defaults - the default
    * serif face, normal line height, the browser's own heading sizes and
    * margins - so headings, labels and fixed text sit where they will sit in
@@ -308,8 +307,8 @@
   /* The policy links stand one to a line. A 1.5 line height spaces them so
      each keeps the 24px target SC 2.5.8 asks for. */
   .doc [data-boiler] li { line-height: 1.5; }
-  /* Holds the floated logo inside the footer, so it cannot ride down beside
-     the Generate button. */
+  /* Holds the floated logo inside the footer, so it cannot ride down past
+     the rule that closes the form. */
   .doc [data-boiler="acknowledgement"] { display: flow-root; }
 
   /* The boxes. Single-line boxes are a fill-in line; boxes of several lines
@@ -435,7 +434,44 @@
   }
   .doc .doc-list td:last-child { width: 1%; padding-left: 0.5rem; white-space: nowrap; }
 
-  .doc .doc-actions { margin-top: 2rem; }
+  /* The rule that closes the form: what is above it is the syllabus, what
+     is below it is the builder's own tools. Form only; the export keeps its
+     own thin rule above the acknowledgement. #333333 is 12.6:1 on white. */
+  hr.form-end {
+    border: 0;
+    border-top: 6px solid #333333;
+    height: 0;
+    margin: 2rem 0;
+  }
+
+  /* The copy panel: the one step almost everyone takes, set apart from the
+     advanced tools below it. The tint and orange edge are decorative; the
+     button and its text identify the control. White on #a8390c is 6.45:1
+     (SC 1.4.3) and #a8390c on the #fdf3ee tint is 5.9:1, clearing 3:1 for
+     the button's edge (SC 1.4.11). The focus ring is #0b5fff, 4.7:1 on the
+     tint, offset so it draws on the tint rather than on the button. */
+  .copy-panel {
+    background: #fdf3ee;
+    border: 2px solid #a8390c;
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 0 0 1.5rem;
+  }
+  .copy-panel .actions { margin: 0 0 1rem; }
+  .copy-panel #workflowIntro { margin: 0 0 0.25rem; }
+  .copy-panel ol { margin: 0; }
+  #copyFormattedBtn {
+    font-size: 1.25rem;
+    font-weight: bold;
+    min-height: 3rem;
+    padding: 0.6rem 1.5rem;
+    color: #ffffff;
+    background: #a8390c;
+    border: 2px solid #a8390c;
+    border-radius: 6px;
+  }
+  #copyFormattedBtn:hover { background: #8f300a; border-color: #8f300a; }
+  #copyFormattedBtn:focus-visible { outline: 3px solid #0b5fff; outline-offset: 3px; }
 
   /* Error and carried-over marks, restated at the specificity of the box
      rules above so they still win. */
@@ -448,7 +484,7 @@
 </head><body><main>
 <h1>Course Syllabus Builder</h1>
 <p>Use this form to create accessible, consistent course syllabi without awkward templates. Fill out the form once and simply update due dates and deadlines each semester.</p>
-<p>To create your syllabus: Fill in the fields, then choose <strong>Generate syllabus</strong> at the bottom of the form.</p>
+<p>To create your syllabus: Fill in the fields, then choose <strong>Copy syllabus text</strong> at the bottom of the form.</p>
 <!-- Autosave. Filled in after the page loads: a note that the entry this
      browser kept from last time has been put back, that the form has been
      cleared, or that this browser will not let the page keep an entry.
@@ -667,59 +703,55 @@
      is generated in. -->
 <div data-boiler="versioning"></div>
 <div data-boiler="acknowledgement"></div>
+<!-- Confirms adding and removing rows, instructors and weeks, where focus
+     moves and the change would otherwise go unannounced. Spoken only: the
+     change itself is what a sighted author sees. -->
+<p id="status" class="visually-hidden" role="status"></p>
+</form>
+<hr class="form-end">
 
-<!-- Filled in and shown only when Generate, Copy or Download finds a field
+<!-- Filled in and shown only when Copy, Download or Submit finds a field
      that is not complete. Focus moves here, so the heading, which carries the
      count, is what a screen reader announces, and each item links to the
-     field it names (SC 3.3.1, 3.3.3). Directly above Generate, where the
-     result of pressing it is expected. -->
+     field it names (SC 3.3.1, 3.3.3). Directly above the copy panel, where
+     the result of pressing its button is expected. -->
 <div id="errorSummary" class="error-summary" role="group" aria-labelledby="errorSummaryHeading" hidden="" tabindex="-1">
 <h2 id="errorSummaryHeading"></h2>
 <ul id="errorList"></ul>
 <!-- The way past the checks. Shown with the summary until it is used, and
-     after that the heading says the syllabus went out with these open. -->
+     after that the heading says the syllabus went out with these open. The
+     button names the action it carries on with, filled in by showSummary. -->
 <div id="overrideWrap">
-<p>You can generate the syllabus anyway, but it may not comply with <a href="https://langara.ca/media/16744/download?inline=" target="_blank" rel="noopener noreferrer">Course Outline Policy F1003<span class="visually-hidden"> (opens in a new tab)</span></a>.</p>
-<p class="actions"><button type="button" id="overrideBtn">Override warnings and generate</button></p>
+<p>You can continue anyway, but the syllabus may not comply with <a href="https://langara.ca/media/16744/download?inline=" target="_blank" rel="noopener noreferrer">Course Outline Policy F1003<span class="visually-hidden"> (opens in a new tab)</span></a>.</p>
+<p class="actions"><button type="button" id="overrideBtn">Override warnings and continue</button></p>
 </div>
 </div>
-<p class="actions doc-actions"><button type="button" id="generateBtn">Generate syllabus</button> <span id="status" role="status"></span></p>
-</form><hr>
-<h2>Preview</h2>
-<p class="hint">The finished syllabus may not look exactly like this preview. Use the preview to review your syllabus content.</p>
-<iframe id="preview" title="Course syllabus preview" height="600"></iframe>
-<!-- Shown only when SUBMIT_FLOW_URL is set. A static page cannot send mail
-     on its own; the flow it posts to does. Without one, a note saying a copy
-     will be emailed would promise something the page does not do, so the
-     whole group stays hidden. A fieldset outside the form is valid HTML and
-     groups the controls with the note that explains them. -->
-<fieldset id="emailCopies" hidden=""><legend>Submit and email copies</legend>
-<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email addresses in the form</strong> and to your department contact.</p>
-<p class="field"><label for="deptContact">Department contact email</label> <span class="hint" id="deptContactHint">The person who collects syllabi for your department, such as the chair or department assistant.</span> <input type="email" id="deptContact" autocomplete="off" aria-describedby="deptContactHint" placeholder="name@langara.ca"></p>
-<p class="actions"><button type="button" id="submitBtn">Submit syllabus</button> <span id="submitStatus" role="status"></span></p>
-</fieldset> <!-- The steps sit here, between the result and the button they start with,
-     because this is the point on the page where they are acted on. -->
+
+<!-- The path almost everyone takes: the button first, then the steps for
+     where the copy goes. The button checks the form and builds the syllabus
+     itself, so there is no separate step before it. Its own status region
+     sits beside it, so its confirmation is seen where the button is. -->
+<div class="copy-panel">
+<p class="actions"><button type="button" id="copyFormattedBtn">Copy syllabus text</button> <span id="exportStatus" role="status"></span></p>
 <p id="workflowIntro"><strong>To add the syllabus to Brightspace:</strong></p>
 <ol aria-labelledby="workflowIntro">
-<li>Choose <strong>Copy syllabus</strong>, just below.</li>
+<li>Choose <strong>Copy syllabus text</strong>, just above.</li>
 <li>In your course, choose <strong>Upload / Create</strong> &gt; <strong>Create a file</strong>.</li>
 <li>Provide a title, such as "Course Syllabus"</li>
 <li>If desired, open the <strong>Select a Document Template</strong> menu to choose a styled template.</li>
 <li>Paste into the editor, then save.</li>
 </ol>
-<!-- These act on the generated document rather than on the form, so they sit
-     with the generated document. All call generate(false) first, so none
-     depends on Generate having been pressed. Their own status region, rather
-     than the form's: a confirmation that renders a screen away from the
-     button that caused it is a confirmation nobody sees.
+</div>
 
-     Copy formatted is the path almost everyone takes, so it is the one button
-     out here. Copy HTML is its fallback and sits with the markup it copies, in
-     the details element below, alongside the file download. The sentence
-     saying when to reach for it opens that element, so it is read before the
-     button. Copy HTML still reports to this status region, which is only a
-     line or two above it once the element is open. -->
-<p class="actions"><button type="button" id="copyFormattedBtn">Copy syllabus</button> <span id="exportStatus" role="status"></span></p>
+<!-- Shown only when SUBMIT_FLOW_URL is set. A static page cannot send mail
+     on its own; the flow it posts to does. Without one, a note saying a copy
+     will be emailed would promise something the page does not do, so the
+     whole group stays hidden. -->
+<fieldset id="emailCopies" hidden=""><legend>Submit and email copies</legend>
+<p>Submitting saves this syllabus to the syllabus list and emails a copy to <strong id="emailEcho">the instructor email addresses in the form</strong> and to your department contact.</p>
+<p class="field"><label for="deptContact">Department contact email</label> <span class="hint" id="deptContactHint">The person who collects syllabi for your department, such as the chair or department assistant.</span> <input type="email" id="deptContact" autocomplete="off" aria-describedby="deptContactHint" placeholder="name@langara.ca"></p>
+<p class="actions"><button type="button" id="submitBtn">Submit syllabus</button> <span id="submitStatus" role="status"></span></p>
+</fieldset>
 <!-- "Show" rather than "Click to see": the summary is operated by keyboard
      and touch as often as by mouse, and a screen reader already announces it
      as expandable. -->
@@ -728,7 +760,7 @@
 <summary>Show HTML source code (advanced users)</summary>
 <p class="hint">If formatting is lost when you paste, use <strong>Copy HTML</strong> instead and paste into the editor's source code view.</p>
 <p class="actions"><button type="button" id="copyBtn">Copy HTML</button></p>
-<p><label for="source">Generated HTML (read-only)</label></p>
+<p><label for="source">Syllabus HTML (read-only)</label></p>
 <textarea id="source" rows="20" readonly="readonly"></textarea>
 <p class="actions"><button type="button" id="downloadBtn">Download HTML</button></p>
 </details>
@@ -815,7 +847,7 @@ var ACKNOWLEDGEMENT_BREAK = "unceded territory";
 
 /* The logo from Brightspace's 2021 HTML templates. A root-relative address,
    so it resolves on the Brightspace server the syllabus is pasted into and
-   shows only as its alt text anywhere else (GitHub Pages, the preview). */
+   shows only as its alt text anywhere else (GitHub Pages, this form). */
 var LOGO_URL = "/shared/2021_HTML_Templates-v3/pages/../_assets/img/logo.png";
 var LOGO_ALT = "Langara logo";
 
@@ -877,14 +909,12 @@ var OUTCOME_STEM = "Upon successful completion of this course, students will be 
 var WORDING = {
   fallbackTitle: "Course syllabus",
   fileStem: "course-syllabus",
-  generatedStatus: "Syllabus generated.",
   materialsHeading: "Textbooks and course materials",
   zeroCost: "This course has zero textbook cost.",
   /* A syllabus can carry the instructor's own grading guidelines just above
      this line, so the link is named for what it actually is rather than
      repeating the phrase and reading as a contradiction. */
-  gradesNote: "for the College's grade scale and notations",
-  previewTitle: "Course syllabus preview"
+  gradesNote: "for the College's grade scale and notations"
 };
 
 function words() {
@@ -1077,7 +1107,7 @@ function cellBlocks(s) {
  * or Wingdings - and long lines are broken mid-word with a hyphen wherever
  * the original column ran out. Pasted in as-is, none of that is recognised,
  * so a six-item list becomes six paragraphs and a hyphenated word becomes
- * two. Nothing errors; the preview is just quietly the wrong shape, which is
+ * two. Nothing errors; the syllabus is just quietly the wrong shape, which is
  * the failure mode hardest to notice and hardest to attribute.
  *
  * The clean-up therefore happens at the moment of the paste, in the open:
@@ -1482,9 +1512,9 @@ function learningOutcomesBody(rows) {
  * alone. A % typed anyway, out of habit or in a paste, is taken off first,
  * so it is never doubled.
  *
- * The total runs live, before Generate has checked anything, so it still
+ * The total runs live, before Copy has checked anything, so it still
  * says plainly how many entries it could not count rather than silently
- * reporting a total that is quietly wrong. Generate then refuses those
+ * reporting a total that is quietly wrong. Copy then refuses those
  * entries with a message at the box.
  * ------------------------------------------------------------------ */
 
@@ -1925,11 +1955,11 @@ function buildHtml() {
  * Validation
  *
  * Every field is required except the instructor's phone, the grading
- * guidelines, the departmental guidelines, and assessment due dates. Generate, Copy and Download all check first and
+ * guidelines, the departmental guidelines, and assessment due dates. Copy, Download and Submit all check first and
  * produce nothing until the form passes, so an incomplete syllabus never
- * reaches the preview, the clipboard or a file.
+ * reaches the clipboard, a file or the list.
  *
- * A failure is reported in two places: a summary above Generate, which takes
+ * A failure is reported in two places: a summary above the copy panel, which takes
  * focus and links to each problem, and a message at the field itself, tied
  * to it with aria-describedby and marked aria-invalid (SC 3.3.1, 3.3.3).
  *
@@ -2119,7 +2149,7 @@ function collectErrors() {
   }
 
   /* Optional for now, so only a malformed address is flagged. Last in the
-     list because it sits last on the page, below the preview. */
+     list because it sits last on the page, below the copy panel. */
   var dept = document.getElementById("deptContact");
   if (dept && val("deptContact") && !emailLooksValid(dept)) {
     add("deptContact", "Enter the department contact email in the format name@langara.ca");
@@ -2133,14 +2163,24 @@ function collectErrors() {
    action that raised them, which the summary heading names. */
 var shownErrorIds = null;
 var shownSignature = "";
-var shownAction = "generate";
+var shownAction = "copyText";
 
 var ACTION_PHRASES = {
-  generate: "generate the syllabus",
-  copy: "copy the syllabus",
+  copyText: "copy the syllabus text",
+  copy: "copy the syllabus HTML",
   download: "download the syllabus",
   copyJson: "copy the syllabus data",
   submit: "submit the syllabus"
+};
+
+/* What Override carries on with: the button that raised the summary,
+   pressed again now that the checks no longer stop it. */
+var ACTION_BUTTONS = {
+  copyText: "copyFormattedBtn",
+  copy: "copyBtn",
+  download: "downloadBtn",
+  copyJson: "copyJsonBtn",
+  submit: "submitBtn"
 };
 
 function errorSignature(errors) {
@@ -2227,6 +2267,8 @@ function showSummary(errors, action) {
     ? "Warnings overridden: " + fields + " still incomplete"
     : "Fix " + fields + " to " + ACTION_PHRASES[action];
   document.getElementById("overrideWrap").hidden = warningsOverridden;
+  document.getElementById("overrideBtn").textContent =
+    "Override warnings and " + ACTION_PHRASES[action];
 
   errors.forEach(function (e) {
     var li = document.createElement("li");
@@ -2251,11 +2293,11 @@ function renderErrors(errors, action) {
   shownAction = action;
 }
 
-/* The full check, run by Generate, Copy and Download. True when the form
+/* The full check, run by Copy, Download and Submit. True when the form
    passes. On a failure the summary takes focus, so what is announced is the
    thing that explains it; the status lines are left to clearOutput(). */
 /* Once the author chooses to override, the checks still run and still show
-   what is incomplete, but no longer stop Generate, Copy, Download or Submit.
+   what is incomplete, but no longer stop Copy, Download or Submit.
    The override lasts until the form passes on its own, so a form that is
    later finished goes back to being checked as usual. */
 var warningsOverridden = false;
@@ -2273,16 +2315,19 @@ function validate(action) {
 
 function overrideWarnings() {
   warningsOverridden = true;
-  /* The button goes away with the choice, so focus goes to Generate, beside
-     the status line that says what happened. */
-  document.getElementById("generateBtn").focus();
-  generate(true);
+  /* The button goes away with the choice, so focus goes to the button that
+     raised the summary, beside the status line that says what happened, and
+     that button's action runs. A click is still a user gesture at this
+     point, so the clipboard accepts the copy. */
+  var btn = document.getElementById(ACTION_BUTTONS[shownAction] || "copyFormattedBtn");
+  btn.focus();
+  btn.click();
 }
 
 /* Runs on every edit while problems are on screen, and only ever takes them
    away: a field loses its message as soon as it is fixed, but one the author
    has not reached yet is not newly flagged while they type elsewhere. The
-   next Generate reports everything again. Nothing here moves focus or speaks,
+   next Copy reports everything again. Nothing here moves focus or speaks,
    since the author is in the middle of typing. */
 function refreshErrors() {
   if (!shownErrorIds) return;
@@ -2416,7 +2461,7 @@ function renumberAssessRows() {
 /* true marks the columns that take more than one line. Topic and Readings
    and activities are textareas, where Enter starts a new line; both start one
    line tall and grow as lines are added (fitHeight). Week stays a single-line
-   input, where Enter generates, as it does everywhere else on the form. */
+   input, where Enter does nothing, as everywhere else on the form. */
 var SCHEDULE_COLUMNS = [
   ["schedWeek", "Week"],
   ["schedTopic", "Topic", true],
@@ -2710,11 +2755,9 @@ function setStatus(message) {
   document.getElementById("status").textContent = message;
 }
 
-/* The second status region, the one beside Download and Copy. Those two
-   buttons now sit below the preview, far enough from the form's own status
-   line that writing their confirmation there would put it off screen. Both
-   regions are role="status", so both are announced; they differ only in where
-   the message is visible. */
+/* The second status region, the one beside Copy syllabus text, which Copy
+   HTML and Download write to as well. Visible, unlike the form's own status
+   line, because it reports on the button beside it. */
 function setExportStatus(message) {
   document.getElementById("exportStatus").textContent = message;
 }
@@ -2726,7 +2769,7 @@ function setExportStatus(message) {
 function pasteNoteId(id) { return id + "PasteNote"; }
 
 /* A note of its own under each field rather than the shared status line
-   beside Generate. Two reasons. The list fields sit well up a long form and
+   at the end of the form. Two reasons. The list fields sit well up a long form and
    that line is at the bottom of it, so the message would be announced and
    then not be anywhere the author is looking. And a message about a paste is
    only unambiguous if it is next to the box that was pasted into - one
@@ -3209,7 +3252,7 @@ function richCleanOnce(input) {
 /* Joining neighbouring bold or italic runs can leave two spaces side by side
    where the end of one met the start of the next, and that is only visible
    to a second pass. Cleaning the output again until it stops changing means
-   what a paste puts in the editor and what Generate later reads back out of
+   what a paste puts in the editor and what Copy later reads back out of
    it are the same markup. The counts come from the first pass, which is the
    only one that sees the original; the passes after it see clean markup. */
 function richClean(input) {
@@ -3721,8 +3764,7 @@ function buildRichEditor(id) {
   applyBtn.addEventListener("click", applyLink);
   cancelBtn.addEventListener("click", function () { closeLink(true); });
   removeBtn.addEventListener("click", removeLink);
-  /* Enter in either box applies the link rather than submitting the form,
-     which would run Generate. */
+  /* Enter in either box applies the link rather than submitting the form. */
   panel.addEventListener("keydown", function (ev) {
     if (ev.key === "Enter" && ev.target.tagName === "INPUT") {
       ev.preventDefault();
@@ -3805,60 +3847,61 @@ function announceHoursTotal() {
 
 /* Nothing is built until the form passes. action names what was pressed, so
    the error summary can say what the fixes are for. */
-function generate(announce, action) {
-  if (!validate(action || "generate")) {
+function generate(action) {
+  if (!validate(action || "copyText")) {
     clearOutput();
     return null;
   }
 
   /* The form is read once, into a record, and everything shown comes from
-     that record: the preview and source box here, the JSON panel beside
-     them. They cannot disagree, because there is only one reading. */
+     that record: the source box and the JSON panel. They cannot disagree,
+     because there is only one reading. */
   var record = collectRecord();
   var html = renderHtml(record);
   generatedRecord = record;
   document.getElementById("source").value = html;
   document.getElementById("jsonSource").value = recordJson(record);
-
-  /* The output is a fragment, so the preview iframe gets a document wrapped
-     around it with a declared charset, or it would mis-render em dashes.
-     The lock style/script below live only in this wrapper, never in html
-     itself, so Copy HTML/Download still hand over the plain fragment
-     untouched. Selection is disabled because copying straight out of the
-     rendered preview carries odd formatting; a screen reader reads the DOM
-     regardless of user-select, so this does not affect accessibility. */
-  var previewLock = "<style>html,body{-webkit-user-select:none;" +
-    "-moz-user-select:none;-ms-user-select:none;user-select:none;}</style>" +
-    "<script>document.addEventListener('copy',function(e){e.preventDefault();" +
-    "if(e.clipboardData)e.clipboardData.setData('text/plain','');});<\/script>";
-  var previewDoc = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
-    "<title>" + esc(words().previewTitle) + "</title>" + previewLock +
-    "</head><body>" + html + "</body></html>";
-  document.getElementById("preview").setAttribute("srcdoc", previewDoc);
-
-  if (announce !== false) {
-    var done = warningsOverridden && openWarnings
-      ? "Syllabus generated with " + openWarnings + " incomplete field" + (openWarnings === 1 ? "" : "s") +
-        ". It may not comply with Policy F1003."
-      : words().generatedStatus;
-    setStatus(done + carryReminder());
-  }
   return html;
 }
 
-/* A preview or source box still showing an earlier result while the form now
-   fails would be a document the form no longer describes, so both are
-   emptied, along with both status lines, which could otherwise still be
-   saying something was generated or copied. */
+/* Added to a copy or download confirmation: how many fields went out
+   incomplete, if the warnings were overridden, and which carried-over
+   fields are still unchanged. Empty when there is nothing to say. */
+function outputNote() {
+  var note = "";
+  if (warningsOverridden && openWarnings) {
+    note = " " + openWarnings + " incomplete field" + (openWarnings === 1 ? "" : "s") +
+      ". It may not comply with Policy F1003.";
+  }
+  return note + carryReminder();
+}
+
+/* A source box still showing an earlier result while the form now fails
+   would be a document the form no longer describes, so both boxes are
+   emptied, along with the status lines, which could otherwise still be
+   saying something was copied. */
 function clearOutput() {
   document.getElementById("source").value = "";
   document.getElementById("jsonSource").value = "";
   setJsonStatus("");
   setSubmitStatus("");
   generatedRecord = null;
-  document.getElementById("preview").removeAttribute("srcdoc");
   setStatus("");
   setExportStatus("");
+}
+
+/* Opening either advanced panel fills it, if the form passes as it stands
+   (or its warnings were overridden), so the boxes are not empty just because
+   no button has been pressed yet. Quiet: a panel opened to look should not
+   move focus or put up the error summary. A form that does not pass leaves
+   them empty, and their buttons report what is missing. */
+function fillAdvanced() {
+  if (!this.open) return;
+  if (!warningsOverridden && collectErrors().length) return;
+  var record = collectRecord();
+  generatedRecord = record;
+  document.getElementById("source").value = renderHtml(record);
+  document.getElementById("jsonSource").value = recordJson(record);
 }
 
 function fileName() {
@@ -3878,15 +3921,11 @@ function fileName() {
  * own when a person selects rendered page content and presses Ctrl+C - the
  * same mechanism that lets a paragraph copied out of a webpage keep its
  * bold and its links when it lands in Word. This button does that without
- * asking anyone to click into the preview frame and select everything by
+ * asking anyone to render the syllabus somewhere and select everything by
  * hand, which is not a discoverable thing to do and is exactly the trip
  * into unfamiliar territory this button exists to avoid.
  *
- * Built from the HTML string generate() already returns, not read back out
- * of the preview iframe's own rendered document. Setting srcdoc schedules
- * an asynchronous navigation, so contentDocument can still be showing the
- * PREVIOUS render for a tick after generate() runs; the returned string has
- * no such delay and is exactly what the iframe is about to display.
+ * Built from the HTML string generate() returns.
  *
  * DOMParser rather than a detached element's innerHTML: it hands back a
  * real Document, so .body can be read off it the same way whether it is
@@ -3907,11 +3946,9 @@ function previewBodyText(html) {
    address while checking a change, since navigator.clipboard.write() is
    refused outside a secure context and file: does not count as one.
 
-   A temporary element in the MAIN document, not the preview iframe:
-   building the rich clipboard content off generate()'s own string already
-   avoids the iframe, and selecting the copy in the top document sidesteps
-   every cross-frame selection and focus quirk that would come with
-   selecting inside the iframe instead. Off-screen rather than hidden
+   A temporary element in the main document, built from generate()'s own
+   string, so there is no frame and no cross-frame selection or focus quirk
+   to contend with. Off-screen rather than hidden
    outright, since a hidden element cannot hold a selection; removed again
    as soon as the copy command has run, so nothing lingers in the tab order
    or the accessibility tree.
@@ -4013,7 +4050,7 @@ function copyViaCopyEvent(html, text) {
 }
 
 function copyFormatted() {
-  var html = generate(false, "copy");
+  var html = generate("copyText");
   if (html === null) return;
   var bodyHtml = previewBodyHtml(html);
 
@@ -4024,7 +4061,7 @@ function copyFormatted() {
 
   var bodyText = previewBodyText(html);
   var clipHtml = TINYMCE_INTERNAL_MARK + bodyHtml;
-  var copied = "Formatted content copied \u2014 paste into Brightspace or Word.";
+  var copied = "Syllabus text copied \u2014 paste into Brightspace or Word." + outputNote();
 
   /* Three routes, best first; see copyViaCopyEvent() for why this order. */
   if (copyViaCopyEvent(clipHtml, bodyText)) {
@@ -4039,7 +4076,7 @@ function copyFormatted() {
       setExportStatus(copied);
     } else {
       lastCopyRoute = "";
-      setExportStatus("Copy failed. Try Copy HTML instead, or select the preview and press Ctrl+C.");
+      setExportStatus("Copy failed. Open Show HTML source code below and use Copy HTML instead.");
     }
   }
 
@@ -4064,7 +4101,7 @@ function copyFormatted() {
 }
 
 function download() {
-  var html = generate(false, "download");
+  var html = generate("download");
   if (html === null) return;
   var blob = new Blob([html], { type: "text/html;charset=utf-8" });
   var url = URL.createObjectURL(blob);
@@ -4075,11 +4112,11 @@ function download() {
   a.click();
   document.body.removeChild(a);
   setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  setExportStatus("Downloaded " + fileName() + ".");
+  setExportStatus("Downloaded " + fileName() + "." + outputNote());
 }
 
 function copy() {
-  var html = generate(false, "copy");
+  var html = generate("copy");
   if (html === null) return;
   var source = document.getElementById("source");
 
@@ -4091,12 +4128,12 @@ function copy() {
     source.select();
     try { document.execCommand("copy"); } catch (e) { /* nothing more to try */ }
     source.setAttribute("readonly", "readonly");
-    setExportStatus("HTML copied to the clipboard.");
+    setExportStatus("HTML copied to the clipboard." + outputNote());
   }
 
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(html).then(function () {
-      setExportStatus("HTML copied to the clipboard.");
+      setExportStatus("HTML copied to the clipboard." + outputNote());
     }, fallback);
   } else {
     fallback();
@@ -4117,7 +4154,7 @@ function setJsonStatus(message) {
 }
 
 function copyJson() {
-  if (generate(false, "copyJson") === null) return;
+  if (generate("copyJson") === null) return;
   var box = document.getElementById("jsonSource");
 
   /* execCommand reports whether it copied, so a failure is said plainly
@@ -4618,8 +4655,8 @@ function applyRecord(input) {
   syncEmailEcho();
   fitScheduleBoxes();
 
-  /* Whatever was flagged or generated before described the old answers. */
-  renderErrors([], "generate");
+  /* Whatever was flagged or built before described the old answers. */
+  renderErrors([], "copyText");
   clearOutput();
   draftFormReplaced();
   return r;
@@ -4641,7 +4678,7 @@ function applySaveData(data) {
  * border only repeats it (SC 1.4.1).
  *
  * A mark goes when its field is edited - for the schedule, when anything
- * in it is. Generate still works with marks in place, since a correction
+ * in it is. Copy still works with marks in place, since a correction
  * within the same term is legitimate, but its status line names what has
  * not been touched. Flagged, never blocked.
  * ------------------------------------------------------------------ */
@@ -4761,12 +4798,13 @@ function listText(names) {
 }
 
 function carryLoadedText(names) {
-  if (!names.length) return "Update the dates, then generate.";
+  if (!names.length) return "Update the dates, then copy the syllabus text.";
   var t = listText(names);
   return "Marked to check for this term: " + t + ".";
 }
 
-/* Appended to the Generate status. Empty when nothing is still marked. */
+/* Appended to the copy and download confirmations. Empty when nothing is
+   still marked. */
 function carryReminder() {
   var names = liveCarryMarks().map(function (m) { return m.name; });
   if (!names.length) return "";
@@ -4820,7 +4858,7 @@ function setLookupStatus(message) {
 
 function submitSyllabus() {
   if (submitBusy) return;
-  var html = generate(false, "submit");
+  var html = generate("submit");
   if (html === null || !generatedRecord) return;
   if (typeof fetch !== "function") {
     setSubmitStatus("This browser cannot reach the syllabus list. Nothing was submitted.");
@@ -5305,20 +5343,21 @@ function init() {
     setStatus("Week added.");
   });
 
-  document.getElementById("generateBtn").addEventListener("click", function () { generate(true); });
   document.getElementById("overrideBtn").addEventListener("click", overrideWarnings);
+  document.getElementById("sourceDetails").addEventListener("toggle", fillAdvanced);
+  document.getElementById("jsonDetails").addEventListener("toggle", fillAdvanced);
   document.getElementById("copyFormattedBtn").addEventListener("click", copyFormatted);
   document.getElementById("downloadBtn").addEventListener("click", download);
   document.getElementById("copyBtn").addEventListener("click", copy);
   document.getElementById("copyJsonBtn").addEventListener("click", copyJson);
 
-  /* Nothing submits anywhere; Enter should not wipe the form. novalidate on
-     the form keeps the browser's own bubbles out of it, so generate() is the
-     one thing that checks. */
+  /* Nothing submits anywhere; Enter should not wipe the form, and it does
+     nothing else either - copying is a deliberate press of the button.
+     novalidate on the form keeps the browser's own bubbles out of it, so
+     validate() is the one thing that checks. */
   var form = document.getElementById("outlineForm");
   form.addEventListener("submit", function (ev) {
     ev.preventDefault();
-    generate(true);
   });
 
   /* Delegated, so rows added later are covered. The per-control listeners
